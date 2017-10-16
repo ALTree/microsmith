@@ -47,8 +47,6 @@ func (db *DeclBuilder) FuncIdent() *ast.Ident {
 	}
 
 	id.Obj = &ast.Object{Kind: ast.Fun, Name: name}
-	fn := function{name: id}
-	fn.vars = make(map[string]*ast.Ident)
 	fns[name] = struct{}{}
 	db.funNames = fns
 

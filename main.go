@@ -24,7 +24,7 @@ func main() {
 	for i := int64(0); i < 100; i++ {
 
 		fmt.Printf("Seed %v - ", i)
-		gp := NewGoProgram(3)
+		gp := NewGoProgram(i)
 
 		//fmt.Println("\n", gp)
 
@@ -32,19 +32,19 @@ func main() {
 		if err != nil {
 			log.Fatalf("Program failed typechecking: %s\n%s", err, gp)
 		}
-		fmt.Printf("typechecking: ✓  ")
+		fmt.Printf("typechecking ✓  ")
 
 		err = gp.WriteToFile(WorkDir)
 		if err != nil {
 			log.Fatalf("Could not write to file: %s", err)
 		}
-		fmt.Printf("write file: ✓  ")
+		fmt.Printf("write file ✓  ")
 
 		err = gp.Compile()
 		if err != nil {
 			log.Fatalf("Program did not compile: %s\n%s", err, gp)
 		}
-		fmt.Printf("compile: ✓  \n")
+		fmt.Printf("compile ✓  \n")
 
 		//fmt.Printf("Program was compiled successfully.\n%s\n", gp)
 		gp.DeleteFile()
