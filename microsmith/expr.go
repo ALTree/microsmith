@@ -7,7 +7,7 @@ import (
 	"strconv"
 )
 
-const MaxExprDepth = 3
+const MaxExprDepth = 4
 
 type ExprBuilder struct {
 	rs    *rand.Rand // randomness source
@@ -43,7 +43,7 @@ func (eb *ExprBuilder) Expr() ast.Expr {
 	var expr ast.Expr
 
 	eb.depth++
-	if eb.rs.Uint32()%10 < 4 { // TODO: use constants, or make it configurable
+	if eb.rs.Uint32()%10 < 2 { // TODO: use constants, or make it configurable
 		expr = eb.UnaryExpr()
 	} else {
 		expr = eb.BinaryExpr()
@@ -87,7 +87,7 @@ func (eb *ExprBuilder) BinaryExpr() *ast.BinaryExpr {
 		token.SUB,
 		// token.NOT,
 		// token.XOR,
-		token.MUL,
+		//token.MUL,
 		//token.QUO,
 		// token.AND,
 		// token.ARROW,

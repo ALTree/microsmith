@@ -9,12 +9,16 @@ import (
 type DeclBuilder struct {
 	rs *rand.Rand // randomness source
 	sb *StmtBuilder
+
+	// list of functions declared by the builder
+	funNames map[string]function
 }
 
 func NewDeclBuilder(seed int64) *DeclBuilder {
 	db := new(DeclBuilder)
 	db.rs = rand.New(rand.NewSource(seed))
 	db.sb = NewStmtBuilder(db.rs)
+	db.funNames = make(map[string]function)
 	return db
 }
 
@@ -24,33 +28,27 @@ func (db *DeclBuilder) FuncDecl() *ast.FuncDecl {
 	fc.Name = db.FuncIdent()
 
 	fc.Type = &ast.FuncType{0, new(ast.FieldList), nil}
-	db.sb.currentFunc = fc.Name.Name
-	fc.Body = db.sb.BlockStmt()
-
-	fc.Body.List = append(fc.Body.List, db.sb.UseVars()...)
+	fc.Body = db.sb.BlockStmt(10)
 
 	return fc
 }
-
-var funNames map[string]function
-
-func init() {
-	funNames = make(map[string]function)
-}
-
 func (db *DeclBuilder) FuncIdent() *ast.Ident {
 
 	id := new(ast.Ident)
 
+	fns := db.funNames
+
 	var name string
-	name = fmt.Sprintf("fun%v", db.rs.Intn(1000))
-	for _, ok := funNames[name]; ok; {
-		name = fmt.Sprintf("fun%v", db.rs.Intn(1000))
+	name = fmt.Sprintf("fun%v", db.rs.Intn(100))
+	for _, ok := fns[name]; ok; _, ok = fns[name] {
+		name = fmt.Sprintf("fun%v", db.rs.Intn(100))
 	}
+
 	id.Obj = &ast.Object{Kind: ast.Fun, Name: name}
 	fn := function{name: id}
 	fn.vars = make(map[string]*ast.Ident)
-	funNames[name] = fn
+	fns[name] = fn
+	db.funNames = fns
 
 	id.Name = name
 	return id
