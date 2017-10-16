@@ -10,15 +10,17 @@ type DeclBuilder struct {
 	rs *rand.Rand // randomness source
 	sb *StmtBuilder
 
-	// list of functions declared by the builder
-	funNames map[string]function
+	// list of functions declared by this DeclBuilder
+	// TODO: can this be removed(?)
+	// (I don't think so, it's needed to avoid dups in func names)
+	funNames map[string]struct{}
 }
 
 func NewDeclBuilder(seed int64) *DeclBuilder {
 	db := new(DeclBuilder)
 	db.rs = rand.New(rand.NewSource(seed))
 	db.sb = NewStmtBuilder(db.rs)
-	db.funNames = make(map[string]function)
+	db.funNames = make(map[string]struct{})
 	return db
 }
 
@@ -28,7 +30,7 @@ func (db *DeclBuilder) FuncDecl() *ast.FuncDecl {
 	fc.Name = db.FuncIdent()
 
 	fc.Type = &ast.FuncType{0, new(ast.FieldList), nil}
-	fc.Body = db.sb.BlockStmt(10)
+	fc.Body = db.sb.BlockStmt(8)
 
 	return fc
 }
@@ -47,7 +49,7 @@ func (db *DeclBuilder) FuncIdent() *ast.Ident {
 	id.Obj = &ast.Object{Kind: ast.Fun, Name: name}
 	fn := function{name: id}
 	fn.vars = make(map[string]*ast.Ident)
-	fns[name] = fn
+	fns[name] = struct{}{}
 	db.funNames = fns
 
 	id.Name = name

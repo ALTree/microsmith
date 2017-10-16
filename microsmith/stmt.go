@@ -7,11 +7,6 @@ import (
 	"math/rand"
 )
 
-// MaxStmtDepth > 0 is currently broken because the generation of
-//   _, ... = var1, ...
-// statements to protect against 'unused' errors at the end of the
-// function uses variables that are not in scope (they're inside inner
-// blocks).
 const MaxStmtDepth = 2
 
 type StmtBuilder struct {
@@ -20,6 +15,8 @@ type StmtBuilder struct {
 	depth int // how deep the stmt hyerarchy is
 
 	// list of variables that are in scope
+	// Q: why is this here?
+	// A: because it's StmtBuilder that create new scopes (for now)
 	inScope map[string]*ast.Ident
 }
 
@@ -29,13 +26,6 @@ func NewStmtBuilder(rs *rand.Rand) *StmtBuilder {
 	sb.eb = NewExprBuilder(rs)
 	sb.inScope = make(map[string]*ast.Ident)
 	return sb
-}
-
-// holds a func Ident, and a name -> Ident map of all the variables
-// declared in the body of the function
-type function struct {
-	name *ast.Ident
-	vars map[string]*ast.Ident
 }
 
 // TODO: pre-generate names and then draw them(?)
