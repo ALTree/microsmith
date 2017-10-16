@@ -3,34 +3,27 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"go/ast"
-	"go/parser"
 	"go/printer"
 	"go/token"
+	"os"
 
 	"github.com/ALTree/microsmith/microsmith"
 )
 
 func main() {
-	// src is the input for which we want to print the AST.
-	src := `
-package p
 
-func sum() {
-  b := a
-}
-`
-	fset := token.NewFileSet()
-	f, err := parser.ParseFile(fset, "", src, 0)
+	fh, err := os.Create("test.go")
 	if err != nil {
-		panic(err)
+		fmt.Printf("could not create file: %s", err)
+		return
 	}
-	_, _ = f, fset
-	ast.Print(fset, f)
-	fmt.Println("\n----------------\n")
 
-	fmt.Print(genFile("prova.go"))
+	gp := genFile("prova.go")
 
+	fh.WriteString(gp)
+	fmt.Println("Go program written to file")
+	fmt.Println("--------\n", gp)
+	fh.Close()
 }
 
 func genFile(path string) string {
