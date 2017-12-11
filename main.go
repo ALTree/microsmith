@@ -65,10 +65,12 @@ func Fuzz(seed int64) {
 			log.Fatalf("Program did not compile: %s\n%s", err, gp)
 		}
 
-		atomic.AddInt64(&BuildCount, 1)
 		gp.DeleteFile()
+		atomic.AddInt64(&BuildCount, 1)
 	}
 }
+
+// TODO: move this stuff in a new file
 
 type GoProgram struct {
 	seed     int64

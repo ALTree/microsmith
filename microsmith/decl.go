@@ -34,12 +34,11 @@ func (db *DeclBuilder) FuncDecl() *ast.FuncDecl {
 
 	return fc
 }
+
 func (db *DeclBuilder) FuncIdent() *ast.Ident {
 
 	id := new(ast.Ident)
-
 	fns := db.funNames
-
 	var name string
 	name = fmt.Sprintf("fun%v", db.rs.Intn(100))
 	for _, ok := fns[name]; ok; _, ok = fns[name] {
