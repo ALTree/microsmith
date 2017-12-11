@@ -51,30 +51,6 @@ func (sb *StmtBuilder) VarIdent() *ast.Ident {
 	return id
 }
 
-func (sb *StmtBuilder) Stmt() ast.Stmt {
-	// Currently we generate
-	//   - AssignStmt
-	//   - BlockStmt
-	nFuncs := uint32(2)
-
-	switch sb.rs.Uint32() % nFuncs {
-	case 0:
-		return sb.AssignStmt()
-	case 1:
-		sb.depth++
-		if sb.depth > MaxStmtDepth {
-			return &ast.EmptyStmt{}
-		}
-		s := sb.BlockStmt(3)
-		sb.depth--
-		return s
-	// case 2:
-	// 	return sb.ExprStmt()
-	default:
-		panic("Stmt: bad random")
-	}
-}
-
 func (sb *StmtBuilder) RandomInScopeVar() *ast.Ident {
 	nVars := len(sb.inScope)
 	i := sb.rs.Intn(nVars)
@@ -89,6 +65,46 @@ func (sb *StmtBuilder) RandomInScopeVar() *ast.Ident {
 	panic("unreachable")
 }
 
+// ---------------- //
+//       Stmt       //
+// ---------------- //
+
+// Currently we generate:
+//   - AssignStmt
+//   - BlockStmt
+//   - IfStmt
+//
+// DeclStmt is implemented and used, but is not used directly here (by
+// Stmt. It's only used inside BlockStmt, which takes care of setting
+// up and using all the variables it declares.
+
+func (sb *StmtBuilder) Stmt() ast.Stmt {
+	nFuncs := uint32(3)
+
+	switch sb.rs.Uint32() % nFuncs {
+	case 0:
+		return sb.AssignStmt()
+	case 1:
+		if sb.depth >= MaxStmtDepth {
+			return &ast.EmptyStmt{}
+		}
+		sb.depth++
+		s := sb.BlockStmt(3)
+		sb.depth--
+		return s
+	case 2:
+		if sb.depth >= MaxStmtDepth {
+			return &ast.EmptyStmt{}
+		}
+		sb.depth++ // If body creates a block
+		s := sb.IfStmt()
+		sb.depth--
+		return s
+	default:
+		panic("Stmt: bad random")
+	}
+}
+
 func (sb *StmtBuilder) AssignStmt() *ast.AssignStmt {
 	as := new(ast.AssignStmt)
 
@@ -99,7 +115,13 @@ func (sb *StmtBuilder) AssignStmt() *ast.AssignStmt {
 	return as
 }
 
+// BlockStmt returns a new Block Statement. The returned Stmt is
+// always a valid block. It up to BlockStmt's caller to make sure
+// BlockStmt is only called when we have not yet reached max depth.
+//
+// TODO: move depth increment and decrement here(?)
 func (sb *StmtBuilder) BlockStmt(nVars int) *ast.BlockStmt {
+
 	bs := new(ast.BlockStmt)
 	stmts := []ast.Stmt{}
 
@@ -147,13 +169,22 @@ func (sb *StmtBuilder) DeclStmt(nVars int, kind string) *ast.DeclStmt {
 	gd.Specs = []ast.Spec{
 		&ast.ValueSpec{
 			Names: idents,
-			Type:  &ast.Ident{Name: "int"},
+			Type:  &ast.Ident{Name: kind},
 		},
 	}
 
 	ds := new(ast.DeclStmt)
 	ds.Decl = gd
 	return ds
+}
+
+func (sb *StmtBuilder) IfStmt() *ast.IfStmt {
+	is := &ast.IfStmt{
+		Cond: &ast.Ident{Name: RandString(sb.rs.Int(), []string{"true", "false"})},
+		Body: sb.BlockStmt(2),
+	}
+
+	return is
 }
 
 // Spec says this cannot be any Expr.
