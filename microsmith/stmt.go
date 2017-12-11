@@ -5,6 +5,7 @@ import (
 	"go/ast"
 	"go/token"
 	"math/rand"
+	"strings"
 )
 
 const MaxStmtDepth = 2
@@ -17,27 +18,35 @@ type StmtBuilder struct {
 	// list of variables that are in scope
 	// Q: why is this here?
 	// A: because it's StmtBuilder that create new scopes (for now)
-	inScope map[string]*ast.Ident
+	inScopeInt  map[string]*ast.Ident
+	inScopeBool map[string]*ast.Ident
 }
 
 func NewStmtBuilder(rs *rand.Rand) *StmtBuilder {
 	sb := new(StmtBuilder)
 	sb.rs = rs
 	sb.eb = NewExprBuilder(rs)
-	sb.inScope = make(map[string]*ast.Ident)
+	sb.inScopeInt = make(map[string]*ast.Ident)
+	sb.inScopeBool = make(map[string]*ast.Ident)
 	return sb
 }
 
 // TODO: pre-generate names and then draw them(?)
-func (sb *StmtBuilder) VarIdent() *ast.Ident {
+func (sb *StmtBuilder) VarIdent(kind string) *ast.Ident {
 
 	// try to generate a var name until we hit one that is not already
 	// in function scope
-	inScope := sb.inScope
+	var inScope map[string]*ast.Ident
+	switch kind {
+	case "int":
+		inScope = sb.inScopeInt
+	case "bool":
+		inScope = sb.inScopeBool
+	}
 
-	name := fmt.Sprintf("Var%v", sb.rs.Intn(1000))
+	name := fmt.Sprintf("Var%s%v", strings.Title(kind), sb.rs.Intn(1000))
 	for _, ok := inScope[name]; ok; _, ok = inScope[name] {
-		name = fmt.Sprintf("Var%v", sb.rs.Intn(1000))
+		name = fmt.Sprintf("Var%s%v", strings.Title(kind), sb.rs.Intn(1000))
 	}
 
 	// build Ident object and return
@@ -46,16 +55,28 @@ func (sb *StmtBuilder) VarIdent() *ast.Ident {
 	id.Name = name
 
 	inScope[name] = id
-	sb.inScope = inScope
+
+	switch kind {
+	case "int":
+		sb.inScopeInt = inScope
+	case "bool":
+		sb.inScopeBool = inScope
+	}
 
 	return id
 }
 
-func (sb *StmtBuilder) RandomInScopeVar() *ast.Ident {
-	nVars := len(sb.inScope)
-	i := sb.rs.Intn(nVars)
+func (sb *StmtBuilder) RandomInScopeVar(kind string) *ast.Ident {
+	var inScope map[string]*ast.Ident
+	switch kind {
+	case "int":
+		inScope = sb.inScopeInt
+	case "bool":
+		inScope = sb.inScopeBool
+	}
+	i := sb.rs.Intn(len(inScope))
 	counter := 0
-	for _, v := range sb.inScope {
+	for _, v := range inScope {
 		if i == counter {
 			return v
 		}
@@ -83,7 +104,11 @@ func (sb *StmtBuilder) Stmt() ast.Stmt {
 
 	switch sb.rs.Uint32() % nFuncs {
 	case 0:
-		return sb.AssignStmt("int")
+		ttt := sb.rs.Uint32() % 2
+		if ttt == 0 {
+			return sb.AssignStmt("int")
+		}
+		return sb.AssignStmt("bool")
 	case 1:
 		if sb.depth >= MaxStmtDepth {
 			return &ast.EmptyStmt{}
@@ -96,7 +121,7 @@ func (sb *StmtBuilder) Stmt() ast.Stmt {
 		if sb.depth >= MaxStmtDepth {
 			return &ast.EmptyStmt{}
 		}
-		sb.depth++ // If body creates a block
+		sb.depth++ // If's body creates a block
 		s := sb.IfStmt()
 		sb.depth--
 		return s
@@ -108,7 +133,7 @@ func (sb *StmtBuilder) Stmt() ast.Stmt {
 func (sb *StmtBuilder) AssignStmt(kind string) *ast.AssignStmt {
 	as := new(ast.AssignStmt)
 
-	as.Lhs = []ast.Expr{sb.RandomInScopeVar()}
+	as.Lhs = []ast.Expr{sb.RandomInScopeVar(kind)}
 	as.Tok = token.ASSIGN
 	as.Rhs = []ast.Expr{sb.eb.Expr(kind)}
 
@@ -129,28 +154,45 @@ func (sb *StmtBuilder) BlockStmt(nVars int) *ast.BlockStmt {
 	//
 	// First, declare nVars variables that will be in scope in this
 	// block (together with the outer scopes ones).
+	//
+	// TODO: make the number of new variables inversely proportional
+	// to the current depth (the deeper we are, the more variables
+	// declared outside the block and already in scope we have).
+	// If we do this, remember to update BlockStmt callers to pass
+	// nVars < 1 so that BlockStmt will choose nVars by itself.
 	if nVars < 1 {
 		nVars = 4
 	}
-	newVars := sb.DeclStmt(nVars, "int")
-	stmts = append(stmts, newVars)
+	newVarInts := sb.DeclStmt(nVars, "int")
+	stmts = append(stmts, newVarInts)
 
-	// now build the block body (with *no* new declaration)
+	newVarBools := sb.DeclStmt(nVars, "bool")
+	stmts = append(stmts, newVarBools)
+
+	// now fill the block's body with statements (but *no* new
+	// declaration: we only use the variables we just declared, plus
+	// the ones in scope when we enter the block).
 	for i := 0; i < 4; i++ {
 		stmts = append(stmts, sb.Stmt())
 	}
 
 	// now we need to cleanup the new declared variables.
-	newVarsIdents := newVars.Decl.(*ast.GenDecl).Specs[0].(*ast.ValueSpec).Names
+	newIntIdents := newVarInts.Decl.(*ast.GenDecl).Specs[0].(*ast.ValueSpec).Names
+	newBoolIdents := newVarBools.Decl.(*ast.GenDecl).Specs[0].(*ast.ValueSpec).Names
 
 	// First, use all of them to avoid 'unused' errors:
-	stmts = append(stmts, sb.UseVars(newVarsIdents))
+	stmts = append(stmts, sb.UseVars(newIntIdents))
+	stmts = append(stmts, sb.UseVars(newBoolIdents))
 	bs.List = stmts
 
 	// Finally, remove from scope the variables we declared at the
 	// beginning of this block
-	for _, v := range newVarsIdents {
-		delete(sb.inScope, v.Name)
+	for _, v := range newIntIdents {
+		delete(sb.inScopeInt, v.Name)
+	}
+
+	for _, v := range newBoolIdents {
+		delete(sb.inScopeBool, v.Name)
 	}
 
 	return bs
@@ -163,7 +205,7 @@ func (sb *StmtBuilder) DeclStmt(nVars int, kind string) *ast.DeclStmt {
 	// generate nVars ast.Idents
 	idents := make([]*ast.Ident, 0)
 	for i := 0; i < nVars; i++ {
-		idents = append(idents, sb.VarIdent())
+		idents = append(idents, sb.VarIdent(kind))
 	}
 
 	gd.Specs = []ast.Spec{
@@ -181,9 +223,11 @@ func (sb *StmtBuilder) DeclStmt(nVars int, kind string) *ast.DeclStmt {
 func (sb *StmtBuilder) IfStmt() *ast.IfStmt {
 	is := &ast.IfStmt{
 		//Cond: &ast.Ident{Name: RandString(sb.rs.Int(), []string{"true", "false"})},
-		Cond: sb.eb.UnaryExpr("bool"),
+		Cond: sb.eb.UnaryExpr("bool"), // TODO: switch to Expr()
 		Body: sb.BlockStmt(2),
 	}
+
+	// TODO: optionally generate else branch
 
 	return is
 }

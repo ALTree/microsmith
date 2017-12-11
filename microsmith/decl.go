@@ -30,7 +30,7 @@ func (db *DeclBuilder) FuncDecl() *ast.FuncDecl {
 	fc.Name = db.FuncIdent()
 
 	fc.Type = &ast.FuncType{0, new(ast.FieldList), nil}
-	fc.Body = db.sb.BlockStmt(8)
+	fc.Body = db.sb.BlockStmt(4)
 
 	return fc
 }
