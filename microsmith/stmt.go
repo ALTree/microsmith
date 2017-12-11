@@ -83,7 +83,7 @@ func (sb *StmtBuilder) Stmt() ast.Stmt {
 
 	switch sb.rs.Uint32() % nFuncs {
 	case 0:
-		return sb.AssignStmt()
+		return sb.AssignStmt("int")
 	case 1:
 		if sb.depth >= MaxStmtDepth {
 			return &ast.EmptyStmt{}
@@ -105,12 +105,12 @@ func (sb *StmtBuilder) Stmt() ast.Stmt {
 	}
 }
 
-func (sb *StmtBuilder) AssignStmt() *ast.AssignStmt {
+func (sb *StmtBuilder) AssignStmt(kind string) *ast.AssignStmt {
 	as := new(ast.AssignStmt)
 
 	as.Lhs = []ast.Expr{sb.RandomInScopeVar()}
 	as.Tok = token.ASSIGN
-	as.Rhs = []ast.Expr{sb.eb.Expr()}
+	as.Rhs = []ast.Expr{sb.eb.Expr(kind)}
 
 	return as
 }
@@ -180,7 +180,8 @@ func (sb *StmtBuilder) DeclStmt(nVars int, kind string) *ast.DeclStmt {
 
 func (sb *StmtBuilder) IfStmt() *ast.IfStmt {
 	is := &ast.IfStmt{
-		Cond: &ast.Ident{Name: RandString(sb.rs.Int(), []string{"true", "false"})},
+		//Cond: &ast.Ident{Name: RandString(sb.rs.Int(), []string{"true", "false"})},
+		Cond: sb.eb.UnaryExpr("bool"),
 		Body: sb.BlockStmt(2),
 	}
 
@@ -200,9 +201,9 @@ func (sb *StmtBuilder) IfStmt() *ast.IfStmt {
 // <-ch
 // (<-ch)
 // TODO: fix
-func (sb *StmtBuilder) ExprStmt() *ast.ExprStmt {
+func (sb *StmtBuilder) ExprStmt(kind string) *ast.ExprStmt {
 	es := new(ast.ExprStmt)
-	es.X = sb.eb.Expr()
+	es.X = sb.eb.Expr(kind)
 	return es
 }
 

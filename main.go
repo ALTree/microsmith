@@ -22,7 +22,7 @@ import (
 )
 
 const WorkDir = "work/"
-const debug = true
+const debug = false
 
 var BuildCount int64
 

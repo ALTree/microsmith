@@ -7,7 +7,7 @@ import (
 	"strconv"
 )
 
-const MaxExprDepth = 2
+const MaxExprDepth = 1
 
 type ExprBuilder struct {
 	rs    *rand.Rand // randomness source
@@ -22,21 +22,26 @@ func (eb *ExprBuilder) chooseToken(tokens []token.Token) token.Token {
 	return tokens[eb.rs.Intn(len(tokens))]
 }
 
-func (eb *ExprBuilder) BasicLit() *ast.BasicLit {
+func (eb *ExprBuilder) BasicLit(kind string) *ast.BasicLit {
 	bl := new(ast.BasicLit)
 
 	// TODO: generate all kinds of literal
-
 	// kinds := []token.Token{token.INT, token.FLOAT, token.IMAG, token.CHAR, token.STRING}
 	// bl.Kind = eb.chooseToken(kinds)
 
-	bl.Kind = token.INT
-	bl.Value = strconv.Itoa(eb.rs.Intn(100))
-
+	switch kind {
+	case "int":
+		bl.Kind = token.INT
+		bl.Value = strconv.Itoa(eb.rs.Intn(100))
+	case "bool":
+		panic("BasicLit: bool is not a BasicLit")
+	default:
+		panic("BasicLit: kind not implemented")
+	}
 	return bl
 }
 
-func (eb *ExprBuilder) Expr() ast.Expr {
+func (eb *ExprBuilder) Expr(kind string) ast.Expr {
 	// Currently:
 	//   - Binary
 	//   - Unary
@@ -44,64 +49,70 @@ func (eb *ExprBuilder) Expr() ast.Expr {
 
 	eb.depth++
 	if eb.rs.Uint32()%10 < 2 { // TODO: use constants, or make it configurable
-		expr = eb.UnaryExpr()
+		expr = eb.UnaryExpr(kind)
 	} else {
-		expr = eb.BinaryExpr()
+		expr = eb.BinaryExpr(kind)
 	}
 	eb.depth--
 
 	return expr
 }
 
-func (eb *ExprBuilder) UnaryExpr() *ast.UnaryExpr {
-	// + - ! ^ * & <-
-	unaryOps := []token.Token{
-		token.ADD,
-		token.SUB,
-		// token.NOT,
-		// token.XOR,
-		// token.MUL,
-		// token.AND,
-		// token.ARROW,
-	}
-
+func (eb *ExprBuilder) UnaryExpr(kind string) *ast.UnaryExpr {
 	ue := new(ast.UnaryExpr)
-	ue.Op = eb.chooseToken(unaryOps)
+
+	switch kind {
+	case "int":
+		ue.Op = eb.chooseToken([]token.Token{token.ADD, token.SUB})
+	case "bool":
+		ue.Op = eb.chooseToken([]token.Token{token.NOT})
+	default:
+		panic("UnaryExpr: kind not implemented")
+	}
 
 	if eb.depth > MaxExprDepth {
 		// TODO: also Ident, but we don't know what Idents are in
 		// scope (we don't have access to currentFunc from here).
 		// Should probably make currentFunc a global variable.
-		ue.X = eb.BasicLit()
+		switch kind {
+		case "int":
+			ue.X = eb.BasicLit(kind)
+		case "bool": // 'true' and 'false' are not BasicLits
+			ue.X = &ast.Ident{Name: RandString(eb.rs.Int(), []string{"true", "false"})}
+		}
 	} else {
-		ue.X = eb.Expr()
+		ue.X = eb.Expr(kind)
 	}
 
 	return ue
 }
 
-func (eb *ExprBuilder) BinaryExpr() *ast.BinaryExpr {
-	// TODO: add more
-	binaryOps := []token.Token{
-		token.ADD,
-		token.SUB,
-		// token.NOT,
-		// token.XOR,
-		//token.MUL,
-		//token.QUO,
-		// token.AND,
-		// token.ARROW,
-	}
+func (eb *ExprBuilder) BinaryExpr(kind string) *ast.BinaryExpr {
 
 	ue := new(ast.BinaryExpr)
-	ue.Op = eb.chooseToken(binaryOps)
+
+	switch kind {
+	case "int":
+		ue.Op = eb.chooseToken([]token.Token{token.ADD, token.SUB})
+	case "bool":
+		ue.Op = eb.chooseToken([]token.Token{token.LAND, token.LOR})
+	default:
+		panic("UnaryExpr: kind not implemented")
+	}
 
 	if eb.depth > MaxExprDepth {
-		ue.X = eb.BasicLit()
-		ue.Y = eb.BasicLit()
+		switch kind {
+		case "int":
+			ue.X = eb.BasicLit(kind)
+			ue.Y = eb.BasicLit(kind)
+		case "bool": // 'true' and 'false' are not BasicLits
+			bools := []string{"true", "false"}
+			ue.X = &ast.Ident{Name: RandString(eb.rs.Int(), bools)}
+			ue.Y = &ast.Ident{Name: RandString(eb.rs.Int(), bools)}
+		}
 	} else {
-		ue.X = eb.Expr()
-		ue.Y = eb.Expr()
+		ue.X = eb.Expr(kind)
+		ue.Y = eb.Expr(kind)
 	}
 
 	return ue
