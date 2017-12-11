@@ -7,7 +7,7 @@ import (
 	"strconv"
 )
 
-const MaxExprDepth = 4
+const MaxExprDepth = 2
 
 type ExprBuilder struct {
 	rs    *rand.Rand // randomness source

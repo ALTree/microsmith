@@ -10,43 +10,62 @@ import (
 	"go/token"
 	"go/types"
 	"log"
+	"math/rand"
 	"os"
 	"os/exec"
 	"strings"
+	"time"
+
+	"sync/atomic"
 
 	"github.com/ALTree/microsmith/microsmith"
 )
 
 const WorkDir = "work/"
+const debug = true
+
+var BuildCount int64
 
 func main() {
+	nWorkers := 1
+	fmt.Printf("Fuzzing with %v worker(s)\n", nWorkers)
+	for i := 0; i < nWorkers; i++ {
+		go Fuzz(int64(i))
+	}
 
-	for i := int64(0); i < 100; i++ {
+	ticker := time.Tick(3 * time.Second)
+	for _ = range ticker {
+		log.Printf("Build: %v\n", atomic.LoadInt64(&BuildCount))
+	}
 
-		fmt.Printf("Seed %v - ", i)
-		gp := NewGoProgram(i)
+	select {}
+}
 
-		//fmt.Println("\n", gp)
+// Fuzz with one worker
+func Fuzz(seed int64) {
+	rand := rand.New(rand.NewSource(seed))
+	for true {
+		gp := NewGoProgram(rand.Int63())
+		if debug {
+			fmt.Println(gp)
+		}
 
 		err := gp.Check()
 		if err != nil {
 			log.Fatalf("Program failed typechecking: %s\n%s", err, gp)
 		}
-		fmt.Printf("typechecking ✓  ")
 
 		err = gp.WriteToFile(WorkDir)
 		if err != nil {
 			log.Fatalf("Could not write to file: %s", err)
 		}
-		fmt.Printf("write file ✓  ")
 
 		err = gp.Compile()
 		if err != nil {
 			log.Fatalf("Program did not compile: %s\n%s", err, gp)
 		}
-		fmt.Printf("compile ✓  \n")
 
-		//fmt.Printf("Program was compiled successfully.\n%s\n", gp)
+		atomic.AddInt64(&BuildCount, 1)
 		gp.DeleteFile()
 	}
 }
@@ -108,6 +127,8 @@ func (gp *GoProgram) Compile() error {
 	}
 
 	cmd := exec.Command("go", "build", gp.fileName)
+	// TODO: configurable GOARCH
+	// cmd.Env = append(cmd.Env, "GOARCH=386")
 	cmd.Dir = WorkDir
 	out, err := cmd.CombinedOutput()
 	if err != nil {
@@ -136,6 +157,10 @@ func (gp GoProgram) DeleteFile() {
 }
 
 func (gp GoProgram) String() string {
-	ds := "--------"
-	return fmt.Sprintf("%s\n%s%s", ds, gp.source, ds)
+	fmtstr :=
+		"[seed %v]\n" +
+			"----------------\n" +
+			"%s" +
+			"----------------\n"
+	return fmt.Sprintf(fmtstr, gp.seed, gp.source)
 }

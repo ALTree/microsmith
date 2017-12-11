@@ -52,9 +52,9 @@ func (sb *StmtBuilder) VarIdent() *ast.Ident {
 }
 
 func (sb *StmtBuilder) Stmt() ast.Stmt {
-	// Currently
-	//   - Assign
-	//   - Block
+	// Currently we generate
+	//   - AssignStmt
+	//   - BlockStmt
 	nFuncs := uint32(2)
 
 	switch sb.rs.Uint32() % nFuncs {
