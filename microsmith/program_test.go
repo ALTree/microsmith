@@ -25,7 +25,7 @@ func TestProgramGeneration(t *testing.T) {
 
 	// check generated programs with gc (from file)
 	t.Run("GcCheck", func(t *testing.T) {
-		for i := 0; i < 50; i++ {
+		for i := 0; i < 10; i++ {
 			gp := microsmith.NewGoProgram(rand.Int63())
 			err := gp.WriteToFile(WorkDir)
 			if err != nil {
