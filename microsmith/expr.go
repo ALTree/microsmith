@@ -28,7 +28,7 @@ func NewExprBuilder(rs *rand.Rand) *ExprBuilder {
 		rs: rs,
 		conf: ExprConf{
 			maxExprDepth: 2,
-			unaryChance:  0.2,
+			unaryChance:  0.1,
 		},
 	}
 }
