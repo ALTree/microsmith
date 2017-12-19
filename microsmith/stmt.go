@@ -242,12 +242,14 @@ func (sb *StmtBuilder) DeclStmt(nVars int, kind string) *ast.DeclStmt {
 
 func (sb *StmtBuilder) IfStmt() *ast.IfStmt {
 	is := &ast.IfStmt{
-		//Cond: &ast.Ident{Name: RandString(sb.rs.Int(), []string{"true", "false"})},
 		Cond: sb.eb.UnaryExpr("bool"), // TODO: switch to Expr()
 		Body: sb.BlockStmt(2, 4),
 	}
 
-	// TODO: optionally generate else branch
+	// optionally attach an 'else'
+	if sb.rs.Float64() < 0.5 {
+		is.Else = sb.BlockStmt(2, 4)
+	}
 
 	return is
 }

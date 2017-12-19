@@ -9,7 +9,7 @@ import (
 
 type ExprBuilder struct {
 	rs    *rand.Rand // randomness source
-	depth int        // how deep the expr hyerarchy is
+	depth int        // how deep the expr hierarchy is
 	conf  ExprConf
 }
 
