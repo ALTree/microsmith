@@ -9,10 +9,10 @@ import (
 )
 
 type StmtBuilder struct {
-	rs           *rand.Rand // randomness source
-	eb           *ExprBuilder
-	depth        int // how deep the stmt hyerarchy is
-	maxStmtDepth int
+	rs    *rand.Rand // randomness source
+	eb    *ExprBuilder
+	depth int // how deep the stmt hyerarchy is
+	conf  StmtConf
 
 	// list of variables that are in scope
 	// Q: why is this here?
@@ -21,11 +21,27 @@ type StmtBuilder struct {
 	inScopeBool map[string]*ast.Ident
 }
 
+type StmtConf struct {
+	// maximum allowed blocks depth
+	maxStmtDepth int
+
+	// chances of generating each type of Stmt. In order
+	//   1. Assign Stmt
+	//   2. Block Stmt
+	//   3. If Stmt
+	stmtKindChance []float64
+}
+
 func NewStmtBuilder(rs *rand.Rand) *StmtBuilder {
 	sb := new(StmtBuilder)
 	sb.rs = rs
 	sb.eb = NewExprBuilder(rs)
-	sb.maxStmtDepth = 2
+	sb.conf = StmtConf{
+		maxStmtDepth: 2,
+		stmtKindChance: []float64{
+			2, 1, 1,
+		},
+	}
 	sb.inScopeInt = make(map[string]*ast.Ident)
 	sb.inScopeBool = make(map[string]*ast.Ident)
 	return sb
@@ -100,9 +116,7 @@ func (sb *StmtBuilder) RandomInScopeVar(kind string) *ast.Ident {
 // up and using all the variables it declares.
 
 func (sb *StmtBuilder) Stmt() ast.Stmt {
-	nFuncs := uint32(3)
-
-	switch sb.rs.Uint32() % nFuncs {
+	switch RandIndex(sb.conf.stmtKindChance, sb.rs.Float64()) {
 	case 0:
 		ttt := sb.rs.Uint32() % 2
 		if ttt == 0 {
@@ -110,7 +124,7 @@ func (sb *StmtBuilder) Stmt() ast.Stmt {
 		}
 		return sb.AssignStmt("bool")
 	case 1:
-		if sb.depth >= sb.maxStmtDepth {
+		if sb.depth >= sb.conf.maxStmtDepth {
 			return &ast.EmptyStmt{}
 		}
 		sb.depth++
@@ -118,7 +132,7 @@ func (sb *StmtBuilder) Stmt() ast.Stmt {
 		sb.depth--
 		return s
 	case 2:
-		if sb.depth >= sb.maxStmtDepth {
+		if sb.depth >= sb.conf.maxStmtDepth {
 			return &ast.EmptyStmt{}
 		}
 		sb.depth++ // If's body creates a block
