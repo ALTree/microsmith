@@ -39,7 +39,7 @@ func NewStmtBuilder(rs *rand.Rand) *StmtBuilder {
 	sb.conf = StmtConf{
 		maxStmtDepth: 2,
 		stmtKindChance: []float64{
-			2, 1, 1,
+			3, 1, 1,
 		},
 	}
 	sb.inScopeInt = make(map[string]*ast.Ident)
@@ -128,7 +128,7 @@ func (sb *StmtBuilder) Stmt() ast.Stmt {
 			return &ast.EmptyStmt{}
 		}
 		sb.depth++
-		s := sb.BlockStmt(3)
+		s := sb.BlockStmt(2, 4)
 		sb.depth--
 		return s
 	case 2:
@@ -140,7 +140,7 @@ func (sb *StmtBuilder) Stmt() ast.Stmt {
 		sb.depth--
 		return s
 	default:
-		panic("Stmt: bad random")
+		panic("Stmt: bad RandIndex")
 	}
 }
 
@@ -157,11 +157,15 @@ func (sb *StmtBuilder) AssignStmt(kind string) *ast.AssignStmt {
 // BlockStmt returns a new Block Statement. The returned Stmt is
 // always a valid block. It up to BlockStmt's caller to make sure
 // BlockStmt is only called when we have not yet reached max depth.
+
 // nVars controls the number of new variables declared at the top of
 // the block.
 //
+// nStmt controls the number of new statements that will be included
+// in the returned block.
+//
 // TODO: move depth increment and decrement here(?)
-func (sb *StmtBuilder) BlockStmt(nVars int) *ast.BlockStmt {
+func (sb *StmtBuilder) BlockStmt(nVars, nStmts int) *ast.BlockStmt {
 
 	bs := new(ast.BlockStmt)
 	stmts := []ast.Stmt{}
@@ -188,7 +192,7 @@ func (sb *StmtBuilder) BlockStmt(nVars int) *ast.BlockStmt {
 	// now fill the block's body with statements (but *no* new
 	// declaration: we only use the variables we just declared, plus
 	// the ones in scope when we enter the block).
-	for i := 0; i < 4; i++ { // TODO: make this configurable
+	for i := 0; i < nStmts; i++ {
 		stmts = append(stmts, sb.Stmt())
 	}
 
@@ -240,7 +244,7 @@ func (sb *StmtBuilder) IfStmt() *ast.IfStmt {
 	is := &ast.IfStmt{
 		//Cond: &ast.Ident{Name: RandString(sb.rs.Int(), []string{"true", "false"})},
 		Cond: sb.eb.UnaryExpr("bool"), // TODO: switch to Expr()
-		Body: sb.BlockStmt(2),
+		Body: sb.BlockStmt(2, 4),
 	}
 
 	// TODO: optionally generate else branch
