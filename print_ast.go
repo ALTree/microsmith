@@ -12,10 +12,8 @@ func main() {
 package main
 
 func fun42() {
-  if true && false {
-    x := 1+2
-  } else {
-    x := 2+3
+  for true {
+    x := 42
   }
 }
 `

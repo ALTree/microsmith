@@ -26,8 +26,9 @@ type StmtConf struct {
 	maxStmtDepth int
 
 	// chances of generating each type of Stmt. In order
-	//   1. Assign Stmt
-	//   2. Block Stmt
+	//   0. Assign Stmt
+	//   1. Block Stmt
+	//   2. For Stmt
 	//   3. If Stmt
 	stmtKindChance []float64
 }
@@ -39,7 +40,7 @@ func NewStmtBuilder(rs *rand.Rand) *StmtBuilder {
 	sb.conf = StmtConf{
 		maxStmtDepth: 2,
 		stmtKindChance: []float64{
-			3, 1, 1,
+			3, 1, 1, 1,
 		},
 	}
 	sb.inScopeInt = make(map[string]*ast.Ident)
@@ -109,6 +110,7 @@ func (sb *StmtBuilder) RandomInScopeVar(kind string) *ast.Ident {
 // Currently we generate:
 //   - AssignStmt
 //   - BlockStmt
+//   - ForStmt
 //   - IfStmt
 //
 // DeclStmt is implemented and used, but is not used directly here (by
@@ -132,6 +134,14 @@ func (sb *StmtBuilder) Stmt() ast.Stmt {
 		sb.depth--
 		return s
 	case 2:
+		if sb.depth >= sb.conf.maxStmtDepth {
+			return &ast.EmptyStmt{}
+		}
+		sb.depth++
+		s := sb.ForStmt()
+		sb.depth--
+		return s
+	case 3:
 		if sb.depth >= sb.conf.maxStmtDepth {
 			return &ast.EmptyStmt{}
 		}
@@ -240,9 +250,18 @@ func (sb *StmtBuilder) DeclStmt(nVars int, kind string) *ast.DeclStmt {
 	return ds
 }
 
+func (sb *StmtBuilder) ForStmt() *ast.ForStmt {
+	fs := &ast.ForStmt{
+		Cond: sb.eb.Expr("bool"),
+		Body: sb.BlockStmt(0, 2),
+	}
+
+	return fs
+}
+
 func (sb *StmtBuilder) IfStmt() *ast.IfStmt {
 	is := &ast.IfStmt{
-		Cond: sb.eb.UnaryExpr("bool"), // TODO: switch to Expr()
+		Cond: sb.eb.Expr("bool"),
 		Body: sb.BlockStmt(2, 4),
 	}
 
