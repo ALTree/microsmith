@@ -8,13 +8,29 @@ import (
 )
 
 type ExprBuilder struct {
-	rs           *rand.Rand // randomness source
-	depth        int        // how deep the expr hyerarchy is
+	rs    *rand.Rand // randomness source
+	depth int        // how deep the expr hyerarchy is
+	conf  ExprConf
+}
+
+type ExprConf struct {
+	// maximum allowed expressions nesting
 	maxExprDepth int
+
+	// Measure of how likely it is to generate an unary expression,
+	// expressed as a value in [0,1]. If unaryChance is 0, every
+	// expression is binary; if 1, every expression is unary.
+	unaryChance float64
 }
 
 func NewExprBuilder(rs *rand.Rand) *ExprBuilder {
-	return &ExprBuilder{rs: rs, maxExprDepth: 2}
+	return &ExprBuilder{
+		rs: rs,
+		conf: ExprConf{
+			maxExprDepth: 2,
+			unaryChance:  0.2,
+		},
+	}
 }
 
 func (eb *ExprBuilder) chooseToken(tokens []token.Token) token.Token {
@@ -47,7 +63,7 @@ func (eb *ExprBuilder) Expr(kind string) ast.Expr {
 	var expr ast.Expr
 
 	eb.depth++
-	if eb.rs.Uint32()%10 < 2 { // TODO: use constants, or make it configurable
+	if eb.rs.Float64() < eb.conf.unaryChance {
 		expr = eb.UnaryExpr(kind)
 	} else {
 		expr = eb.BinaryExpr(kind)
@@ -69,7 +85,7 @@ func (eb *ExprBuilder) UnaryExpr(kind string) *ast.UnaryExpr {
 		panic("UnaryExpr: kind not implemented")
 	}
 
-	if eb.depth > eb.maxExprDepth {
+	if eb.depth > eb.conf.maxExprDepth {
 		// TODO: also Ident, but we don't know what Idents are in
 		// scope (we don't have access to currentFunc from here).
 		// Should probably make currentFunc a global variable.
@@ -99,7 +115,7 @@ func (eb *ExprBuilder) BinaryExpr(kind string) *ast.BinaryExpr {
 		panic("UnaryExpr: kind not implemented")
 	}
 
-	if eb.depth > eb.maxExprDepth {
+	if eb.depth > eb.conf.maxExprDepth {
 		switch kind {
 		case "int":
 			ue.X = eb.BasicLit(kind)

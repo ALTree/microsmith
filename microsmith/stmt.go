@@ -143,6 +143,8 @@ func (sb *StmtBuilder) AssignStmt(kind string) *ast.AssignStmt {
 // BlockStmt returns a new Block Statement. The returned Stmt is
 // always a valid block. It up to BlockStmt's caller to make sure
 // BlockStmt is only called when we have not yet reached max depth.
+// nVars controls the number of new variables declared at the top of
+// the block.
 //
 // TODO: move depth increment and decrement here(?)
 func (sb *StmtBuilder) BlockStmt(nVars int) *ast.BlockStmt {
@@ -163,16 +165,16 @@ func (sb *StmtBuilder) BlockStmt(nVars int) *ast.BlockStmt {
 	if nVars < 1 {
 		nVars = 4
 	}
+
 	newVarInts := sb.DeclStmt(nVars, "int")
 	stmts = append(stmts, newVarInts)
-
 	newVarBools := sb.DeclStmt(nVars, "bool")
 	stmts = append(stmts, newVarBools)
 
 	// now fill the block's body with statements (but *no* new
 	// declaration: we only use the variables we just declared, plus
 	// the ones in scope when we enter the block).
-	for i := 0; i < 4; i++ {
+	for i := 0; i < 4; i++ { // TODO: make this configurable
 		stmts = append(stmts, sb.Stmt())
 	}
 
