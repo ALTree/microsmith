@@ -4,11 +4,10 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"sync/atomic"
 	"time"
 
 	"github.com/ALTree/microsmith/microsmith"
-
-	"sync/atomic"
 )
 
 const WorkDir = "work/"
