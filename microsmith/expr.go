@@ -7,15 +7,14 @@ import (
 	"strconv"
 )
 
-const MaxExprDepth = 1
-
 type ExprBuilder struct {
-	rs    *rand.Rand // randomness source
-	depth int        // how deep the expr hyerarchy is
+	rs           *rand.Rand // randomness source
+	depth        int        // how deep the expr hyerarchy is
+	maxExprDepth int
 }
 
 func NewExprBuilder(rs *rand.Rand) *ExprBuilder {
-	return &ExprBuilder{rs: rs}
+	return &ExprBuilder{rs: rs, maxExprDepth: 2}
 }
 
 func (eb *ExprBuilder) chooseToken(tokens []token.Token) token.Token {
@@ -70,7 +69,7 @@ func (eb *ExprBuilder) UnaryExpr(kind string) *ast.UnaryExpr {
 		panic("UnaryExpr: kind not implemented")
 	}
 
-	if eb.depth > MaxExprDepth {
+	if eb.depth > eb.maxExprDepth {
 		// TODO: also Ident, but we don't know what Idents are in
 		// scope (we don't have access to currentFunc from here).
 		// Should probably make currentFunc a global variable.
@@ -100,7 +99,7 @@ func (eb *ExprBuilder) BinaryExpr(kind string) *ast.BinaryExpr {
 		panic("UnaryExpr: kind not implemented")
 	}
 
-	if eb.depth > MaxExprDepth {
+	if eb.depth > eb.maxExprDepth {
 		switch kind {
 		case "int":
 			ue.X = eb.BasicLit(kind)

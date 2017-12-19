@@ -8,12 +8,11 @@ import (
 	"strings"
 )
 
-const MaxStmtDepth = 2
-
 type StmtBuilder struct {
-	rs    *rand.Rand // randomness source
-	eb    *ExprBuilder
-	depth int // how deep the stmt hyerarchy is
+	rs           *rand.Rand // randomness source
+	eb           *ExprBuilder
+	depth        int // how deep the stmt hyerarchy is
+	maxStmtDepth int
 
 	// list of variables that are in scope
 	// Q: why is this here?
@@ -26,6 +25,7 @@ func NewStmtBuilder(rs *rand.Rand) *StmtBuilder {
 	sb := new(StmtBuilder)
 	sb.rs = rs
 	sb.eb = NewExprBuilder(rs)
+	sb.maxStmtDepth = 2
 	sb.inScopeInt = make(map[string]*ast.Ident)
 	sb.inScopeBool = make(map[string]*ast.Ident)
 	return sb
@@ -110,7 +110,7 @@ func (sb *StmtBuilder) Stmt() ast.Stmt {
 		}
 		return sb.AssignStmt("bool")
 	case 1:
-		if sb.depth >= MaxStmtDepth {
+		if sb.depth >= sb.maxStmtDepth {
 			return &ast.EmptyStmt{}
 		}
 		sb.depth++
@@ -118,7 +118,7 @@ func (sb *StmtBuilder) Stmt() ast.Stmt {
 		sb.depth--
 		return s
 	case 2:
-		if sb.depth >= MaxStmtDepth {
+		if sb.depth >= sb.maxStmtDepth {
 			return &ast.EmptyStmt{}
 		}
 		sb.depth++ // If's body creates a block

@@ -15,7 +15,7 @@ import (
 	"strings"
 )
 
-// GoProgram hold a Go program (both it source and the reference to
+// GoProgram holds a Go program (both it source and the reference to
 // the file it was possibly written to).
 // TODO: split to source/seed and filesystem stuff(?)
 type GoProgram struct {
