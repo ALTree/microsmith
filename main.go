@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"os"
 	"sync/atomic"
 	"time"
 
@@ -17,6 +18,9 @@ var BuildCount int64
 
 func main() {
 	nWorkers := 1
+	if debug {
+		nWorkers = 1
+	}
 	fmt.Printf("Fuzzing with %v worker(s)\n", nWorkers)
 	for i := 0; i < nWorkers; i++ {
 		go Fuzz(int64(i))
@@ -56,5 +60,8 @@ func Fuzz(seed int64) {
 
 		gp.DeleteFile()
 		atomic.AddInt64(&BuildCount, 1)
+		if debug {
+			os.Exit(0)
+		}
 	}
 }

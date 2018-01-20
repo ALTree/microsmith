@@ -14,11 +14,13 @@ type StmtBuilder struct {
 	depth int // how deep the stmt hyerarchy is
 	conf  StmtConf
 
-	// list of variables that are in scope
+	// map from type to Scope set. For example
+	//   map[int]
+	// points to a scope type (define below) holding all int variables
+	// that are in scope.
 	// Q: why is this here?
 	// A: because it's StmtBuilder that create new scopes (for now)
-	inScopeInt  map[string]*ast.Ident
-	inScopeBool map[string]*ast.Ident
+	inScope map[string]Scope
 }
 
 type StmtConf struct {
@@ -43,25 +45,31 @@ func NewStmtBuilder(rs *rand.Rand) *StmtBuilder {
 			3, 1, 1, 1,
 		},
 	}
-	sb.inScopeInt = make(map[string]*ast.Ident)
-	sb.inScopeBool = make(map[string]*ast.Ident)
+
+	// initialize scope structures
+	scpMap := make(map[string]Scope)
+	for _, t := range []string{"int", "bool"} {
+		scpMap[t] = make(map[string]*ast.Ident)
+	}
+	sb.inScope = scpMap
+
 	return sb
 }
 
+// Scope is a set of in-scope variables having the same type.
+// We use a map from the variable name to its ast.Ident so that we can
+// return an in-scope identifier without allocating a new ast.Ident
+// every time.
+// TODO: is this necessary? Would a map[string]struct{} be enough?
+type Scope map[string]*ast.Ident
+
 // TODO: pre-generate names and then draw them(?)
 func (sb *StmtBuilder) VarIdent(kind string) *ast.Ident {
+	name := fmt.Sprintf("Var%s%v", strings.Title(kind), sb.rs.Intn(1000))
 
 	// try to generate a var name until we hit one that is not already
 	// in function scope
-	var inScope map[string]*ast.Ident
-	switch kind {
-	case "int":
-		inScope = sb.inScopeInt
-	case "bool":
-		inScope = sb.inScopeBool
-	}
-
-	name := fmt.Sprintf("Var%s%v", strings.Title(kind), sb.rs.Intn(1000))
+	inScope := sb.inScope[kind]
 	for _, ok := inScope[name]; ok; _, ok = inScope[name] {
 		name = fmt.Sprintf("Var%s%v", strings.Title(kind), sb.rs.Intn(1000))
 	}
@@ -73,24 +81,11 @@ func (sb *StmtBuilder) VarIdent(kind string) *ast.Ident {
 
 	inScope[name] = id
 
-	switch kind {
-	case "int":
-		sb.inScopeInt = inScope
-	case "bool":
-		sb.inScopeBool = inScope
-	}
-
 	return id
 }
 
 func (sb *StmtBuilder) RandomInScopeVar(kind string) *ast.Ident {
-	var inScope map[string]*ast.Ident
-	switch kind {
-	case "int":
-		inScope = sb.inScopeInt
-	case "bool":
-		inScope = sb.inScopeBool
-	}
+	inScope := sb.inScope[kind]
 	i := sb.rs.Intn(len(inScope))
 	counter := 0
 	for _, v := range inScope {
@@ -218,11 +213,11 @@ func (sb *StmtBuilder) BlockStmt(nVars, nStmts int) *ast.BlockStmt {
 	// Finally, remove from scope the variables we declared at the
 	// beginning of this block
 	for _, v := range newIntIdents {
-		delete(sb.inScopeInt, v.Name)
+		delete(sb.inScope["int"], v.Name)
 	}
 
 	for _, v := range newBoolIdents {
-		delete(sb.inScopeBool, v.Name)
+		delete(sb.inScope["bool"], v.Name)
 	}
 
 	return bs
