@@ -66,13 +66,13 @@ type Scope map[string]*ast.Ident
 
 // TODO: pre-generate names and then draw them(?)
 func (sb *StmtBuilder) VarIdent(kind string) *ast.Ident {
-	name := fmt.Sprintf("Var%s%v", strings.Title(kind), sb.rs.Intn(1000))
+	name := fmt.Sprintf("%s%v", strings.Title(kind)[:1], sb.rs.Intn(1000))
 
 	// try to generate a var name until we hit one that is not already
 	// in function scope
 	inScope := sb.inScope[kind]
 	for _, ok := inScope[name]; ok; _, ok = inScope[name] {
-		name = fmt.Sprintf("Var%s%v", strings.Title(kind), sb.rs.Intn(1000))
+		name = fmt.Sprintf("%s%v", strings.Title(kind)[:1], sb.rs.Intn(1000))
 	}
 
 	// build Ident object and return
