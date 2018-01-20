@@ -8,9 +8,10 @@ import (
 )
 
 type ExprBuilder struct {
-	rs    *rand.Rand // randomness source
-	depth int        // how deep the expr hierarchy is
-	conf  ExprConf
+	rs      *rand.Rand // randomness source
+	depth   int        // how deep the expr hierarchy is
+	conf    ExprConf
+	inScope map[string]Scope // passed down by StmtBuilders
 }
 
 type ExprConf struct {
@@ -21,15 +22,23 @@ type ExprConf struct {
 	// expressed as a value in [0,1]. If unaryChance is 0, every
 	// expression is binary; if 1, every expression is unary.
 	unaryChance float64
+
+	// Measure of how likely it is to choose a literal (instead of a
+	// variable among the ones in scope) when building an expression;
+	// expressed as a value in [0,1]. If literalChance is 0, only
+	// variables are chosen; if 1, only literal are chosen.
+	literalChance float64
 }
 
-func NewExprBuilder(rs *rand.Rand) *ExprBuilder {
+func NewExprBuilder(rs *rand.Rand, inscp map[string]Scope) *ExprBuilder {
 	return &ExprBuilder{
 		rs: rs,
 		conf: ExprConf{
-			maxExprDepth: 2,
-			unaryChance:  0.1,
+			maxExprDepth:  2,
+			unaryChance:   0.1,
+			literalChance: 0.75,
 		},
+		inScope: inscp,
 	}
 }
 
@@ -73,6 +82,22 @@ func (eb *ExprBuilder) Expr(kind string) ast.Expr {
 	return expr
 }
 
+// 50/50 on in-scope variable or a literal of the given kind
+func (eb *ExprBuilder) VarOrLit(kind string) interface{} {
+	if eb.rs.Float64() < eb.conf.literalChance {
+		switch kind {
+		case "int":
+			return eb.BasicLit("int")
+		case "bool":
+			return &ast.Ident{Name: RandString(eb.rs.Int(), []string{"true", "false"})}
+		default:
+			panic("VarOrLit: unsupported type")
+		}
+	}
+
+	return RandomInScopeVar(eb.inScope[kind], eb.rs)
+}
+
 func (eb *ExprBuilder) UnaryExpr(kind string) *ast.UnaryExpr {
 	ue := new(ast.UnaryExpr)
 
@@ -86,15 +111,7 @@ func (eb *ExprBuilder) UnaryExpr(kind string) *ast.UnaryExpr {
 	}
 
 	if eb.depth > eb.conf.maxExprDepth {
-		// TODO: also Ident, but we don't know what Idents are in
-		// scope (we don't have access to currentFunc from here).
-		// Should probably make currentFunc a global variable.
-		switch kind {
-		case "int":
-			ue.X = eb.BasicLit(kind)
-		case "bool": // 'true' and 'false' are not BasicLits
-			ue.X = &ast.Ident{Name: RandString(eb.rs.Int(), []string{"true", "false"})}
-		}
+		ue.X = eb.VarOrLit(kind).(ast.Expr)
 	} else {
 		ue.X = eb.Expr(kind)
 	}
@@ -116,15 +133,8 @@ func (eb *ExprBuilder) BinaryExpr(kind string) *ast.BinaryExpr {
 	}
 
 	if eb.depth > eb.conf.maxExprDepth {
-		switch kind {
-		case "int":
-			ue.X = eb.BasicLit(kind)
-			ue.Y = eb.BasicLit(kind)
-		case "bool": // 'true' and 'false' are not BasicLits
-			bools := []string{"true", "false"}
-			ue.X = &ast.Ident{Name: RandString(eb.rs.Int(), bools)}
-			ue.Y = &ast.Ident{Name: RandString(eb.rs.Int(), bools)}
-		}
+		ue.X = eb.VarOrLit(kind).(ast.Expr)
+		ue.Y = eb.VarOrLit(kind).(ast.Expr)
 	} else {
 		ue.X = eb.Expr(kind)
 		ue.Y = eb.Expr(kind)

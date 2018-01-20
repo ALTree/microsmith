@@ -38,7 +38,6 @@ type StmtConf struct {
 func NewStmtBuilder(rs *rand.Rand) *StmtBuilder {
 	sb := new(StmtBuilder)
 	sb.rs = rs
-	sb.eb = NewExprBuilder(rs)
 	sb.conf = StmtConf{
 		maxStmtDepth: 2,
 		stmtKindChance: []float64{
@@ -52,6 +51,8 @@ func NewStmtBuilder(rs *rand.Rand) *StmtBuilder {
 		scpMap[t] = make(map[string]*ast.Ident)
 	}
 	sb.inScope = scpMap
+
+	sb.eb = NewExprBuilder(rs, sb.inScope)
 
 	return sb
 }
@@ -84,9 +85,25 @@ func (sb *StmtBuilder) VarIdent(kind string) *ast.Ident {
 	return id
 }
 
+// TODO: delete (see below)
 func (sb *StmtBuilder) RandomInScopeVar(kind string) *ast.Ident {
 	inScope := sb.inScope[kind]
 	i := sb.rs.Intn(len(inScope))
+	counter := 0
+	for _, v := range inScope {
+		if i == counter {
+			return v
+		}
+		counter++
+	}
+
+	panic("unreachable")
+}
+
+// We have this because ExprBuilders too need to call this
+// TODO: only keep this one
+func RandomInScopeVar(inScope Scope, rs *rand.Rand) *ast.Ident {
+	i := rs.Intn(len(inScope))
 	counter := 0
 	for _, v := range inScope {
 		if i == counter {
@@ -115,7 +132,7 @@ func (sb *StmtBuilder) RandomInScopeVar(kind string) *ast.Ident {
 func (sb *StmtBuilder) Stmt() ast.Stmt {
 	switch RandIndex(sb.conf.stmtKindChance, sb.rs.Float64()) {
 	case 0:
-		ttt := sb.rs.Uint32() % 2
+		ttt := sb.rs.Uint32() % 2 // TODO: generalize on types
 		if ttt == 0 {
 			return sb.AssignStmt("int")
 		}

@@ -12,9 +12,8 @@ func main() {
 package main
 
 func fun42() {
-  for true {
-    x := 42
-  }
+    y := 1
+    x := y
 }
 `
 	fset := token.NewFileSet()

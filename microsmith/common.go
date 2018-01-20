@@ -4,7 +4,7 @@ func RandString(rand int, strings []string) string {
 	return strings[rand%len(strings)]
 }
 
-// RandIndex takes a list of probs and random float64 in [0,1) and
+// RandIndex takes a list of probs and a random float64 in [0,1) and
 // returns an i in [0, len(probs)] with chance probs[i]/sum(probs).
 func RandIndex(probs []float64, rand float64) int {
 	if rand >= 1.0 {
