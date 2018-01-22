@@ -87,7 +87,7 @@ func (gp *GoProgram) Compile(goarch string) error {
 		return errors.New("cannot compile program with no *File")
 	}
 
-	cmd := exec.Command("go", "build", gp.fileName)
+	cmd := exec.Command("/home/adonizetti/go/bin/go", "build", gp.fileName)
 	cmd.Env = append(cmd.Env, "GOARCH="+goarch)
 	cmd.Dir = gp.workDir
 	out, err := cmd.CombinedOutput()

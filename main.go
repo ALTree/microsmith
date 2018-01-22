@@ -13,23 +13,26 @@ import (
 )
 
 const WorkDir = "work/"
-const debug = false
 
 var BuildCount int64
 
+var (
+	pF     = flag.Int("p", 1, "number of workers")
+	archF  = flag.String("arch", "amd64", "GOARCH to fuzz")
+	debugF = flag.Bool("debug", false, "run fuzzer in debug mode")
+)
+
 func main() {
 
-	var pFlag = flag.Int("p", 1, "number of workers")
-	var archFlag = flag.String("arch", "amd64", "GOARCH to fuzz")
 	flag.Parse()
 
-	nWorkers := *pFlag
-	if nWorkers < 1 || debug {
+	nWorkers := *pF
+	if nWorkers < 1 || *debugF {
 		nWorkers = 1
 	}
-	fmt.Printf("Fuzzing %v with %v worker(s)\n", *archFlag, nWorkers)
+	fmt.Printf("Fuzzing %v with %v worker(s)\n", *archF, nWorkers)
 	for i := 0; i < nWorkers; i++ {
-		go Fuzz(int64(i), *archFlag)
+		go Fuzz(int64(i), *archF)
 	}
 
 	ticker := time.Tick(3 * time.Second)
@@ -45,7 +48,7 @@ func Fuzz(seed int64, arch string) {
 	rand := rand.New(rand.NewSource(seed))
 	for true {
 		gp := microsmith.NewGoProgram(rand.Int63())
-		if debug {
+		if *debugF {
 			fmt.Println(gp)
 		}
 
@@ -59,14 +62,14 @@ func Fuzz(seed int64, arch string) {
 			log.Fatalf("Could not write to file: %s", err)
 		}
 
-		err = gp.Compile(arch)
+		err = gp.Compile(*archF)
 		if err != nil {
 			log.Fatalf("Program did not compile: %s\n%s", err, gp)
 		}
 
 		gp.DeleteFile()
 		atomic.AddInt64(&BuildCount, 1)
-		if debug {
+		if *debugF {
 			os.Exit(0)
 		}
 	}
