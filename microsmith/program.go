@@ -82,14 +82,13 @@ func (gp *GoProgram) Check() error {
 // gp. It assumes that gp was already written to disk using
 // gp.WriteToFile. If the compilatio process fails, it logs gc's error
 // message and returns the cmd error code.
-func (gp *GoProgram) Compile() error {
+func (gp *GoProgram) Compile(goarch string) error {
 	if gp.file == nil {
 		return errors.New("cannot compile program with no *File")
 	}
 
 	cmd := exec.Command("go", "build", gp.fileName)
-	// TODO: configurable GOARCH
-	// cmd.Env = append(cmd.Env, "GOARCH=386")
+	cmd.Env = append(cmd.Env, "GOARCH="+goarch)
 	cmd.Dir = gp.workDir
 	out, err := cmd.CombinedOutput()
 	if err != nil {
