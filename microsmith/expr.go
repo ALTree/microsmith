@@ -71,9 +71,8 @@ func (eb *ExprBuilder) Expr(kind string) ast.Expr {
 	//   - Unary
 	var expr ast.Expr
 
-	// set a 0.2 chance of not generating a nested Expr
 	if eb.rs.Float64() < 0.20 {
-		// TODO:
+
 	}
 
 	eb.depth++
@@ -115,7 +114,9 @@ func (eb *ExprBuilder) UnaryExpr(kind string) *ast.UnaryExpr {
 		panic("UnaryExpr: kind not implemented")
 	}
 
-	if eb.depth > eb.conf.maxExprDepth {
+	// set a 0.2 chance of not generating a nested Expr, even if
+	// we're not at maximum depth
+	if eb.rs.Float64() < 0.2 || eb.depth > eb.conf.maxExprDepth {
 		ue.X = eb.VarOrLit(kind).(ast.Expr)
 	} else {
 		ue.X = eb.Expr(kind)
@@ -137,7 +138,9 @@ func (eb *ExprBuilder) BinaryExpr(kind string) *ast.BinaryExpr {
 		panic("UnaryExpr: kind not implemented")
 	}
 
-	if eb.depth > eb.conf.maxExprDepth {
+	// set a 0.2 chance of not generating a nested Expr, even if
+	// we're not at maximum depth
+	if eb.rs.Float64() < 0.2 || eb.depth > eb.conf.maxExprDepth {
 		ue.X = eb.VarOrLit(kind).(ast.Expr)
 		ue.Y = eb.VarOrLit(kind).(ast.Expr)
 	} else {
