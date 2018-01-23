@@ -30,7 +30,11 @@ func (db *DeclBuilder) FuncDecl() *ast.FuncDecl {
 	fc.Name = db.FuncIdent()
 
 	fc.Type = &ast.FuncType{0, new(ast.FieldList), nil}
-	fc.Body = db.sb.BlockStmt(0, 0)
+
+	// Call BlockStmt with 4 as first parameter so that we're sure
+	// that at the beginning of the function 4 variables will be
+	// in scope.
+	fc.Body = db.sb.BlockStmt(4, 0)
 
 	return fc
 }
