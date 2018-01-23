@@ -36,6 +36,10 @@ type StmtConf struct {
 	//   2. For Stmt
 	//   3. If Stmt
 	stmtKindChance []float64
+
+	// max amount of variables and statements inside new block
+	maxBlockVars  int
+	maxBlockStmts int
 }
 
 func NewStmtBuilder(rs *rand.Rand) *StmtBuilder {
@@ -46,6 +50,8 @@ func NewStmtBuilder(rs *rand.Rand) *StmtBuilder {
 		stmtKindChance: []float64{
 			3, 1, 1, 1,
 		},
+		maxBlockVars:  4,
+		maxBlockStmts: 8,
 	}
 
 	// initialize scope structures
@@ -80,7 +86,7 @@ func (sb *StmtBuilder) AddIdent(kind string) *ast.Ident {
 	return id
 }
 
-// DeleteIdent delete the id-th Ident of type kind from its scope.
+// DeleteIdent deletes the id-th Ident of type kind from its scope.
 // If id < 0, it deletes the last one that was declared.
 func (sb *StmtBuilder) DeleteIdent(kind string, id int) {
 	inScope := sb.inScope[kind]
@@ -124,7 +130,7 @@ func (sb *StmtBuilder) Stmt() ast.Stmt {
 			return &ast.EmptyStmt{}
 		}
 		sb.depth++
-		s := sb.BlockStmt(2, 4)
+		s := sb.BlockStmt(0, 0)
 		sb.depth--
 		return s
 	case 2:
@@ -161,12 +167,12 @@ func (sb *StmtBuilder) AssignStmt(kind string) *ast.AssignStmt {
 // BlockStmt returns a new Block Statement. The returned Stmt is
 // always a valid block. It up to BlockStmt's caller to make sure
 // BlockStmt is only called when we have not yet reached max depth.
-
-// nVars controls the number of new variables declared at the top of
-// the block.
 //
-// nStmt controls the number of new statements that will be included
-// in the returned block.
+// nVars controls the number of new variables declared at the top of
+// the block. nStmt controls the number of new statements that will be
+// included in the returned block. If there are zero, BlockStmt will
+// decide by itself how many new variables it'll declare or how many
+// statement to include in the block.
 //
 // TODO: move depth increment and decrement here(?)
 func (sb *StmtBuilder) BlockStmt(nVars, nStmts int) *ast.BlockStmt {
@@ -185,22 +191,24 @@ func (sb *StmtBuilder) BlockStmt(nVars, nStmts int) *ast.BlockStmt {
 	// If we do this, remember to update BlockStmt callers to pass
 	// nVars < 1 so that BlockStmt will choose nVars by itself.
 	if nVars < 1 {
-		nVars = 4
+		nVars = 1 + sb.rs.Intn(sb.conf.maxBlockVars)
 	}
-
 	newVarInts := sb.DeclStmt(nVars, "int")
 	stmts = append(stmts, newVarInts)
 	newVarBools := sb.DeclStmt(nVars, "bool")
 	stmts = append(stmts, newVarBools)
 
-	// now fill the block's body with statements (but *no* new
+	// Fill the block's body with statements (but *no* new
 	// declaration: we only use the variables we just declared, plus
 	// the ones in scope when we enter the block).
+	if nStmts < 1 {
+		nStmts = 1 + sb.rs.Intn(sb.conf.maxBlockStmts)
+	}
 	for i := 0; i < nStmts; i++ {
 		stmts = append(stmts, sb.Stmt())
 	}
 
-	// now we need to cleanup the new declared variables.
+	// Now we need to cleanup the new declared variables.
 	newIntIdents := newVarInts.Decl.(*ast.GenDecl).Specs[0].(*ast.ValueSpec).Names
 	newBoolIdents := newVarBools.Decl.(*ast.GenDecl).Specs[0].(*ast.ValueSpec).Names
 
@@ -209,8 +217,8 @@ func (sb *StmtBuilder) BlockStmt(nVars, nStmts int) *ast.BlockStmt {
 	stmts = append(stmts, sb.UseVars(newBoolIdents))
 	bs.List = stmts
 
-	// Finally, remove from scope the variables we declared at the
-	// beginning of this block
+	// And now remove then from inScope, since they'll no longer be in
+	// scope when we leave this block.
 	for i := 0; i < nVars; i++ {
 		sb.DeleteIdent("int", -1)
 		sb.DeleteIdent("bool", -1)
@@ -219,6 +227,8 @@ func (sb *StmtBuilder) BlockStmt(nVars, nStmts int) *ast.BlockStmt {
 	return bs
 }
 
+// DeclStmt returns a DeclStmt where nVars new variables of type kind
+// are declared.
 func (sb *StmtBuilder) DeclStmt(nVars int, kind string) *ast.DeclStmt {
 	gd := new(ast.GenDecl)
 	gd.Tok = token.VAR
@@ -244,7 +254,7 @@ func (sb *StmtBuilder) DeclStmt(nVars int, kind string) *ast.DeclStmt {
 func (sb *StmtBuilder) ForStmt() *ast.ForStmt {
 	fs := &ast.ForStmt{
 		Cond: sb.eb.Expr("bool"),
-		Body: sb.BlockStmt(0, 2),
+		Body: sb.BlockStmt(0, 0),
 	}
 
 	return fs
@@ -253,12 +263,12 @@ func (sb *StmtBuilder) ForStmt() *ast.ForStmt {
 func (sb *StmtBuilder) IfStmt() *ast.IfStmt {
 	is := &ast.IfStmt{
 		Cond: sb.eb.Expr("bool"),
-		Body: sb.BlockStmt(2, 4),
+		Body: sb.BlockStmt(0, 0),
 	}
 
 	// optionally attach an 'else'
 	if sb.rs.Float64() < 0.5 {
-		is.Else = sb.BlockStmt(2, 4)
+		is.Else = sb.BlockStmt(0, 0)
 	}
 
 	return is
