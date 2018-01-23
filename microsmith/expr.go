@@ -82,7 +82,7 @@ func (eb *ExprBuilder) Expr(kind string) ast.Expr {
 	return expr
 }
 
-// 50/50 on in-scope variable or a literal of the given kind
+// return an in-scope variable or a literal of the given kind
 func (eb *ExprBuilder) VarOrLit(kind string) interface{} {
 	if eb.rs.Float64() < eb.conf.literalChance {
 		switch kind {

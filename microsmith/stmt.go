@@ -8,6 +8,9 @@ import (
 	"strings"
 )
 
+// Scope
+type Scope []*ast.Ident
+
 type StmtBuilder struct {
 	rs    *rand.Rand // randomness source
 	eb    *ExprBuilder
@@ -16,8 +19,8 @@ type StmtBuilder struct {
 
 	// map from type to Scope set. For example
 	//   map[int]
-	// points to a scope type (define below) holding all int variables
-	// that are in scope.
+	// points to a scope type (define above) holding all int
+	// variables that are in scope.
 	// Q: why is this here?
 	// A: because it's StmtBuilder that create new scopes (for now)
 	inScope map[string]Scope
@@ -48,7 +51,7 @@ func NewStmtBuilder(rs *rand.Rand) *StmtBuilder {
 	// initialize scope structures
 	scpMap := make(map[string]Scope)
 	for _, t := range []string{"int", "bool"} {
-		scpMap[t] = make(map[string]*ast.Ident)
+		scpMap[t] = Scope{}
 	}
 	sb.inScope = scpMap
 
@@ -57,62 +60,41 @@ func NewStmtBuilder(rs *rand.Rand) *StmtBuilder {
 	return sb
 }
 
-// Scope is a set of in-scope variables having the same type.
-// We use a map from the variable name to its ast.Ident so that we can
-// return an in-scope identifier without allocating a new ast.Ident
-// every time.
-// TODO: is this necessary? Would a map[string]struct{} be enough?
-type Scope map[string]*ast.Ident
+// AddIdent adds a new variable of 'kind' type to the global scope, and
+// returns a pointer to it.
+func (sb *StmtBuilder) AddIdent(kind string) *ast.Ident {
 
-// TODO: pre-generate names and then draw them(?)
-func (sb *StmtBuilder) VarIdent(kind string) *ast.Ident {
-	name := fmt.Sprintf("%s%v", strings.Title(kind)[:1], sb.rs.Intn(1000))
-
-	// try to generate a var name until we hit one that is not already
-	// in function scope
 	inScope := sb.inScope[kind]
-	for _, ok := inScope[name]; ok; _, ok = inScope[name] {
-		name = fmt.Sprintf("%s%v", strings.Title(kind)[:1], sb.rs.Intn(1000))
-	}
 
-	// build Ident object and return
+	name := fmt.Sprintf("%s%v", strings.Title(kind)[:1], len(inScope))
+
+	// build Ident object
 	id := new(ast.Ident)
 	id.Obj = &ast.Object{Kind: ast.Var, Name: name}
 	id.Name = name
 
-	inScope[name] = id
+	// add to kind scope
+	inScope = append(inScope, id)
+	sb.inScope[kind] = inScope
 
 	return id
 }
 
-// TODO: delete (see below)
-func (sb *StmtBuilder) RandomInScopeVar(kind string) *ast.Ident {
+// DeleteIdent delete the id-th Ident of type kind from its scope.
+// If id < 0, it deletes the last one that was declared.
+func (sb *StmtBuilder) DeleteIdent(kind string, id int) {
 	inScope := sb.inScope[kind]
-	i := sb.rs.Intn(len(inScope))
-	counter := 0
-	for _, v := range inScope {
-		if i == counter {
-			return v
-		}
-		counter++
+	if id < 0 {
+		inScope = inScope[:len(inScope)-1]
+	} else {
+		inScope = append(inScope[:id], inScope[id+1:]...)
 	}
-
-	panic("unreachable")
+	sb.inScope[kind] = inScope
 }
 
-// We have this because ExprBuilders too need to call this
-// TODO: only keep this one
+// RandomInScopeVar returns a random variable from the given Scope
 func RandomInScopeVar(inScope Scope, rs *rand.Rand) *ast.Ident {
-	i := rs.Intn(len(inScope))
-	counter := 0
-	for _, v := range inScope {
-		if i == counter {
-			return v
-		}
-		counter++
-	}
-
-	panic("unreachable")
+	return inScope[rs.Intn(len(inScope))]
 }
 
 // ---------------- //
@@ -169,7 +151,7 @@ func (sb *StmtBuilder) Stmt() ast.Stmt {
 func (sb *StmtBuilder) AssignStmt(kind string) *ast.AssignStmt {
 	as := new(ast.AssignStmt)
 
-	as.Lhs = []ast.Expr{sb.RandomInScopeVar(kind)}
+	as.Lhs = []ast.Expr{RandomInScopeVar(sb.inScope[kind], sb.rs)}
 	as.Tok = token.ASSIGN
 	as.Rhs = []ast.Expr{sb.eb.Expr(kind)}
 
@@ -229,12 +211,9 @@ func (sb *StmtBuilder) BlockStmt(nVars, nStmts int) *ast.BlockStmt {
 
 	// Finally, remove from scope the variables we declared at the
 	// beginning of this block
-	for _, v := range newIntIdents {
-		delete(sb.inScope["int"], v.Name)
-	}
-
-	for _, v := range newBoolIdents {
-		delete(sb.inScope["bool"], v.Name)
+	for i := 0; i < nVars; i++ {
+		sb.DeleteIdent("int", -1)
+		sb.DeleteIdent("bool", -1)
 	}
 
 	return bs
@@ -247,7 +226,7 @@ func (sb *StmtBuilder) DeclStmt(nVars int, kind string) *ast.DeclStmt {
 	// generate nVars ast.Idents
 	idents := make([]*ast.Ident, 0)
 	for i := 0; i < nVars; i++ {
-		idents = append(idents, sb.VarIdent(kind))
+		idents = append(idents, sb.AddIdent(kind))
 	}
 
 	gd.Specs = []ast.Spec{
