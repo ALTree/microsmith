@@ -12,8 +12,8 @@ func main() {
 package main
 
 func fun42() {
-    y := 1
-    x := y
+  switch I3 {
+  }
 }
 `
 	fset := token.NewFileSet()

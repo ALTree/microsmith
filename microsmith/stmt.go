@@ -35,6 +35,7 @@ type StmtConf struct {
 	//   1. Block Stmt
 	//   2. For Stmt
 	//   3. If Stmt
+	//   4. Switch Stmt
 	stmtKindChance []float64
 
 	// max amount of variables and statements inside new block
@@ -48,7 +49,7 @@ func NewStmtBuilder(rs *rand.Rand) *StmtBuilder {
 	sb.conf = StmtConf{
 		maxStmtDepth: 2,
 		stmtKindChance: []float64{
-			3, 1, 1, 1,
+			3, 1, 1, 1, 1,
 		},
 		maxBlockVars:  4,
 		maxBlockStmts: 8,
@@ -112,6 +113,7 @@ func RandomInScopeVar(inScope Scope, rs *rand.Rand) *ast.Ident {
 //   - BlockStmt
 //   - ForStmt
 //   - IfStmt
+//   - SwitchStmt
 //
 // DeclStmt is implemented and used, but is not used directly here (by
 // Stmt. It's only used inside BlockStmt, which takes care of setting
@@ -149,6 +151,14 @@ func (sb *StmtBuilder) Stmt() ast.Stmt {
 		s := sb.IfStmt()
 		sb.depth--
 		return s
+	case 4:
+		if sb.depth >= sb.conf.maxStmtDepth {
+			return &ast.EmptyStmt{}
+		}
+		sb.depth++
+		s := sb.SwitchStmt()
+		sb.depth--
+		return s
 	default:
 		panic("Stmt: bad RandIndex")
 	}
@@ -175,6 +185,7 @@ func (sb *StmtBuilder) AssignStmt(kind string) *ast.AssignStmt {
 // statement to include in the block.
 //
 // TODO: move depth increment and decrement here(?)
+// TODO: make nVars the total, not nVars of each type
 func (sb *StmtBuilder) BlockStmt(nVars, nStmts int) *ast.BlockStmt {
 
 	bs := new(ast.BlockStmt)
@@ -252,9 +263,14 @@ func (sb *StmtBuilder) DeclStmt(nVars int, kind string) *ast.DeclStmt {
 }
 
 func (sb *StmtBuilder) ForStmt() *ast.ForStmt {
-	fs := &ast.ForStmt{
-		Cond: sb.eb.Expr("bool"),
-		Body: sb.BlockStmt(0, 0),
+	var fs *ast.ForStmt
+	if sb.rs.Float64() < 1 {
+		fs = &ast.ForStmt{
+			Cond: sb.eb.Expr("bool"),
+			Body: sb.BlockStmt(0, 0),
+		}
+	} else {
+		// TODO: for init; cond; post { ..
 	}
 
 	return fs
@@ -274,6 +290,15 @@ func (sb *StmtBuilder) IfStmt() *ast.IfStmt {
 	return is
 }
 
+func (sb *StmtBuilder) SwitchStmt() *ast.SwitchStmt {
+	ss := &ast.SwitchStmt{
+		Tag:  RandomInScopeVar(sb.inScope["int"], sb.rs),
+		Body: &ast.BlockStmt{},
+	}
+
+	return ss
+}
+
 // Spec says this cannot be any Expr.
 // Rigth now we generate things like
 //   1+3
@@ -281,12 +306,11 @@ func (sb *StmtBuilder) IfStmt() *ast.IfStmt {
 //   - function and method calls
 //   - receive operation
 // ex:
-//
-// h(x+y)
-// f.Close()
-// <-ch
-// (<-ch)
-// TODO: fix
+//   h(x+y)
+//   f.Close()
+//   <-ch
+//   (<-ch)
+// TODO: when we have chans and/or funcs, fix and enable this
 func (sb *StmtBuilder) ExprStmt(kind string) *ast.ExprStmt {
 	es := new(ast.ExprStmt)
 	es.X = sb.eb.Expr(kind)
@@ -297,7 +321,7 @@ func (sb *StmtBuilder) ExprStmt(kind string) *ast.ExprStmt {
 //       misc       //
 // ---------------- //
 
-// generate and return a statement in the form
+// build and return a statement of form
 //   _, _, ... _ = var1, var2, ..., varN
 // for each ident in idents
 func (sb *StmtBuilder) UseVars(idents []*ast.Ident) ast.Stmt {

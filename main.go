@@ -35,7 +35,7 @@ func main() {
 	if nWorkers < 1 || *debugF {
 		nWorkers = 1
 	}
-	fmt.Printf("Fuzzing %v with %v worker(s)\n", *archF, nWorkers)
+	fmt.Printf("Fuzzing GOARCH=%v with %v worker(s)\n", *archF, nWorkers)
 	for i := 0; i < nWorkers; i++ {
 		go Fuzz(rs.Int63(), *archF)
 	}
