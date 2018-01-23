@@ -26,6 +26,11 @@ func main() {
 
 	flag.Parse()
 
+	if *debugF {
+		rand := rand.New(rand.NewSource(time.Now().UnixNano()))
+		Fuzz(rand.Int63(), *archF)
+	}
+
 	nWorkers := *pF
 	if nWorkers < 1 || *debugF {
 		nWorkers = 1

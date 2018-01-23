@@ -71,6 +71,11 @@ func (eb *ExprBuilder) Expr(kind string) ast.Expr {
 	//   - Unary
 	var expr ast.Expr
 
+	// set a 0.2 chance of not generating a nested Expr
+	if eb.rs.Float64() < 0.20 {
+		// TODO:
+	}
+
 	eb.depth++
 	if eb.rs.Float64() < eb.conf.unaryChance {
 		expr = eb.UnaryExpr(kind)
