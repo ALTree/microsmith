@@ -34,7 +34,7 @@ func NewExprBuilder(rs *rand.Rand, inscp map[string]Scope) *ExprBuilder {
 	return &ExprBuilder{
 		rs: rs,
 		conf: ExprConf{
-			maxExprDepth:  3,
+			maxExprDepth:  5,
 			unaryChance:   0.1,
 			literalChance: 0.25,
 		},

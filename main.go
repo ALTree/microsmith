@@ -6,6 +6,7 @@ import (
 	"log"
 	"math/rand"
 	"os"
+	"regexp"
 	"sync/atomic"
 	"time"
 
@@ -15,6 +16,8 @@ import (
 const WorkDir = "work/"
 
 var BuildCount int64
+var CrashCount int64
+var KnownCount int64
 
 var (
 	pF     = flag.Int("p", 1, "number of workers")
@@ -26,10 +29,7 @@ func main() {
 
 	flag.Parse()
 
-	if *debugF {
-		rand := rand.New(rand.NewSource(time.Now().UnixNano()))
-		Fuzz(rand.Int63(), *archF)
-	}
+	rs := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	nWorkers := *pF
 	if nWorkers < 1 || *debugF {
@@ -37,15 +37,22 @@ func main() {
 	}
 	fmt.Printf("Fuzzing %v with %v worker(s)\n", *archF, nWorkers)
 	for i := 0; i < nWorkers; i++ {
-		go Fuzz(int64(i), *archF)
+		go Fuzz(rs.Int63(), *archF)
 	}
 
-	ticker := time.Tick(3 * time.Second)
+	ticker := time.Tick(5 * time.Second)
 	for _ = range ticker {
-		log.Printf("Build: %v\n", atomic.LoadInt64(&BuildCount))
+		log.Printf("Build: %4d  [crash: %v, known: %v]\n",
+			atomic.LoadInt64(&BuildCount),
+			atomic.LoadInt64(&CrashCount),
+			atomic.LoadInt64(&KnownCount))
 	}
 
 	select {}
+}
+
+var crashWhitelist = []*regexp.Regexp{
+	regexp.MustCompile("internal compiler error: panic during layout"),
 }
 
 // Fuzz with one worker
@@ -67,9 +74,22 @@ func Fuzz(seed int64, arch string) {
 			log.Fatalf("Could not write to file: %s", err)
 		}
 
-		err = gp.Compile(*archF)
+		out, err := gp.Compile(*archF)
 		if err != nil {
-			log.Fatalf("Program did not compile: %s\n%s", err, gp)
+			var known bool
+			for _, crash := range crashWhitelist {
+				if crash.MatchString(out) {
+					known = true
+					break
+				}
+			}
+
+			if known {
+				atomic.AddInt64(&KnownCount, 1)
+			} else {
+				atomic.AddInt64(&CrashCount, 1)
+				log.Fatalf("Program did not compile:\n%s\n%s\n%s", out, err, gp)
+			}
 		}
 
 		gp.DeleteFile()
