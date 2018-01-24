@@ -51,8 +51,8 @@ func NewStmtBuilder(rs *rand.Rand) *StmtBuilder {
 		stmtKindChance: []float64{
 			3, 1, 1, 1, 1,
 		},
-		maxBlockVars:  3,
-		maxBlockStmts: 5,
+		maxBlockVars:  4,
+		maxBlockStmts: 6,
 	}
 
 	// initialize scope structures
@@ -120,6 +120,15 @@ func RandomInScopeVar(inScope Scope, rs *rand.Rand) *ast.Ident {
 // up and using all the variables it declares.
 
 func (sb *StmtBuilder) Stmt() ast.Stmt {
+	if sb.depth >= sb.conf.maxStmtDepth {
+		ttt := sb.rs.Uint32() % 2 // TODO: generalize on types
+		if ttt == 0 {
+			return sb.AssignStmt("int")
+		}
+		return sb.AssignStmt("bool")
+	}
+	// sb.depth < sb.conf.maxStmtDepth
+
 	switch RandIndex(sb.conf.stmtKindChance, sb.rs.Float64()) {
 	case 0:
 		ttt := sb.rs.Uint32() % 2 // TODO: generalize on types
@@ -128,33 +137,21 @@ func (sb *StmtBuilder) Stmt() ast.Stmt {
 		}
 		return sb.AssignStmt("bool")
 	case 1:
-		if sb.depth >= sb.conf.maxStmtDepth {
-			return &ast.EmptyStmt{}
-		}
 		sb.depth++
 		s := sb.BlockStmt(0, 0)
 		sb.depth--
 		return s
 	case 2:
-		if sb.depth >= sb.conf.maxStmtDepth {
-			return &ast.EmptyStmt{}
-		}
 		sb.depth++
 		s := sb.ForStmt()
 		sb.depth--
 		return s
 	case 3:
-		if sb.depth >= sb.conf.maxStmtDepth {
-			return &ast.EmptyStmt{}
-		}
-		sb.depth++ // If's body creates a block
+		sb.depth++
 		s := sb.IfStmt()
 		sb.depth--
 		return s
 	case 4:
-		if sb.depth >= sb.conf.maxStmtDepth {
-			return &ast.EmptyStmt{}
-		}
 		sb.depth++
 		s := sb.SwitchStmt()
 		sb.depth--
@@ -202,7 +199,7 @@ func (sb *StmtBuilder) BlockStmt(nVars, nStmts int) *ast.BlockStmt {
 	// If we do this, remember to update BlockStmt callers to pass
 	// nVars < 1 so that BlockStmt will choose nVars by itself.
 	if nVars < 1 {
-		nVars = 2 + sb.rs.Intn(sb.conf.maxBlockVars-1)
+		nVars = 1 + sb.rs.Intn(sb.conf.maxBlockVars-1)
 	}
 	newVarInts := sb.DeclStmt(nVars, "int")
 	stmts = append(stmts, newVarInts)
@@ -213,7 +210,7 @@ func (sb *StmtBuilder) BlockStmt(nVars, nStmts int) *ast.BlockStmt {
 	// declaration: we only use the variables we just declared, plus
 	// the ones in scope when we enter the block).
 	if nStmts < 1 {
-		nStmts = 2 + sb.rs.Intn(sb.conf.maxBlockStmts-1)
+		nStmts = 2 + sb.rs.Intn(sb.conf.maxBlockStmts-2)
 	}
 	for i := 0; i < nStmts; i++ {
 		stmts = append(stmts, sb.Stmt())
