@@ -51,8 +51,8 @@ func NewStmtBuilder(rs *rand.Rand) *StmtBuilder {
 		stmtKindChance: []float64{
 			3, 1, 1, 1, 1,
 		},
-		maxBlockVars:  4,
-		maxBlockStmts: 6,
+		maxBlockVars:  3 * len(SupportedTypes),
+		maxBlockStmts: 5,
 	}
 
 	// initialize scope structures
@@ -193,13 +193,17 @@ func (sb *StmtBuilder) BlockStmt(nVars, nStmts int) *ast.BlockStmt {
 	// If we do this, remember to update BlockStmt callers to pass
 	// nVars < 1 so that BlockStmt will choose nVars by itself.
 	if nVars < 1 {
-		nVars = 1 + sb.rs.Intn(sb.conf.maxBlockVars-1)
+		nVars = len(SupportedTypes) + int(sb.rs.Float64()*float64(sb.conf.maxBlockVars-len(SupportedTypes)))
 	}
-	newVarInts := sb.DeclStmt(nVars, "int")
+
+	// We need to have nVars at least as big as len(SupportedTypes)
+	nVarsByKind := RandSplit(nVars, len(SupportedTypes))
+
+	newVarInts := sb.DeclStmt(nVarsByKind[0], "int")
 	stmts = append(stmts, newVarInts)
-	newVarBools := sb.DeclStmt(nVars, "bool")
+	newVarBools := sb.DeclStmt(nVarsByKind[1], "bool")
 	stmts = append(stmts, newVarBools)
-	newVarStrings := sb.DeclStmt(nVars, "string")
+	newVarStrings := sb.DeclStmt(nVarsByKind[2], "string")
 	stmts = append(stmts, newVarStrings)
 
 	// Fill the block's body with statements (but *no* new
@@ -225,9 +229,13 @@ func (sb *StmtBuilder) BlockStmt(nVars, nStmts int) *ast.BlockStmt {
 
 	// And now remove then from inScope, since they'll no longer be in
 	// scope when we leave this block.
-	for i := 0; i < nVars; i++ {
+	for i := 0; i < nVarsByKind[0]; i++ {
 		sb.DeleteIdent("int", -1)
+	}
+	for i := 0; i < nVarsByKind[1]; i++ {
 		sb.DeleteIdent("bool", -1)
+	}
+	for i := 0; i < nVarsByKind[2]; i++ {
 		sb.DeleteIdent("string", -1)
 	}
 
