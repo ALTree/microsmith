@@ -57,7 +57,7 @@ func NewStmtBuilder(rs *rand.Rand) *StmtBuilder {
 
 	// initialize scope structures
 	scpMap := make(map[string]Scope)
-	for _, t := range []string{"int", "bool"} {
+	for _, t := range []string{"int", "bool", "string"} {
 		scpMap[t] = Scope{}
 	}
 	sb.inScope = scpMap
@@ -121,21 +121,15 @@ func RandomInScopeVar(inScope Scope, rs *rand.Rand) *ast.Ident {
 
 func (sb *StmtBuilder) Stmt() ast.Stmt {
 	if sb.depth >= sb.conf.maxStmtDepth {
-		ttt := sb.rs.Uint32() % 2 // TODO: generalize on types
-		if ttt == 0 {
-			return sb.AssignStmt("int")
-		}
-		return sb.AssignStmt("bool")
+		kind := RandString(SupportedTypes)
+		return sb.AssignStmt(kind)
 	}
 	// sb.depth < sb.conf.maxStmtDepth
 
 	switch RandIndex(sb.conf.stmtKindChance, sb.rs.Float64()) {
 	case 0:
-		ttt := sb.rs.Uint32() % 2 // TODO: generalize on types
-		if ttt == 0 {
-			return sb.AssignStmt("int")
-		}
-		return sb.AssignStmt("bool")
+		kind := RandString(SupportedTypes)
+		return sb.AssignStmt(kind)
 	case 1:
 		sb.depth++
 		s := sb.BlockStmt(0, 0)
@@ -288,12 +282,7 @@ func (sb *StmtBuilder) IfStmt() *ast.IfStmt {
 }
 
 func (sb *StmtBuilder) SwitchStmt() *ast.SwitchStmt {
-	var kind string
-	if sb.rs.Uint32()%2 == 0 {
-		kind = "int"
-	} else {
-		kind = "bool"
-	}
+	kind := RandString(SupportedTypes)
 	ss := &ast.SwitchStmt{
 		Tag: sb.eb.Expr(kind),
 		Body: &ast.BlockStmt{

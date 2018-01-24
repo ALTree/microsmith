@@ -1,7 +1,11 @@
 package microsmith
 
-func RandString(rand int, strings []string) string {
-	return strings[rand%len(strings)]
+import (
+	"math/rand"
+)
+
+func RandString(strings []string) string {
+	return strings[rand.Intn(len(strings))]
 }
 
 // RandIndex takes a list of probs and a random float64 in [0,1) and

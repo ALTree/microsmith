@@ -71,10 +71,6 @@ func (eb *ExprBuilder) Expr(kind string) ast.Expr {
 	//   - Unary
 	var expr ast.Expr
 
-	if eb.rs.Float64() < 0.20 {
-
-	}
-
 	eb.depth++
 	if eb.rs.Float64() < eb.conf.unaryChance {
 		expr = eb.UnaryExpr(kind)
@@ -93,7 +89,7 @@ func (eb *ExprBuilder) VarOrLit(kind string) interface{} {
 		case "int":
 			return eb.BasicLit("int")
 		case "bool":
-			return &ast.Ident{Name: RandString(eb.rs.Int(), []string{"true", "false"})}
+			return &ast.Ident{Name: RandString([]string{"true", "false"})}
 		default:
 			panic("VarOrLit: unsupported type")
 		}
