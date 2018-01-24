@@ -20,9 +20,10 @@ var CrashCount int64
 var KnownCount int64
 
 var (
-	pF     = flag.Int("p", 1, "number of workers")
-	archF  = flag.String("arch", "amd64", "GOARCH to fuzz")
-	debugF = flag.Bool("debug", false, "run fuzzer in debug mode")
+	pF         = flag.Int("p", 1, "number of workers")
+	archF      = flag.String("arch", "amd64", "GOARCH to fuzz")
+	debugF     = flag.Bool("debug", false, "run fuzzer in debug mode")
+	toolchainF = flag.String("gocmd", "go", "go toolchain to fuzz")
 )
 
 func main() {
@@ -74,7 +75,7 @@ func Fuzz(seed int64, arch string) {
 			log.Fatalf("Could not write to file: %s", err)
 		}
 
-		out, err := gp.Compile(*archF)
+		out, err := gp.Compile(*toolchainF, *archF)
 		if err != nil {
 			var known bool
 			for _, crash := range crashWhitelist {

@@ -202,7 +202,7 @@ func (sb *StmtBuilder) BlockStmt(nVars, nStmts int) *ast.BlockStmt {
 	// If we do this, remember to update BlockStmt callers to pass
 	// nVars < 1 so that BlockStmt will choose nVars by itself.
 	if nVars < 1 {
-		nVars = 1 + sb.rs.Intn(sb.conf.maxBlockVars)
+		nVars = 2 + sb.rs.Intn(sb.conf.maxBlockVars-1)
 	}
 	newVarInts := sb.DeclStmt(nVars, "int")
 	stmts = append(stmts, newVarInts)
@@ -213,7 +213,7 @@ func (sb *StmtBuilder) BlockStmt(nVars, nStmts int) *ast.BlockStmt {
 	// declaration: we only use the variables we just declared, plus
 	// the ones in scope when we enter the block).
 	if nStmts < 1 {
-		nStmts = 1 + sb.rs.Intn(sb.conf.maxBlockStmts)
+		nStmts = 2 + sb.rs.Intn(sb.conf.maxBlockStmts-1)
 	}
 	for i := 0; i < nStmts; i++ {
 		stmts = append(stmts, sb.Stmt())

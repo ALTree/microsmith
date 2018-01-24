@@ -34,7 +34,7 @@ func TestProgramGc(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Could not write to file: %s", err)
 		}
-		out, err := gp.Compile("amd64")
+		out, err := gp.Compile("go", "amd64")
 		if err != nil {
 			t.Fatalf("Program did not compile: %s\n%s\n%s", out, err, gp)
 		}
