@@ -10,7 +10,7 @@ import (
 const WorkDir = "../work/"
 
 // check generated programs with go/types (in-memory)
-func TestProgramGotypes(t *testing.T) {
+func TestProgramGoTypes(t *testing.T) {
 	rand := rand.New(rand.NewSource(42))
 	for i := 0; i < 2000; i++ {
 		gp := microsmith.NewGoProgram(rand.Int63())

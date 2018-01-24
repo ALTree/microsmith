@@ -51,8 +51,8 @@ func NewStmtBuilder(rs *rand.Rand) *StmtBuilder {
 		stmtKindChance: []float64{
 			3, 1, 1, 1, 1,
 		},
-		maxBlockVars:  4,
-		maxBlockStmts: 8,
+		maxBlockVars:  3,
+		maxBlockStmts: 5,
 	}
 
 	// initialize scope structures
@@ -291,12 +291,35 @@ func (sb *StmtBuilder) IfStmt() *ast.IfStmt {
 }
 
 func (sb *StmtBuilder) SwitchStmt() *ast.SwitchStmt {
+	var kind string
+	if sb.rs.Uint32()%2 == 0 {
+		kind = "int"
+	} else {
+		kind = "bool"
+	}
 	ss := &ast.SwitchStmt{
-		Tag:  RandomInScopeVar(sb.inScope["int"], sb.rs),
-		Body: &ast.BlockStmt{},
+		Tag: sb.eb.Expr(kind),
+		Body: &ast.BlockStmt{
+			List: []ast.Stmt{sb.CaseClause(kind)},
+		},
 	}
 
 	return ss
+}
+
+// builds and returns a single CaseClause switching on type kind
+func (sb *StmtBuilder) CaseClause(kind string) *ast.CaseClause {
+	// generate up to maxBlockStmts
+	stmtList := []ast.Stmt{}
+	for i := 0; i < 1+sb.rs.Intn(sb.conf.maxBlockStmts); i++ {
+		stmtList = append(stmtList, sb.Stmt())
+	}
+
+	cc := new(ast.CaseClause)
+	cc.List = []ast.Expr{sb.eb.Expr(kind)}
+	cc.Body = stmtList
+
+	return cc
 }
 
 // Spec says this cannot be any Expr.

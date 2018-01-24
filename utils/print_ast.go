@@ -13,6 +13,8 @@ package main
 
 func fun42() {
   switch I3 {
+  case 1:
+    x := 1
   }
 }
 `
