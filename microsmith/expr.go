@@ -59,6 +59,12 @@ func (eb *ExprBuilder) BasicLit(kind string) *ast.BasicLit {
 		bl.Value = strconv.Itoa(eb.rs.Intn(100))
 	case "bool":
 		panic("BasicLit: bool is not a BasicLit")
+	case "string":
+		bl.Kind = token.STRING
+		bl.Value = RandString([]string{
+			`"a"`, `"b"`, `"c"`,
+			`"d"`, `"e"`, `"f"`,
+		})
 	default:
 		panic("BasicLit: kind not implemented")
 	}
@@ -72,7 +78,8 @@ func (eb *ExprBuilder) Expr(kind string) ast.Expr {
 	var expr ast.Expr
 
 	eb.depth++
-	if eb.rs.Float64() < eb.conf.unaryChance {
+	if kind != "string" && eb.rs.Float64() < eb.conf.unaryChance {
+		// there's no unary operator for strings
 		expr = eb.UnaryExpr(kind)
 	} else {
 		expr = eb.BinaryExpr(kind)
@@ -87,7 +94,8 @@ func (eb *ExprBuilder) VarOrLit(kind string) interface{} {
 	if eb.rs.Float64() < eb.conf.literalChance {
 		switch kind {
 		case "int":
-			return eb.BasicLit("int")
+		case "string":
+			return eb.BasicLit(kind)
 		case "bool":
 			return &ast.Ident{Name: RandString([]string{"true", "false"})}
 		default:
@@ -106,6 +114,8 @@ func (eb *ExprBuilder) UnaryExpr(kind string) *ast.UnaryExpr {
 		ue.Op = eb.chooseToken([]token.Token{token.ADD, token.SUB})
 	case "bool":
 		ue.Op = eb.chooseToken([]token.Token{token.NOT})
+	case "string":
+		panic("UnaryExpr: invalid kind (string)")
 	default:
 		panic("UnaryExpr: kind not implemented")
 	}
@@ -130,6 +140,8 @@ func (eb *ExprBuilder) BinaryExpr(kind string) *ast.BinaryExpr {
 		ue.Op = eb.chooseToken([]token.Token{token.ADD, token.SUB})
 	case "bool":
 		ue.Op = eb.chooseToken([]token.Token{token.LAND, token.LOR})
+	case "string":
+		ue.Op = eb.chooseToken([]token.Token{token.ADD})
 	default:
 		panic("UnaryExpr: kind not implemented")
 	}

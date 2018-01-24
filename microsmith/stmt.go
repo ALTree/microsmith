@@ -57,7 +57,7 @@ func NewStmtBuilder(rs *rand.Rand) *StmtBuilder {
 
 	// initialize scope structures
 	scpMap := make(map[string]Scope)
-	for _, t := range []string{"int", "bool", "string"} {
+	for _, t := range SupportedTypes {
 		scpMap[t] = Scope{}
 	}
 	sb.inScope = scpMap
@@ -199,6 +199,8 @@ func (sb *StmtBuilder) BlockStmt(nVars, nStmts int) *ast.BlockStmt {
 	stmts = append(stmts, newVarInts)
 	newVarBools := sb.DeclStmt(nVars, "bool")
 	stmts = append(stmts, newVarBools)
+	newVarStrings := sb.DeclStmt(nVars, "string")
+	stmts = append(stmts, newVarStrings)
 
 	// Fill the block's body with statements (but *no* new
 	// declaration: we only use the variables we just declared, plus
@@ -213,10 +215,12 @@ func (sb *StmtBuilder) BlockStmt(nVars, nStmts int) *ast.BlockStmt {
 	// Now we need to cleanup the new declared variables.
 	newIntIdents := newVarInts.Decl.(*ast.GenDecl).Specs[0].(*ast.ValueSpec).Names
 	newBoolIdents := newVarBools.Decl.(*ast.GenDecl).Specs[0].(*ast.ValueSpec).Names
+	newBoolStrings := newVarStrings.Decl.(*ast.GenDecl).Specs[0].(*ast.ValueSpec).Names
 
 	// First, use all of them to avoid 'unused' errors:
 	stmts = append(stmts, sb.UseVars(newIntIdents))
 	stmts = append(stmts, sb.UseVars(newBoolIdents))
+	stmts = append(stmts, sb.UseVars(newBoolStrings))
 	bs.List = stmts
 
 	// And now remove then from inScope, since they'll no longer be in
@@ -224,6 +228,7 @@ func (sb *StmtBuilder) BlockStmt(nVars, nStmts int) *ast.BlockStmt {
 	for i := 0; i < nVars; i++ {
 		sb.DeleteIdent("int", -1)
 		sb.DeleteIdent("bool", -1)
+		sb.DeleteIdent("string", -1)
 	}
 
 	return bs

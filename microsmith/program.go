@@ -18,6 +18,7 @@ import (
 var SupportedTypes = []string{
 	"int",
 	"bool",
+	"string",
 }
 
 // GoProgram holds a Go program (both it source and the reference to
