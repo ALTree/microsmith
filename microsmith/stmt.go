@@ -207,37 +207,29 @@ func (sb *StmtBuilder) BlockStmt(nVars, nStmts int) *ast.BlockStmt {
 	//
 	// First, declare nVars variables that will be in scope in this
 	// block (together with the outer scopes ones).
-	//
-	// TODO: make the number of new variables inversely proportional
-	// to the current depth (the deeper we are, the more variables
-	// declared outside the block and already in scope we have).
-	// If we do this, remember to update BlockStmt callers to pass
-	// nVars < 1 so that BlockStmt will choose nVars by itself.
 	if nVars < 1 {
 		nVars = sb.conf.maxBlockVars
 	}
 
-	nVarsByKind := RandSplit(nVars, len(SupportedTypes))
-
-	var intDecl *ast.DeclStmt
-	var newInts []*ast.Ident
-	if nVarsByKind[0] > 0 {
-		intDecl, newInts = sb.DeclStmt(nVarsByKind[0], "int")
-		stmts = append(stmts, intDecl)
+	// nVarsByKind[kind] holds a random nonnegative integer that
+	// indicates how many new variables of type kind we'll declare in
+	// a minute.
+	nVarsByKind := make(map[string]int)
+	rs := RandSplit(nVars, len(SupportedTypes))
+	for i, v := range SupportedTypes {
+		nVarsByKind[v] = rs[i]
 	}
 
-	var boolDecl *ast.DeclStmt
-	var newBools []*ast.Ident
-	if nVarsByKind[1] > 0 {
-		boolDecl, newBools = sb.DeclStmt(nVarsByKind[1], "bool")
-		stmts = append(stmts, boolDecl)
-	}
-
-	var stringDecl *ast.DeclStmt
-	var newStrings []*ast.Ident
-	if nVarsByKind[2] > 0 {
-		stringDecl, newStrings = sb.DeclStmt(nVarsByKind[2], "string")
-		stmts = append(stmts, stringDecl)
+	// Declare the new variables mentioned above.  Save their names in
+	// newVars so that later we can generate a statement that uses
+	// them before exiting the block scope (to avoid 'unused' errors).
+	var newVars []*ast.Ident
+	for _, st := range SupportedTypes {
+		if nVarsByKind[st] > 0 {
+			newDecl, nv := sb.DeclStmt(nVarsByKind[st], st)
+			stmts = append(stmts, newDecl)
+			newVars = append(newVars, nv...)
+		}
 	}
 
 	// Fill the block's body with statements (but *no* new
@@ -250,43 +242,18 @@ func (sb *StmtBuilder) BlockStmt(nVars, nStmts int) *ast.BlockStmt {
 		stmts = append(stmts, sb.Stmt())
 	}
 
-	// Now we need to cleanup the new declared variables.  Use all of
-	// them to avoid 'unused' errors: Then remove then from inScope,
-	// since they'll no longer be in scope when we leave this block.
-
-	var used []*ast.Ident
-	if nVarsByKind[0] > 0 {
-		used = append(used, newInts...)
+	// Use all the newly declared variables...
+	if len(newVars) > 0 {
+		stmts = append(stmts, sb.UseVars(newVars))
 	}
-	if nVarsByKind[1] > 0 {
-		used = append(used, newBools...)
-	}
-	if nVarsByKind[2] > 0 {
-		used = append(used, newStrings...)
-	}
-
-	if len(used) > 0 {
-		stmts = append(stmts, sb.UseVars(used))
-	}
-
-	if nVarsByKind[0] > 0 {
-		for i := 0; i < nVarsByKind[0]; i++ {
-			sb.DeleteIdent("int", -1)
-		}
-	}
-	if nVarsByKind[1] > 0 {
-		for i := 0; i < nVarsByKind[1]; i++ {
-			sb.DeleteIdent("bool", -1)
-		}
-	}
-	if nVarsByKind[2] > 0 {
-		for i := 0; i < nVarsByKind[2]; i++ {
-			sb.DeleteIdent("string", -1)
+	// ... and then remove them from scope.
+	for _, st := range SupportedTypes {
+		for i := 0; i < nVarsByKind[st]; i++ {
+			sb.DeleteIdent(st, -1)
 		}
 	}
 
 	bs.List = stmts
-
 	return bs
 }
 
