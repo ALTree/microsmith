@@ -52,7 +52,7 @@ func NewStmtBuilder(rs *rand.Rand) *StmtBuilder {
 			3, 1, 1, 1, 1,
 		},
 		maxBlockVars:  3 * len(SupportedTypes),
-		maxBlockStmts: 4,
+		maxBlockStmts: 10,
 	}
 
 	// initialize scope structures
@@ -236,7 +236,8 @@ func (sb *StmtBuilder) BlockStmt(nVars, nStmts int) *ast.BlockStmt {
 	// declaration: we only use the variables we just declared, plus
 	// the ones in scope when we enter the block).
 	if nStmts < 1 {
-		nStmts = 2 + sb.rs.Intn(sb.conf.maxBlockStmts-2)
+		// we want at least 4 statements
+		nStmts = 4 + sb.rs.Intn(sb.conf.maxBlockStmts-4)
 	}
 	for i := 0; i < nStmts; i++ {
 		stmts = append(stmts, sb.Stmt())

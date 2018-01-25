@@ -36,21 +36,17 @@ func RandIndex(probs []float64, rand float64) int {
 	panic("unreachable")
 }
 
-// RandSplit splits integer n in 'parts' parts that sums to n. It is
-// guaranteeed that each split is at least 1.
-//
-// Example :RandSplit(8, 3) may return {1, 4, 3} or any other length-3
-// array that sums to 8.
-func RandSplit(n, parts int) []int {
-	if parts < 1 || n < 1 {
+// RandSplit splits integer n in p parts that sums up to n.
+func RandSplit(n, p int) []int {
+	if p < 1 || n < 1 {
 		panic("RandSplit: parts < 1 or n < 1")
 	}
-	if parts == 1 {
+	if p == 1 {
 		return []int{n}
 	}
-	// parts > 1
+	// p > 1
 
-	ta := make([]float64, parts)
+	ta := make([]float64, p)
 
 	// first, fill ta with random floats
 	sum := 0.0
@@ -71,14 +67,14 @@ func RandSplit(n, parts int) []int {
 	// Also to avoid rounding errors instead of setting all res, we
 	// set all except the last one, and we later set the last one to
 	// n - upTo.
-	res := make([]int, parts)
+	res := make([]int, p)
 	upTo := 0
-	for i := 0; i < parts-1; i++ {
+	for i := 0; i < p-1; i++ {
 		res[i] = int(ta[i] * float64(n))
 		upTo += res[i]
 	}
 
-	res[parts-1] = n - upTo
+	res[p-1] = n - upTo
 
 	return res
 }

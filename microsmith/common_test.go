@@ -4,7 +4,7 @@ import "testing"
 
 func TestRandSplit(t *testing.T) {
 
-	for n := 1; n < 100; n++ {
+	for n := 1; n < 1000; n++ {
 		for parts := 1; parts <= 10; parts++ {
 			split := RandSplit(n, parts)
 			if len(split) != parts {

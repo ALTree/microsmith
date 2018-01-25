@@ -32,9 +32,9 @@ func (db *DeclBuilder) FuncDecl() *ast.FuncDecl {
 	fc.Type = &ast.FuncType{0, new(ast.FieldList), nil}
 
 	// Call BlockStmt with 4 as first parameter so that we're sure
-	// that at the beginning of the function 4 variables will be
-	// in scope.
-	fc.Body = db.sb.BlockStmt(4, 0)
+	// that at the beginning of the function 4 variables of each type
+	// will be in scope.
+	fc.Body = db.sb.BlockStmt(4*len(SupportedTypes), 0)
 
 	return fc
 }
