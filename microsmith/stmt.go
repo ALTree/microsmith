@@ -99,8 +99,12 @@ func (sb *StmtBuilder) DeleteIdent(kind string, id int) {
 	sb.inScope[kind] = inScope
 }
 
-// RandomInScopeVar returns a random variable from the given Scope
+// RandomInScopeVar returns a random variable from the given Scope.
+// Panics if the scope is empty.
 func RandomInScopeVar(inScope Scope, rs *rand.Rand) *ast.Ident {
+	if len(inScope) == 0 {
+		panic("RandomInScopeVar: empty scope")
+	}
 	return inScope[rs.Intn(len(inScope))]
 }
 
@@ -120,16 +124,27 @@ func RandomInScopeVar(inScope Scope, rs *rand.Rand) *ast.Ident {
 // up and using all the variables it declares.
 
 func (sb *StmtBuilder) Stmt() ast.Stmt {
+
+	// types that have at least one variable currently in scope
+	inScopeKinds := []string{}
+	for _, st := range SupportedTypes {
+		if len(sb.inScope[st]) > 0 {
+			inScopeKinds = append(inScopeKinds, st)
+		}
+	}
+
+	if len(inScopeKinds) == 0 {
+		panic("Stmt: no inscope variables")
+	}
+
 	if sb.depth >= sb.conf.maxStmtDepth {
-		kind := RandString(SupportedTypes)
-		return sb.AssignStmt(kind)
+		return sb.AssignStmt(RandString(inScopeKinds))
 	}
 	// sb.depth < sb.conf.maxStmtDepth
 
 	switch RandIndex(sb.conf.stmtKindChance, sb.rs.Float64()) {
 	case 0:
-		kind := RandString(SupportedTypes)
-		return sb.AssignStmt(kind)
+		return sb.AssignStmt(RandString(inScopeKinds))
 	case 1:
 		sb.depth++
 		s := sb.BlockStmt(0, 0)
@@ -155,10 +170,16 @@ func (sb *StmtBuilder) Stmt() ast.Stmt {
 	}
 }
 
+// Build an assign statement with a random inscope variables of type
+// kind. panics if there isn't one in scope.
 func (sb *StmtBuilder) AssignStmt(kind string) *ast.AssignStmt {
-	as := new(ast.AssignStmt)
+	v := RandomInScopeVar(sb.inScope[kind], sb.rs)
+	if v == nil {
+		panic("AssignStmt: empty scope")
+	}
 
-	as.Lhs = []ast.Expr{RandomInScopeVar(sb.inScope[kind], sb.rs)}
+	as := new(ast.AssignStmt)
+	as.Lhs = []ast.Expr{v}
 	as.Tok = token.ASSIGN
 	as.Rhs = []ast.Expr{sb.eb.Expr(kind)}
 
@@ -199,12 +220,23 @@ func (sb *StmtBuilder) BlockStmt(nVars, nStmts int) *ast.BlockStmt {
 	// We need to have nVars at least as big as len(SupportedTypes)
 	nVarsByKind := RandSplit(nVars, len(SupportedTypes))
 
-	newVarInts := sb.DeclStmt(nVarsByKind[0], "int")
-	stmts = append(stmts, newVarInts)
-	newVarBools := sb.DeclStmt(nVarsByKind[1], "bool")
-	stmts = append(stmts, newVarBools)
-	newVarStrings := sb.DeclStmt(nVarsByKind[2], "string")
-	stmts = append(stmts, newVarStrings)
+	var newVarInts *ast.DeclStmt
+	if nVarsByKind[0] > 0 {
+		newVarInts = sb.DeclStmt(nVarsByKind[0], "int")
+		stmts = append(stmts, newVarInts)
+	}
+
+	var newVarBools *ast.DeclStmt
+	if nVarsByKind[1] > 0 {
+		newVarBools = sb.DeclStmt(nVarsByKind[1], "bool")
+		stmts = append(stmts, newVarBools)
+	}
+
+	var newVarStrings *ast.DeclStmt
+	if nVarsByKind[2] > 0 {
+		newVarStrings = sb.DeclStmt(nVarsByKind[2], "string")
+		stmts = append(stmts, newVarStrings)
+	}
 
 	// Fill the block's body with statements (but *no* new
 	// declaration: we only use the variables we just declared, plus
@@ -216,28 +248,34 @@ func (sb *StmtBuilder) BlockStmt(nVars, nStmts int) *ast.BlockStmt {
 		stmts = append(stmts, sb.Stmt())
 	}
 
-	// Now we need to cleanup the new declared variables.
-	newIntIdents := newVarInts.Decl.(*ast.GenDecl).Specs[0].(*ast.ValueSpec).Names
-	newBoolIdents := newVarBools.Decl.(*ast.GenDecl).Specs[0].(*ast.ValueSpec).Names
-	newBoolStrings := newVarStrings.Decl.(*ast.GenDecl).Specs[0].(*ast.ValueSpec).Names
+	// Now we need to cleanup the new declared variables.  Use all of
+	// them to avoid 'unused' errors: Then remove then from inScope,
+	// since they'll no longer be in scope when we leave this block.
+	if nVarsByKind[0] > 0 {
+		newIntIdents := newVarInts.Decl.(*ast.GenDecl).Specs[0].(*ast.ValueSpec).Names
+		stmts = append(stmts, sb.UseVars(newIntIdents))
+		for i := 0; i < nVarsByKind[0]; i++ {
+			sb.DeleteIdent("int", -1)
+		}
+	}
 
-	// First, use all of them to avoid 'unused' errors:
-	stmts = append(stmts, sb.UseVars(newIntIdents))
-	stmts = append(stmts, sb.UseVars(newBoolIdents))
-	stmts = append(stmts, sb.UseVars(newBoolStrings))
+	if nVarsByKind[1] > 0 {
+		newBoolIdents := newVarBools.Decl.(*ast.GenDecl).Specs[0].(*ast.ValueSpec).Names
+		stmts = append(stmts, sb.UseVars(newBoolIdents))
+		for i := 0; i < nVarsByKind[1]; i++ {
+			sb.DeleteIdent("bool", -1)
+		}
+	}
+
+	if nVarsByKind[2] > 0 {
+		newBoolStrings := newVarStrings.Decl.(*ast.GenDecl).Specs[0].(*ast.ValueSpec).Names
+		stmts = append(stmts, sb.UseVars(newBoolStrings))
+		for i := 0; i < nVarsByKind[2]; i++ {
+			sb.DeleteIdent("string", -1)
+		}
+	}
+
 	bs.List = stmts
-
-	// And now remove then from inScope, since they'll no longer be in
-	// scope when we leave this block.
-	for i := 0; i < nVarsByKind[0]; i++ {
-		sb.DeleteIdent("int", -1)
-	}
-	for i := 0; i < nVarsByKind[1]; i++ {
-		sb.DeleteIdent("bool", -1)
-	}
-	for i := 0; i < nVarsByKind[2]; i++ {
-		sb.DeleteIdent("string", -1)
-	}
 
 	return bs
 }
@@ -263,6 +301,7 @@ func (sb *StmtBuilder) DeclStmt(nVars int, kind string) *ast.DeclStmt {
 
 	ds := new(ast.DeclStmt)
 	ds.Decl = gd
+
 	return ds
 }
 

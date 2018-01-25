@@ -1,7 +1,6 @@
 package microsmith
 
 import (
-	"fmt"
 	"math/rand"
 )
 
@@ -43,6 +42,13 @@ func RandIndex(probs []float64, rand float64) int {
 // Example :RandSplit(8, 3) may return {1, 4, 3} or any other length-3
 // array that sums to 8.
 func RandSplit(n, parts int) []int {
+	if parts < 1 || n < 1 {
+		panic("RandSplit: parts < 1 or n < 1")
+	}
+	if parts == 1 {
+		return []int{n}
+	}
+	// parts > 1
 
 	ta := make([]float64, parts)
 
@@ -68,22 +74,11 @@ func RandSplit(n, parts int) []int {
 	res := make([]int, parts)
 	upTo := 0
 	for i := 0; i < parts-1; i++ {
-		res[i] = 1 + int(ta[i]*float64(n-parts))
+		res[i] = int(ta[i] * float64(n))
 		upTo += res[i]
 	}
 
 	res[parts-1] = n - upTo
-
-	// sanity check
-	// TODO: disable
-	sumCheck := 0
-	for i := range res {
-		sumCheck += res[i]
-	}
-	if len(res) != parts || sumCheck != n {
-		fmt.Println(">>", n, parts, res, sumCheck)
-		panic("RandSplit: bad split")
-	}
 
 	return res
 }

@@ -89,12 +89,13 @@ func (eb *ExprBuilder) Expr(kind string) ast.Expr {
 	return expr
 }
 
-// return an in-scope variable or a literal of the given kind
+// Returns an in-scope variable or a literal of the given kind. If
+// there's no variable of the requested type in scope, returns a
+// literal.
 func (eb *ExprBuilder) VarOrLit(kind string) interface{} {
-	if eb.rs.Float64() < eb.conf.literalChance {
+	if len(eb.inScope[kind]) == 0 || eb.rs.Float64() < eb.conf.literalChance {
 		switch kind {
-		case "int":
-		case "string":
+		case "int", "string":
 			return eb.BasicLit(kind)
 		case "bool":
 			return &ast.Ident{Name: RandString([]string{"true", "false"})}
