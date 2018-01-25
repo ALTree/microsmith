@@ -253,22 +253,33 @@ func (sb *StmtBuilder) BlockStmt(nVars, nStmts int) *ast.BlockStmt {
 	// Now we need to cleanup the new declared variables.  Use all of
 	// them to avoid 'unused' errors: Then remove then from inScope,
 	// since they'll no longer be in scope when we leave this block.
+
+	var used []*ast.Ident
 	if nVarsByKind[0] > 0 {
-		stmts = append(stmts, sb.UseVars(newInts))
+		used = append(used, newInts...)
+	}
+	if nVarsByKind[1] > 0 {
+		used = append(used, newBools...)
+	}
+	if nVarsByKind[2] > 0 {
+		used = append(used, newStrings...)
+	}
+
+	if len(used) > 0 {
+		stmts = append(stmts, sb.UseVars(used))
+	}
+
+	if nVarsByKind[0] > 0 {
 		for i := 0; i < nVarsByKind[0]; i++ {
 			sb.DeleteIdent("int", -1)
 		}
 	}
-
 	if nVarsByKind[1] > 0 {
-		stmts = append(stmts, sb.UseVars(newBools))
 		for i := 0; i < nVarsByKind[1]; i++ {
 			sb.DeleteIdent("bool", -1)
 		}
 	}
-
 	if nVarsByKind[2] > 0 {
-		stmts = append(stmts, sb.UseVars(newStrings))
 		for i := 0; i < nVarsByKind[2]; i++ {
 			sb.DeleteIdent("string", -1)
 		}
