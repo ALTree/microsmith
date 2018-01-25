@@ -23,7 +23,8 @@ func TestRandSplit(t *testing.T) {
 				t.Fatalf("sum(RandSplit(%v,%v)) = %v, wanted %v",
 					n, parts, sum, n)
 			}
-			//t.Logf("RandSplit(%v,%v) = %v", n, parts, split)
+
+			// t.Logf("RandSplit(%v,%v) = %v", n, parts, split)
 		}
 	}
 }

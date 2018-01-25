@@ -52,7 +52,7 @@ func NewStmtBuilder(rs *rand.Rand) *StmtBuilder {
 			3, 1, 1, 1, 1,
 		},
 		maxBlockVars:  3 * len(SupportedTypes),
-		maxBlockStmts: 5,
+		maxBlockStmts: 4,
 	}
 
 	// initialize scope structures
@@ -214,28 +214,30 @@ func (sb *StmtBuilder) BlockStmt(nVars, nStmts int) *ast.BlockStmt {
 	// If we do this, remember to update BlockStmt callers to pass
 	// nVars < 1 so that BlockStmt will choose nVars by itself.
 	if nVars < 1 {
-		nVars = len(SupportedTypes) + int(sb.rs.Float64()*float64(sb.conf.maxBlockVars-len(SupportedTypes)))
+		nVars = sb.conf.maxBlockVars
 	}
 
-	// We need to have nVars at least as big as len(SupportedTypes)
 	nVarsByKind := RandSplit(nVars, len(SupportedTypes))
 
-	var newVarInts *ast.DeclStmt
+	var intDecl *ast.DeclStmt
+	var newInts []*ast.Ident
 	if nVarsByKind[0] > 0 {
-		newVarInts = sb.DeclStmt(nVarsByKind[0], "int")
-		stmts = append(stmts, newVarInts)
+		intDecl, newInts = sb.DeclStmt(nVarsByKind[0], "int")
+		stmts = append(stmts, intDecl)
 	}
 
-	var newVarBools *ast.DeclStmt
+	var boolDecl *ast.DeclStmt
+	var newBools []*ast.Ident
 	if nVarsByKind[1] > 0 {
-		newVarBools = sb.DeclStmt(nVarsByKind[1], "bool")
-		stmts = append(stmts, newVarBools)
+		boolDecl, newBools = sb.DeclStmt(nVarsByKind[1], "bool")
+		stmts = append(stmts, boolDecl)
 	}
 
-	var newVarStrings *ast.DeclStmt
+	var stringDecl *ast.DeclStmt
+	var newStrings []*ast.Ident
 	if nVarsByKind[2] > 0 {
-		newVarStrings = sb.DeclStmt(nVarsByKind[2], "string")
-		stmts = append(stmts, newVarStrings)
+		stringDecl, newStrings = sb.DeclStmt(nVarsByKind[2], "string")
+		stmts = append(stmts, stringDecl)
 	}
 
 	// Fill the block's body with statements (but *no* new
@@ -252,24 +254,21 @@ func (sb *StmtBuilder) BlockStmt(nVars, nStmts int) *ast.BlockStmt {
 	// them to avoid 'unused' errors: Then remove then from inScope,
 	// since they'll no longer be in scope when we leave this block.
 	if nVarsByKind[0] > 0 {
-		newIntIdents := newVarInts.Decl.(*ast.GenDecl).Specs[0].(*ast.ValueSpec).Names
-		stmts = append(stmts, sb.UseVars(newIntIdents))
+		stmts = append(stmts, sb.UseVars(newInts))
 		for i := 0; i < nVarsByKind[0]; i++ {
 			sb.DeleteIdent("int", -1)
 		}
 	}
 
 	if nVarsByKind[1] > 0 {
-		newBoolIdents := newVarBools.Decl.(*ast.GenDecl).Specs[0].(*ast.ValueSpec).Names
-		stmts = append(stmts, sb.UseVars(newBoolIdents))
+		stmts = append(stmts, sb.UseVars(newBools))
 		for i := 0; i < nVarsByKind[1]; i++ {
 			sb.DeleteIdent("bool", -1)
 		}
 	}
 
 	if nVarsByKind[2] > 0 {
-		newBoolStrings := newVarStrings.Decl.(*ast.GenDecl).Specs[0].(*ast.ValueSpec).Names
-		stmts = append(stmts, sb.UseVars(newBoolStrings))
+		stmts = append(stmts, sb.UseVars(newStrings))
 		for i := 0; i < nVarsByKind[2]; i++ {
 			sb.DeleteIdent("string", -1)
 		}
@@ -281,8 +280,13 @@ func (sb *StmtBuilder) BlockStmt(nVars, nStmts int) *ast.BlockStmt {
 }
 
 // DeclStmt returns a DeclStmt where nVars new variables of type kind
-// are declared.
-func (sb *StmtBuilder) DeclStmt(nVars int, kind string) *ast.DeclStmt {
+// are declared, and a list of the newly created *ast.Ident that
+// entered the scope.
+func (sb *StmtBuilder) DeclStmt(nVars int, kind string) (*ast.DeclStmt, []*ast.Ident) {
+	if nVars < 1 {
+		panic("DeclStmt: nVars < 1")
+	}
+
 	gd := new(ast.GenDecl)
 	gd.Tok = token.VAR
 
@@ -302,7 +306,7 @@ func (sb *StmtBuilder) DeclStmt(nVars int, kind string) *ast.DeclStmt {
 	ds := new(ast.DeclStmt)
 	ds.Decl = gd
 
-	return ds
+	return ds, idents
 }
 
 func (sb *StmtBuilder) ForStmt() *ast.ForStmt {
