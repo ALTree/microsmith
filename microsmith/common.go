@@ -61,20 +61,18 @@ func RandSplit(n, p int) []int {
 		ta[i] /= sum
 	}
 
-	// now we should set each res[i] = int(n*ta[i]), but that does not
-	// guarantee res[i] > 0, so we pretend we are splitting n - parts
-	// (and not n), so that we can add a fixed +1 to each res[i].
-	// Also to avoid rounding errors instead of setting all res, we
-	// set all except the last one, and we later set the last one to
-	// n - upTo.
 	res := make([]int, p)
-	upTo := 0
-	for i := 0; i < p-1; i++ {
+	resS := 0
+	for i := range res {
 		res[i] = int(ta[i] * float64(n))
-		upTo += res[i]
+		resS += res[i]
 	}
 
-	res[p-1] = n - upTo
+	// distribute what's left (1 each)
+	for i := 0; resS < n; i++ {
+		res[i] += 1
+		resS++
+	}
 
 	return res
 }

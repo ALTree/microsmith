@@ -12,7 +12,7 @@ const WorkDir = "../work/"
 // check generated programs with go/types (in-memory)
 func TestProgramGoTypes(t *testing.T) {
 	rand := rand.New(rand.NewSource(42))
-	for i := 0; i < 2000; i++ {
+	for i := 0; i < 1000; i++ {
 		gp := microsmith.NewGoProgram(rand.Int63())
 		err := gp.Check()
 		if err != nil {
