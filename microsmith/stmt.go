@@ -49,10 +49,10 @@ func NewStmtBuilder(rs *rand.Rand) *StmtBuilder {
 	sb.conf = StmtConf{
 		maxStmtDepth: 2,
 		stmtKindChance: []float64{
-			3, 1, 1, 1, 1,
+			4, 2, 2, 2, 1,
 		},
 		maxBlockVars:  3 * len(SupportedTypes),
-		maxBlockStmts: 10,
+		maxBlockStmts: 8,
 	}
 
 	// initialize scope structures
@@ -321,23 +321,29 @@ func (sb *StmtBuilder) SwitchStmt() *ast.SwitchStmt {
 	ss := &ast.SwitchStmt{
 		Tag: sb.eb.Expr(kind),
 		Body: &ast.BlockStmt{
-			List: []ast.Stmt{sb.CaseClause(kind)},
+			List: []ast.Stmt{
+				sb.CaseClause(kind, false),
+				sb.CaseClause(kind, false),
+				sb.CaseClause(kind, true), // 'default:'
+			},
 		},
 	}
 
 	return ss
 }
 
-// builds and returns a single CaseClause switching on type kind
-func (sb *StmtBuilder) CaseClause(kind string) *ast.CaseClause {
-	// generate up to maxBlockStmts
+// builds and returns a single CaseClause switching on type kind. If
+// def is true, returns a 'default' switch case.
+func (sb *StmtBuilder) CaseClause(kind string, def bool) *ast.CaseClause {
 	stmtList := []ast.Stmt{}
-	for i := 0; i < 1+sb.rs.Intn(sb.conf.maxBlockStmts); i++ {
+	for i := 0; i < 1+sb.rs.Intn(sb.conf.maxBlockStmts/2); i++ {
 		stmtList = append(stmtList, sb.Stmt())
 	}
 
 	cc := new(ast.CaseClause)
-	cc.List = []ast.Expr{sb.eb.Expr(kind)}
+	if !def {
+		cc.List = []ast.Expr{sb.eb.Expr(kind)}
+	}
 	cc.Body = stmtList
 
 	return cc

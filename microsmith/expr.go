@@ -157,7 +157,6 @@ func (eb *ExprBuilder) BinaryExpr(kind string) *ast.BinaryExpr {
 				// and these also support <, <=, >, >=
 				kind = RandString([]string{"int", "string"})
 			}
-
 		} else {
 			ue.Op = eb.chooseToken([]token.Token{token.LAND, token.LOR})
 		}
