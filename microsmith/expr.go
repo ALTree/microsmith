@@ -40,7 +40,7 @@ func NewExprBuilder(rs *rand.Rand, inscp map[string]Scope) *ExprBuilder {
 	return &ExprBuilder{
 		rs: rs,
 		conf: ExprConf{
-			maxExprDepth:     6,
+			maxExprDepth:     5,
 			unaryChance:      0.1,
 			literalChance:    0.2,
 			comparisonChance: 0.2,
@@ -65,8 +65,8 @@ func (eb *ExprBuilder) BasicLit(kind string) *ast.BasicLit {
 	case "string":
 		bl.Kind = token.STRING
 		bl.Value = RandString([]string{
-			`"a"`, `"b"`, `"c"`,
-			`"d"`, `"e"`, `"f"`,
+			`"a"`, `"bb"`, `"ccc"`,
+			`"dddd"`, `"eeeee"`, `"ffffff"`,
 		})
 	default:
 		panic("BasicLit: kind not implemented")
@@ -136,8 +136,9 @@ func (eb *ExprBuilder) UnaryExpr(kind string) *ast.UnaryExpr {
 }
 
 func (eb *ExprBuilder) BinaryExpr(kind string) *ast.BinaryExpr {
-
 	ue := new(ast.BinaryExpr)
+
+	// First choose the operator...
 	switch kind {
 	case "int":
 		ue.Op = eb.chooseToken([]token.Token{token.ADD, token.SUB})
@@ -166,7 +167,8 @@ func (eb *ExprBuilder) BinaryExpr(kind string) *ast.BinaryExpr {
 		panic("BinaryExpr: kind not implemented")
 	}
 
-	// set a 0.2 chance of not generating a nested Expr, even if
+	// ...then build the two branches.
+	// There's a 0.2 chance of not generating a nested Expr, even if
 	// we're not at maximum depth
 	if eb.rs.Float64() < 0.2 || eb.depth > eb.conf.maxExprDepth {
 		ue.X = eb.VarOrLit(kind).(ast.Expr)
