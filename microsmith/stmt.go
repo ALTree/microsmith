@@ -322,7 +322,8 @@ func (sb *StmtBuilder) SwitchStmt() *ast.SwitchStmt {
 		Tag: sb.eb.Expr(kind),
 		Body: &ast.BlockStmt{
 			List: []ast.Stmt{
-				sb.CaseClause(kind, false),
+				// only generate one normal and one default case to
+				// avoid 'duplicate case' compilation errors
 				sb.CaseClause(kind, false),
 				sb.CaseClause(kind, true), // 'default:'
 			},
