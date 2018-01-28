@@ -18,25 +18,32 @@ type ExprConf struct {
 	// maximum allowed expressions nesting
 	maxExprDepth int
 
-	// Measure of how likely it is to generate an unary expression,
-	// expressed as a value in [0,1]. If unaryChance is 0, every
-	// expression is binary; if 1, every expression is unary.
+	// How likely it is to generate an unary expression, expressed as
+	// a value in [0,1]. If 0, every expression is binary; if 1, every
+	// expression is unary.
 	unaryChance float64
 
-	// Measure of how likely it is to choose a literal (instead of a
-	// variable among the ones in scope) when building an expression;
-	// expressed as a value in [0,1]. If literalChance is 0, only
-	// variables are chosen; if 1, only literal are chosen.
+	// How likely it is to choose a literal (instead of a variable
+	// among the ones in scope) when building an expression; expressed
+	// as a value in [0,1]. IF 0, only variables are chosen; if 1,
+	// only literal are chosen.
 	literalChance float64
+
+	// How likely is to build a boolean binary expression by using a
+	// comparison operator on non-boolean types instead of a logical
+	// operator on booleans. If 0, comparison operators are never
+	// used.
+	comparisonChance float64
 }
 
 func NewExprBuilder(rs *rand.Rand, inscp map[string]Scope) *ExprBuilder {
 	return &ExprBuilder{
 		rs: rs,
 		conf: ExprConf{
-			maxExprDepth:  6,
-			unaryChance:   0.1,
-			literalChance: 0.25,
+			maxExprDepth:     6,
+			unaryChance:      0.1,
+			literalChance:    0.2,
+			comparisonChance: 0.2,
 		},
 		inScope: inscp,
 	}
@@ -48,10 +55,6 @@ func (eb *ExprBuilder) chooseToken(tokens []token.Token) token.Token {
 
 func (eb *ExprBuilder) BasicLit(kind string) *ast.BasicLit {
 	bl := new(ast.BasicLit)
-
-	// TODO: generate all kinds of literal
-	// kinds := []token.Token{token.INT, token.FLOAT, token.IMAG, token.CHAR, token.STRING}
-	// bl.Kind = eb.chooseToken(kinds)
 
 	switch kind {
 	case "int":
@@ -135,16 +138,33 @@ func (eb *ExprBuilder) UnaryExpr(kind string) *ast.UnaryExpr {
 func (eb *ExprBuilder) BinaryExpr(kind string) *ast.BinaryExpr {
 
 	ue := new(ast.BinaryExpr)
-
 	switch kind {
 	case "int":
 		ue.Op = eb.chooseToken([]token.Token{token.ADD, token.SUB})
 	case "bool":
-		ue.Op = eb.chooseToken([]token.Token{token.LAND, token.LOR})
+		if eb.rs.Float64() < eb.conf.comparisonChance {
+			// generate a bool expr by comparing two exprs of
+			// comparable type
+			ue.Op = eb.chooseToken([]token.Token{
+				token.EQL, token.NEQ,
+				token.LSS, token.LEQ,
+				token.GTR, token.GEQ,
+			})
+			if ue.Op == token.EQL || ue.Op == token.NEQ {
+				// every type is comparable with == and !=
+				kind = RandString(SupportedTypes)
+			} else {
+				// and these also support <, <=, >, >=
+				kind = RandString([]string{"int", "string"})
+			}
+
+		} else {
+			ue.Op = eb.chooseToken([]token.Token{token.LAND, token.LOR})
+		}
 	case "string":
 		ue.Op = eb.chooseToken([]token.Token{token.ADD})
 	default:
-		panic("UnaryExpr: kind not implemented")
+		panic("BinaryExpr: kind not implemented")
 	}
 
 	// set a 0.2 chance of not generating a nested Expr, even if
