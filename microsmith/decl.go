@@ -39,8 +39,9 @@ func (db *DeclBuilder) FuncDecl() *ast.FuncDecl {
 	return fc
 }
 
+// TODO: just generate sequential identifiers (when done, remove
+// funNames field).
 func (db *DeclBuilder) FuncIdent() *ast.Ident {
-
 	id := new(ast.Ident)
 	fns := db.funNames
 	var name string

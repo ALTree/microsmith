@@ -12,7 +12,7 @@ func main() {
 package main
 
 func fun42() {
-  x := "hi" + "there"
+  var arr []int
 }
 `
 	fset := token.NewFileSet()

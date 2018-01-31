@@ -60,6 +60,9 @@ func NewStmtBuilder(rs *rand.Rand) *StmtBuilder {
 	for _, t := range SupportedTypes {
 		scpMap[t] = Scope{}
 	}
+
+	scpMap["intArr"] = Scope{}
+
 	sb.inScope = scpMap
 
 	sb.eb = NewExprBuilder(rs, sb.inScope)
@@ -74,6 +77,9 @@ func (sb *StmtBuilder) AddIdent(kind string) *ast.Ident {
 	inScope := sb.inScope[kind]
 
 	name := fmt.Sprintf("%s%v", strings.Title(kind)[:1], len(inScope))
+	if strings.HasSuffix(kind, "Arr") {
+		name = name + "Arr"
+	}
 
 	// build Ident object
 	id := new(ast.Ident)
@@ -211,6 +217,8 @@ func (sb *StmtBuilder) BlockStmt(nVars, nStmts int) *ast.BlockStmt {
 		nVars = sb.conf.maxBlockVars
 	}
 
+	SupportedTypes := []string{"int", "bool", "string", "intArr"}
+
 	// nVarsByKind[kind] holds a random nonnegative integer that
 	// indicates how many new variables of type kind we'll declare in
 	// a minute.
@@ -275,11 +283,21 @@ func (sb *StmtBuilder) DeclStmt(nVars int, kind string) (*ast.DeclStmt, []*ast.I
 		idents = append(idents, sb.AddIdent(kind))
 	}
 
-	gd.Specs = []ast.Spec{
-		&ast.ValueSpec{
-			Names: idents,
-			Type:  &ast.Ident{Name: kind},
-		},
+	// generate the type specifier
+	if !strings.HasSuffix(kind, "Arr") {
+		gd.Specs = []ast.Spec{
+			&ast.ValueSpec{
+				Names: idents,
+				Type:  &ast.Ident{Name: kind},
+			},
+		}
+	} else {
+		gd.Specs = []ast.Spec{
+			&ast.ValueSpec{
+				Names: idents,
+				Type:  &ast.ArrayType{Elt: &ast.Ident{Name: "int"}},
+			},
+		}
 	}
 
 	ds := new(ast.DeclStmt)

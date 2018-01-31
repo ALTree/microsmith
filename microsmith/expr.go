@@ -81,7 +81,7 @@ func (eb *ExprBuilder) Expr(kind string) ast.Expr {
 	var expr ast.Expr
 
 	eb.depth++
-	if kind != "string" && eb.rs.Float64() < eb.conf.unaryChance {
+	if !(kind == "string" || kind == "intArr") && eb.rs.Float64() < eb.conf.unaryChance {
 		// there's no unary operator for strings
 		expr = eb.UnaryExpr(kind)
 	} else {
@@ -96,7 +96,7 @@ func (eb *ExprBuilder) Expr(kind string) ast.Expr {
 // there's no variable of the requested type in scope, returns a
 // literal.
 func (eb *ExprBuilder) VarOrLit(kind string) interface{} {
-	if len(eb.inScope[kind]) == 0 || eb.rs.Float64() < eb.conf.literalChance {
+	if (len(eb.inScope[kind]) == 0 && len(eb.inScope[kind+"Arr"]) == 0) || eb.rs.Float64() < eb.conf.literalChance {
 		switch kind {
 		case "int", "string":
 			return eb.BasicLit(kind)
@@ -107,7 +107,31 @@ func (eb *ExprBuilder) VarOrLit(kind string) interface{} {
 		}
 	}
 
+	if len(eb.inScope[kind+"Arr"]) > 0 && eb.rs.Float64() < 0.2 {
+		return eb.IndexExpr(kind)
+	}
 	return RandomInScopeVar(eb.inScope[kind], eb.rs)
+
+}
+
+// returns an IndexExpr of the given type. Panics if there's no
+// indexable variables of the requsted type in scope.
+// TODO: add max allowed index(?)
+func (eb *ExprBuilder) IndexExpr(kind string) *ast.IndexExpr {
+	inScope := eb.inScope[kind+"Arr"]
+	if len(inScope) == 0 {
+		panic("IndexExpr: empty scope")
+	}
+
+	// always use index 42 for now, for debugging purpose
+	indexable := RandomInScopeVar(inScope, eb.rs)
+
+	ie := &ast.IndexExpr{
+		X:     indexable,
+		Index: &ast.BasicLit{Kind: token.INT, Value: "42"},
+	}
+
+	return ie
 }
 
 func (eb *ExprBuilder) UnaryExpr(kind string) *ast.UnaryExpr {
