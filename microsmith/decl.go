@@ -6,10 +6,16 @@ import (
 	"math/rand"
 )
 
-var SupportedTypes = []string{
-	"int",
-	"bool",
-	"string",
+// var SupportedTypes = []string{
+// 	"int",
+// 	"bool",
+// 	"string",
+// }
+
+var SupportedTypes = []Type{
+	TypeInt,
+	TypeBool,
+	TypeString,
 }
 
 type DeclBuilder struct {
