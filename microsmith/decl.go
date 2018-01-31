@@ -6,6 +6,12 @@ import (
 	"math/rand"
 )
 
+var SupportedTypes = []string{
+	"int",
+	"bool",
+	"string",
+}
+
 type DeclBuilder struct {
 	rs *rand.Rand // randomness source
 	sb *StmtBuilder
