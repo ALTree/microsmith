@@ -28,6 +28,8 @@ type GoProgram struct {
 
 // NewGoProgram uses a DeclBuilder to generate a new random Go program
 // with the passed seed.
+// TODO: pass exprConf and stmtConf here to make fuzzing configuration
+// dynamic
 func NewGoProgram(seed int64) *GoProgram {
 	gp := new(GoProgram)
 

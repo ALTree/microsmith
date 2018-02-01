@@ -6,12 +6,6 @@ import (
 	"math/rand"
 )
 
-// var SupportedTypes = []string{
-// 	"int",
-// 	"bool",
-// 	"string",
-// }
-
 var SupportedTypes = []Type{
 	TypeInt,
 	TypeBool,
@@ -22,17 +16,15 @@ type DeclBuilder struct {
 	rs *rand.Rand // randomness source
 	sb *StmtBuilder
 
-	// list of functions declared by this DeclBuilder
-	// TODO: can this be removed(?)
-	// (I don't think so, it's needed to avoid dups in func names)
-	funNames map[string]struct{}
+	// list of function names declared by this DeclBuilder
+	funNames []string
 }
 
 func NewDeclBuilder(seed int64) *DeclBuilder {
 	db := new(DeclBuilder)
 	db.rs = rand.New(rand.NewSource(seed))
 	db.sb = NewStmtBuilder(db.rs)
-	db.funNames = make(map[string]struct{})
+	db.funNames = []string{}
 	return db
 }
 
@@ -51,22 +43,18 @@ func (db *DeclBuilder) FuncDecl() *ast.FuncDecl {
 	return fc
 }
 
-// TODO: just generate sequential identifiers (when done, remove
-// funNames field).
 func (db *DeclBuilder) FuncIdent() *ast.Ident {
 	id := new(ast.Ident)
-	fns := db.funNames
-	var name string
-	name = fmt.Sprintf("fun%v", db.rs.Intn(100))
-	for _, ok := fns[name]; ok; _, ok = fns[name] {
-		name = fmt.Sprintf("fun%v", db.rs.Intn(100))
+
+	name := fmt.Sprintf("fun%v", len(db.funNames))
+	db.funNames = append(db.funNames, name)
+
+	id.Obj = &ast.Object{
+		Kind: ast.Fun,
+		Name: name,
 	}
-
-	id.Obj = &ast.Object{Kind: ast.Fun, Name: name}
-	fns[name] = struct{}{}
-	db.funNames = fns
-
 	id.Name = name
+
 	return id
 }
 
