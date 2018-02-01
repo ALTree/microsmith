@@ -48,8 +48,8 @@ func NewExprBuilder(rs *rand.Rand, inscp map[Type]Scope) *ExprBuilder {
 			maxExprDepth:     5,
 			unaryChance:      0.1,
 			literalChance:    0.2,
-			comparisonChance: 0.2,
-			indexChance:      0.2,
+			comparisonChance: 0.1,
+			indexChance:      0.1,
 		},
 		inScope: inscp,
 	}

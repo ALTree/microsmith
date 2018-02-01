@@ -51,9 +51,9 @@ func NewStmtBuilder(rs *rand.Rand) *StmtBuilder {
 	sb.conf = StmtConf{
 		maxStmtDepth: 2,
 		stmtKindChance: []float64{
-			4, 2, 2, 2, 1,
+			2, 1, 1, 1, 1,
 		},
-		maxBlockVars:  2 * len(SupportedTypes),
+		maxBlockVars:  len(SupportedTypes),
 		maxBlockStmts: 8,
 		useArrays:     false,
 	}
@@ -230,11 +230,14 @@ func (sb *StmtBuilder) BlockStmt(nVars, nStmts int) *ast.BlockStmt {
 	if sb.conf.useArrays {
 		typesNum *= 2
 	}
+
 	rs := RandSplit(nVars, typesNum)
 	for i, v := range SupportedTypes {
-		nVarsByKind[v] = rs[i]
 		if sb.conf.useArrays {
+			nVarsByKind[v] = rs[2*i]
 			nVarsByKind[v.Arr()] = rs[2*i+1]
+		} else {
+			nVarsByKind[v] = rs[i]
 		}
 	}
 
