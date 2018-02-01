@@ -3,7 +3,6 @@ package microsmith
 import "testing"
 
 func TestRandSplit(t *testing.T) {
-
 	for n := 1; n < 1000; n++ {
 		for parts := 1; parts <= 10; parts++ {
 			split := RandSplit(n, parts)
@@ -23,8 +22,6 @@ func TestRandSplit(t *testing.T) {
 				t.Fatalf("sum(RandSplit(%v,%v)) = %v, wanted %v",
 					n, parts, sum, n)
 			}
-
-			// t.Logf("RandSplit(%v,%v) = %v", n, parts, split)
 		}
 	}
 }

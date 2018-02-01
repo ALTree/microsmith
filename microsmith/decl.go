@@ -13,27 +13,26 @@ var SupportedTypes = []Type{
 }
 
 type ProgramConf struct {
-	stmt StmtConf // defined in stmt.go
-	expr ExprConf // defined in expr.go
+	Stmt StmtConf // defined in stmt.go
+	Expr ExprConf // defined in expr.go
 }
 
 var DefaultConf = ProgramConf{
-	stmt: StmtConf{
-		maxStmtDepth: 2,
-		stmtKindChance: []float64{
+	StmtConf{
+		MaxStmtDepth: 2,
+		StmtKindChance: []float64{
 			2, 1, 1, 1, 1,
 		},
-		maxBlockVars:  len(SupportedTypes),
-		maxBlockStmts: 8,
-		useArrays:     false,
+		MaxBlockVars:  len(SupportedTypes),
+		MaxBlockStmts: 8,
+		UseArrays:     false,
 	},
-
-	expr: ExprConf{
-		maxExprDepth:     5,
-		unaryChance:      0.1,
-		literalChance:    0.2,
-		comparisonChance: 0.1,
-		indexChance:      0.1,
+	ExprConf{
+		MaxExprDepth:     5,
+		UnaryChance:      0.1,
+		LiteralChance:    0.2,
+		ComparisonChance: 0.1,
+		IndexChance:      0.1,
 	},
 }
 
@@ -45,10 +44,10 @@ type DeclBuilder struct {
 	funNames []string
 }
 
-func NewDeclBuilder(seed int64) *DeclBuilder {
+func NewDeclBuilder(seed int64, conf ProgramConf) *DeclBuilder {
 	db := new(DeclBuilder)
 	db.rs = rand.New(rand.NewSource(seed))
-	db.sb = NewStmtBuilder(db.rs, DefaultConf)
+	db.sb = NewStmtBuilder(db.rs, conf)
 	db.funNames = []string{}
 	return db
 }

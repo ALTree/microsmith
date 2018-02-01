@@ -27,7 +27,7 @@ type StmtBuilder struct {
 
 type StmtConf struct {
 	// maximum allowed blocks depth
-	maxStmtDepth int
+	MaxStmtDepth int
 
 	// chances of generating each type of Stmt. In order
 	//   0. Assign Stmt
@@ -35,36 +35,36 @@ type StmtConf struct {
 	//   2. For Stmt
 	//   3. If Stmt
 	//   4. Switch Stmt
-	stmtKindChance []float64
+	StmtKindChance []float64
 
 	// max amount of variables and statements inside new block
-	maxBlockVars  int
-	maxBlockStmts int
+	MaxBlockVars  int
+	MaxBlockStmts int
 
 	// whether to declare and use array variables
-	useArrays bool
+	UseArrays bool
 }
 
 func NewStmtBuilder(rs *rand.Rand, conf ProgramConf) *StmtBuilder {
 	sb := new(StmtBuilder)
 	sb.rs = rs
-	sb.conf = conf.stmt
+	sb.conf = conf.Stmt
 
-	if sb.conf.useArrays {
-		sb.conf.maxBlockVars *= 2
+	if sb.conf.UseArrays {
+		sb.conf.MaxBlockVars *= 2
 	}
 
 	// initialize scope structures
 	scpMap := make(map[Type]Scope)
 	for _, t := range SupportedTypes {
 		scpMap[t] = Scope{}
-		if sb.conf.useArrays {
+		if sb.conf.UseArrays {
 			scpMap[t.Arr()] = Scope{}
 		}
 	}
 
 	sb.inScope = scpMap
-	sb.eb = NewExprBuilder(rs, conf.expr, sb.inScope)
+	sb.eb = NewExprBuilder(rs, conf.Expr, sb.inScope)
 
 	return sb
 }
@@ -139,12 +139,12 @@ func (sb *StmtBuilder) Stmt() ast.Stmt {
 		panic("Stmt: no inscope variables")
 	}
 
-	if sb.depth >= sb.conf.maxStmtDepth {
+	if sb.depth >= sb.conf.MaxStmtDepth {
 		return sb.AssignStmt(RandType(inScopeKinds))
 	}
-	// sb.depth < sb.conf.maxStmtDepth
+	// sb.depth < sb.conf.MaxStmtDepth
 
-	switch RandIndex(sb.conf.stmtKindChance, sb.rs.Float64()) {
+	switch RandIndex(sb.conf.StmtKindChance, sb.rs.Float64()) {
 	case 0:
 		return sb.AssignStmt(RandType(inScopeKinds))
 	case 1:
@@ -176,7 +176,7 @@ func (sb *StmtBuilder) Stmt() ast.Stmt {
 // kind.
 func (sb *StmtBuilder) AssignStmt(t Type) *ast.AssignStmt {
 	var v interface{}
-	if sb.conf.useArrays && (len(sb.inScope[t.Arr()]) > 0) && sb.rs.Float64() < 0.25 {
+	if sb.conf.UseArrays && (len(sb.inScope[t.Arr()]) > 0) && sb.rs.Float64() < 0.25 {
 		v = sb.eb.IndexExpr(t.Arr())
 	} else {
 		v = RandomInScopeVar(sb.inScope[t], sb.rs)
@@ -212,7 +212,7 @@ func (sb *StmtBuilder) BlockStmt(nVars, nStmts int) *ast.BlockStmt {
 	// First, declare nVars variables that will be in scope in this
 	// block (together with the outer scopes ones).
 	if nVars < 1 {
-		nVars = sb.conf.maxBlockVars
+		nVars = 1 + sb.rs.Intn(sb.conf.MaxBlockVars)
 	}
 
 	// nVarsByKind[kind] holds a random nonnegative integer that
@@ -221,13 +221,13 @@ func (sb *StmtBuilder) BlockStmt(nVars, nStmts int) *ast.BlockStmt {
 	nVarsByKind := make(map[Type]int)
 
 	typesNum := len(SupportedTypes)
-	if sb.conf.useArrays {
+	if sb.conf.UseArrays {
 		typesNum *= 2
 	}
 
 	rs := RandSplit(nVars, typesNum)
 	for i, v := range SupportedTypes {
-		if sb.conf.useArrays {
+		if sb.conf.UseArrays {
 			nVarsByKind[v] = rs[2*i]
 			nVarsByKind[v.Arr()] = rs[2*i+1]
 		} else {
@@ -251,8 +251,7 @@ func (sb *StmtBuilder) BlockStmt(nVars, nStmts int) *ast.BlockStmt {
 	// declaration: we only use the variables we just declared, plus
 	// the ones in scope when we enter the block).
 	if nStmts < 1 {
-		// we want at least 4 statements
-		nStmts = 4 + sb.rs.Intn(sb.conf.maxBlockStmts-4)
+		nStmts = 1 + sb.rs.Intn(sb.conf.MaxBlockStmts)
 	}
 	for i := 0; i < nStmts; i++ {
 		stmts = append(stmts, sb.Stmt())
@@ -360,7 +359,7 @@ func (sb *StmtBuilder) SwitchStmt() *ast.SwitchStmt {
 // def is true, returns a 'default' switch case.
 func (sb *StmtBuilder) CaseClause(t Type, def bool) *ast.CaseClause {
 	stmtList := []ast.Stmt{}
-	for i := 0; i < 1+sb.rs.Intn(sb.conf.maxBlockStmts/2); i++ {
+	for i := 0; i < 1+sb.rs.Intn(sb.conf.MaxBlockStmts); i++ {
 		stmtList = append(stmtList, sb.Stmt())
 	}
 

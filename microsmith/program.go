@@ -30,10 +30,10 @@ type GoProgram struct {
 // with the passed seed.
 // TODO: pass exprConf and stmtConf here to make fuzzing configuration
 // dynamic
-func NewGoProgram(seed int64) *GoProgram {
+func NewGoProgram(seed int64, conf ProgramConf) *GoProgram {
 	gp := new(GoProgram)
 
-	db := NewDeclBuilder(seed)
+	db := NewDeclBuilder(seed, conf)
 	var buf bytes.Buffer
 	printer.Fprint(&buf, token.NewFileSet(), db.File("main", 1))
 

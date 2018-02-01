@@ -16,29 +16,29 @@ type ExprBuilder struct {
 
 type ExprConf struct {
 	// maximum allowed expressions nesting
-	maxExprDepth int
+	MaxExprDepth int
 
 	// How likely it is to generate an unary expression, expressed as
 	// a value in [0,1]. If 0, every expression is binary; if 1, every
 	// expression is unary.
-	unaryChance float64
+	UnaryChance float64
 
 	// How likely it is to choose a literal (instead of a variable
 	// among the ones in scope) when building an expression; expressed
 	// as a value in [0,1]. If 0, only variables are chosen; if 1,
 	// only literal are chosen.
-	literalChance float64
+	LiteralChance float64
 
 	// How likely it is to pick a variable by indexing an array type
 	// (instead of a plain variables). If 0, we never index from
 	// arrays.
-	indexChance float64
+	IndexChance float64
 
 	// How likely is to build a boolean binary expression by using a
 	// comparison operator on non-boolean types instead of a logical
 	// operator on booleans. If 0, comparison operators are never
 	// used.
-	comparisonChance float64
+	ComparisonChance float64
 }
 
 func NewExprBuilder(rs *rand.Rand, conf ExprConf, inscp map[Type]Scope) *ExprBuilder {
@@ -81,7 +81,7 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 	var expr ast.Expr
 
 	eb.depth++
-	if t != TypeString && !t.IsBasic() && eb.rs.Float64() < eb.conf.unaryChance {
+	if t != TypeString && !t.IsBasic() && eb.rs.Float64() < eb.conf.UnaryChance {
 		// there's no unary operator for strings
 		expr = eb.UnaryExpr(t)
 	} else {
@@ -100,7 +100,7 @@ func (eb *ExprBuilder) VarOrLit(t Type) interface{} {
 	//   - there are no variables in scope of the type we need
 	//   - the dice says "choose literal"
 	if (len(eb.inScope[t]) == 0 && len(eb.inScope[t.Arr()]) == 0) ||
-		eb.rs.Float64() < eb.conf.literalChance {
+		eb.rs.Float64() < eb.conf.LiteralChance {
 		switch t {
 		case TypeInt, TypeString:
 			return eb.BasicLit(t)
@@ -113,7 +113,7 @@ func (eb *ExprBuilder) VarOrLit(t Type) interface{} {
 
 	// if we have to return a variable, choose between a variable of
 	// the given type and indexing into an array of the given type
-	if (len(eb.inScope[t.Arr()]) > 0 && eb.rs.Float64() < eb.conf.indexChance) ||
+	if (len(eb.inScope[t.Arr()]) > 0 && eb.rs.Float64() < eb.conf.IndexChance) ||
 		len(eb.inScope[t]) == 0 {
 		return eb.IndexExpr(t.Arr())
 	}
@@ -157,7 +157,7 @@ func (eb *ExprBuilder) UnaryExpr(t Type) *ast.UnaryExpr {
 
 	// set a 0.2 chance of not generating a nested Expr, even if
 	// we're not at maximum depth
-	if eb.rs.Float64() < 0.2 || eb.depth > eb.conf.maxExprDepth {
+	if eb.rs.Float64() < 0.2 || eb.depth > eb.conf.MaxExprDepth {
 		ue.X = eb.VarOrLit(t).(ast.Expr)
 	} else {
 		ue.X = eb.Expr(t)
@@ -174,7 +174,7 @@ func (eb *ExprBuilder) BinaryExpr(t Type) *ast.BinaryExpr {
 	case TypeInt:
 		ue.Op = eb.chooseToken([]token.Token{token.ADD, token.SUB})
 	case TypeBool:
-		if eb.rs.Float64() < eb.conf.comparisonChance {
+		if eb.rs.Float64() < eb.conf.ComparisonChance {
 			// generate a bool expr by comparing two exprs of
 			// comparable type
 			ue.Op = eb.chooseToken([]token.Token{
@@ -201,7 +201,7 @@ func (eb *ExprBuilder) BinaryExpr(t Type) *ast.BinaryExpr {
 	// ...then build the two branches.
 	// There's a 0.2 chance of not generating a nested Expr, even if
 	// we're not at maximum depth
-	if eb.rs.Float64() < 0.2 || eb.depth > eb.conf.maxExprDepth {
+	if eb.rs.Float64() < 0.2 || eb.depth > eb.conf.MaxExprDepth {
 		ue.X = eb.VarOrLit(t).(ast.Expr)
 		ue.Y = eb.VarOrLit(t).(ast.Expr)
 	} else {

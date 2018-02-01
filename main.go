@@ -60,7 +60,7 @@ var crashWhitelist = []*regexp.Regexp{
 func Fuzz(seed int64, arch string) {
 	rand := rand.New(rand.NewSource(seed))
 	for true {
-		gp := microsmith.NewGoProgram(rand.Int63())
+		gp := microsmith.NewGoProgram(rand.Int63(), microsmith.DefaultConf)
 		if *debugF {
 			fmt.Println(gp)
 		}
