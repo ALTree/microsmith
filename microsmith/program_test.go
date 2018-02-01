@@ -1,6 +1,7 @@
 package microsmith_test
 
 import (
+	"go/ast"
 	"math/rand"
 	"testing"
 
@@ -42,12 +43,13 @@ func TestProgramGc(t *testing.T) {
 	}
 }
 
-var gp *microsmith.GoProgram
+var gp *ast.File
 
 func BenchmarkProgramGeneration(b *testing.B) {
 	b.ReportAllocs()
 	rand := rand.New(rand.NewSource(19))
 	for i := 0; i < b.N; i++ {
-		gp = microsmith.NewGoProgram(rand.Int63())
+		db := microsmith.NewDeclBuilder(rand.Int63())
+		gp = db.File("main", 1)
 	}
 }
