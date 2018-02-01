@@ -40,6 +40,9 @@ type StmtConf struct {
 	// max amount of variables and statements inside new block
 	maxBlockVars  int
 	maxBlockStmts int
+
+	// whether to declare and use array variables
+	useArrays bool
 }
 
 func NewStmtBuilder(rs *rand.Rand) *StmtBuilder {
@@ -50,15 +53,22 @@ func NewStmtBuilder(rs *rand.Rand) *StmtBuilder {
 		stmtKindChance: []float64{
 			4, 2, 2, 2, 1,
 		},
-		maxBlockVars:  2 * (3 * len(SupportedTypes)),
-		maxBlockStmts: 10,
+		maxBlockVars:  2 * len(SupportedTypes),
+		maxBlockStmts: 8,
+		useArrays:     false,
+	}
+
+	if sb.conf.useArrays {
+		sb.conf.maxBlockVars *= 2
 	}
 
 	// initialize scope structures
 	scpMap := make(map[Type]Scope)
 	for _, t := range SupportedTypes {
 		scpMap[t] = Scope{}
-		scpMap[t.Arr()] = Scope{}
+		if sb.conf.useArrays {
+			scpMap[t.Arr()] = Scope{}
+		}
 	}
 
 	sb.inScope = scpMap
@@ -211,19 +221,21 @@ func (sb *StmtBuilder) BlockStmt(nVars, nStmts int) *ast.BlockStmt {
 		nVars = sb.conf.maxBlockVars
 	}
 
-	// SupportedTypes := []Type{
-	// 	TypeInt, TypeBool, TypeString,
-	// 	TypeIntArr, TypeBoolArr, TypeStringArr,
-	// }
-
 	// nVarsByKind[kind] holds a random nonnegative integer that
 	// indicates how many new variables of type kind we'll declare in
 	// a minute.
 	nVarsByKind := make(map[Type]int)
-	rs := RandSplit(nVars, 2*len(SupportedTypes)) // 2* because of the Array Types
+
+	typesNum := len(SupportedTypes)
+	if sb.conf.useArrays {
+		typesNum *= 2
+	}
+	rs := RandSplit(nVars, typesNum)
 	for i, v := range SupportedTypes {
 		nVarsByKind[v] = rs[i]
-		nVarsByKind[v.Arr()] = rs[2*i+1]
+		if sb.conf.useArrays {
+			nVarsByKind[v.Arr()] = rs[2*i+1]
+		}
 	}
 
 	// Declare the new variables mentioned above.  Save their names in
@@ -243,7 +255,7 @@ func (sb *StmtBuilder) BlockStmt(nVars, nStmts int) *ast.BlockStmt {
 	// the ones in scope when we enter the block).
 	if nStmts < 1 {
 		// we want at least 5 statements
-		nStmts = 5 + sb.rs.Intn(sb.conf.maxBlockStmts-5)
+		nStmts = 4 + sb.rs.Intn(sb.conf.maxBlockStmts-4)
 	}
 	for i := 0; i < nStmts; i++ {
 		stmts = append(stmts, sb.Stmt())
