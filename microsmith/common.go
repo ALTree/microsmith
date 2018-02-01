@@ -46,6 +46,15 @@ func RandSplit(n, p int) []int {
 	}
 	// p > 1
 
+	if n < p { // See Issue #23
+		res := make([]int, p)
+		for ; n > 0; n-- {
+			randIndex := rand.Intn(len(res))
+			res[randIndex]++
+		}
+		return res
+	}
+
 	ta := make([]float64, p)
 
 	// first, fill ta with random floats
