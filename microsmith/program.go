@@ -15,12 +15,6 @@ import (
 	"strings"
 )
 
-var SupportedTypes = []string{
-	"int",
-	"bool",
-	"string",
-}
-
 // GoProgram holds a Go program (both it source and the reference to
 // the file it was possibly written to).
 // TODO: split to source/seed and filesystem stuff(?)
@@ -34,6 +28,8 @@ type GoProgram struct {
 
 // NewGoProgram uses a DeclBuilder to generate a new random Go program
 // with the passed seed.
+// TODO: pass exprConf and stmtConf here to make fuzzing configuration
+// dynamic
 func NewGoProgram(seed int64) *GoProgram {
 	gp := new(GoProgram)
 
@@ -99,7 +95,7 @@ func (gp *GoProgram) Compile(toolchain, goarch string) (string, error) {
 		cmd.Env = append(cmd.Env, "GOARCH="+goarch)
 	} else {
 		binName := strings.TrimSuffix(gp.fileName, ".go")
-		cmd = exec.Command(toolchain, "-o", binName, gp.fileName)
+		cmd = exec.Command(toolchain, "-O2", "-o", binName, gp.fileName)
 		// no support for custom GOARCH when using gccgo
 	}
 	cmd.Dir = gp.workDir

@@ -8,6 +8,10 @@ func RandString(strings []string) string {
 	return strings[rand.Intn(len(strings))]
 }
 
+func RandType(ts []Type) Type {
+	return ts[rand.Intn(len(ts))]
+}
+
 // RandIndex takes a list of probs and a random float64 in [0,1) and
 // returns an i in [0, len(probs)] with chance probs[i]/sum(probs).
 func RandIndex(probs []float64, rand float64) int {
