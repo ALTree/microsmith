@@ -93,7 +93,7 @@ func (gp *GoProgram) Compile(toolchain, goarch string) (string, error) {
 		cmd.Env = append(cmd.Env, "GOARCH="+goarch)
 	} else {
 		binName := strings.TrimSuffix(gp.fileName, ".go")
-		cmd = exec.Command(toolchain, "-o", binName, gp.fileName)
+		cmd = exec.Command(toolchain, "-O2", "-o", binName, gp.fileName)
 		// no support for custom GOARCH when using gccgo
 	}
 	cmd.Dir = gp.workDir
