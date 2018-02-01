@@ -55,7 +55,7 @@ func NewStmtBuilder(rs *rand.Rand) *StmtBuilder {
 		},
 		maxBlockVars:  len(SupportedTypes),
 		maxBlockStmts: 8,
-		useArrays:     false,
+		useArrays:     true,
 	}
 
 	if sb.conf.useArrays {
@@ -183,13 +183,16 @@ func (sb *StmtBuilder) Stmt() ast.Stmt {
 // Build an assign statement with a random inscope variables of type
 // kind. panics if there isn't one in scope.
 func (sb *StmtBuilder) AssignStmt(t Type) *ast.AssignStmt {
-	v := RandomInScopeVar(sb.inScope[t], sb.rs)
-	if v == nil {
-		panic("AssignStmt: empty scope")
+
+	var v interface{}
+	if sb.conf.useArrays && (len(sb.inScope[t.Arr()]) > 0) && sb.rs.Float64() < 0.25 {
+		v = sb.eb.IndexExpr(t.Arr())
+	} else {
+		v = RandomInScopeVar(sb.inScope[t], sb.rs)
 	}
 
 	as := new(ast.AssignStmt)
-	as.Lhs = []ast.Expr{v}
+	as.Lhs = []ast.Expr{v.(ast.Expr)}
 	as.Tok = token.ASSIGN
 	as.Rhs = []ast.Expr{sb.eb.Expr(t)}
 
