@@ -41,16 +41,10 @@ type ExprConf struct {
 	comparisonChance float64
 }
 
-func NewExprBuilder(rs *rand.Rand, inscp map[Type]Scope) *ExprBuilder {
+func NewExprBuilder(rs *rand.Rand, conf ExprConf, inscp map[Type]Scope) *ExprBuilder {
 	return &ExprBuilder{
-		rs: rs,
-		conf: ExprConf{
-			maxExprDepth:     5,
-			unaryChance:      0.1,
-			literalChance:    0.2,
-			comparisonChance: 0.1,
-			indexChance:      0.1,
-		},
+		rs:      rs,
+		conf:    conf,
 		inScope: inscp,
 	}
 }

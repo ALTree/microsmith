@@ -12,6 +12,31 @@ var SupportedTypes = []Type{
 	TypeString,
 }
 
+type ProgramConf struct {
+	stmt StmtConf // defined in stmt.go
+	expr ExprConf // defined in expr.go
+}
+
+var DefaultConf = ProgramConf{
+	stmt: StmtConf{
+		maxStmtDepth: 2,
+		stmtKindChance: []float64{
+			2, 1, 1, 1, 1,
+		},
+		maxBlockVars:  len(SupportedTypes),
+		maxBlockStmts: 8,
+		useArrays:     false,
+	},
+
+	expr: ExprConf{
+		maxExprDepth:     5,
+		unaryChance:      0.1,
+		literalChance:    0.2,
+		comparisonChance: 0.1,
+		indexChance:      0.1,
+	},
+}
+
 type DeclBuilder struct {
 	rs *rand.Rand // randomness source
 	sb *StmtBuilder
@@ -23,7 +48,7 @@ type DeclBuilder struct {
 func NewDeclBuilder(seed int64) *DeclBuilder {
 	db := new(DeclBuilder)
 	db.rs = rand.New(rand.NewSource(seed))
-	db.sb = NewStmtBuilder(db.rs)
+	db.sb = NewStmtBuilder(db.rs, DefaultConf)
 	db.funNames = []string{}
 	return db
 }

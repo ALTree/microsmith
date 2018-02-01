@@ -45,18 +45,10 @@ type StmtConf struct {
 	useArrays bool
 }
 
-func NewStmtBuilder(rs *rand.Rand) *StmtBuilder {
+func NewStmtBuilder(rs *rand.Rand, conf ProgramConf) *StmtBuilder {
 	sb := new(StmtBuilder)
 	sb.rs = rs
-	sb.conf = StmtConf{
-		maxStmtDepth: 2,
-		stmtKindChance: []float64{
-			2, 1, 1, 1, 1,
-		},
-		maxBlockVars:  len(SupportedTypes),
-		maxBlockStmts: 8,
-		useArrays:     true,
-	}
+	sb.conf = conf.stmt
 
 	if sb.conf.useArrays {
 		sb.conf.maxBlockVars *= 2
@@ -72,7 +64,7 @@ func NewStmtBuilder(rs *rand.Rand) *StmtBuilder {
 	}
 
 	sb.inScope = scpMap
-	sb.eb = NewExprBuilder(rs, sb.inScope)
+	sb.eb = NewExprBuilder(rs, conf.expr, sb.inScope)
 
 	return sb
 }
