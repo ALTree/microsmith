@@ -210,7 +210,6 @@ func (sb *StmtBuilder) AssignStmt(t Type) *ast.AssignStmt {
 // statement to include in the block.
 //
 // TODO: move depth increment and decrement here(?)
-// TODO: make nVars the total, not nVars of each type
 func (sb *StmtBuilder) BlockStmt(nVars, nStmts int) *ast.BlockStmt {
 
 	bs := new(ast.BlockStmt)
@@ -260,7 +259,7 @@ func (sb *StmtBuilder) BlockStmt(nVars, nStmts int) *ast.BlockStmt {
 	// declaration: we only use the variables we just declared, plus
 	// the ones in scope when we enter the block).
 	if nStmts < 1 {
-		// we want at least 5 statements
+		// we want at least 4 statements
 		nStmts = 4 + sb.rs.Intn(sb.conf.maxBlockStmts-4)
 	}
 	for i := 0; i < nStmts; i++ {
@@ -404,13 +403,15 @@ func (sb *StmtBuilder) ExprStmt(t Type) *ast.ExprStmt {
 //       misc       //
 // ---------------- //
 
+var noName = ast.Ident{Name: "_"}
+
 // build and return a statement of form
 //   _, _, ... _ = var1, var2, ..., varN
 // for each ident in idents
 func (sb *StmtBuilder) UseVars(idents []*ast.Ident) ast.Stmt {
 	useStmt := &ast.AssignStmt{Tok: token.ASSIGN}
 	for _, name := range idents {
-		useStmt.Lhs = append(useStmt.Lhs, &ast.Ident{Name: "_"})
+		useStmt.Lhs = append(useStmt.Lhs, &noName)
 		useStmt.Rhs = append(useStmt.Rhs, name)
 	}
 	return useStmt
