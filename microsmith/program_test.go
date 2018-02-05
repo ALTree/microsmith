@@ -82,6 +82,12 @@ func TestGoTypesDefault(t *testing.T) {
 	testProgramGoTypes(t, 100, microsmith.DefaultConf)
 }
 
+func TestGoTypesRandConf(t *testing.T) {
+	for i := 0; i < 100; i++ {
+		testProgramGoTypes(t, 10, microsmith.RandConf())
+	}
+}
+
 func TestGoTypesSmall(t *testing.T) {
 	testProgramGoTypes(t, 1000, TestConfigurations["small"])
 }

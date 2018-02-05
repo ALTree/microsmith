@@ -25,7 +25,7 @@ var DefaultConf = ProgramConf{
 		},
 		MaxBlockVars:  len(SupportedTypes),
 		MaxBlockStmts: 8,
-		UseArrays:     true,
+		UseArrays:     false,
 	},
 	ExprConf{
 		UnaryChance:      0.1,
@@ -33,6 +33,26 @@ var DefaultConf = ProgramConf{
 		ComparisonChance: 0.1,
 		IndexChance:      0.1,
 	},
+}
+
+func RandConf() ProgramConf {
+	return ProgramConf{
+		StmtConf{
+			MaxStmtDepth: 1 + rand.Intn(3),
+			StmtKindChance: []float64{
+				2, 1, 1, 1, 1,
+			},
+			MaxBlockVars:  1 + rand.Intn(len(SupportedTypes)),
+			MaxBlockStmts: 1 + rand.Intn(8),
+			UseArrays:     rand.Int63()%2 == 0,
+		},
+		ExprConf{
+			UnaryChance:      rand.Float64(),
+			LiteralChance:    rand.Float64(),
+			ComparisonChance: rand.Float64(),
+			IndexChance:      rand.Float64(),
+		},
+	}
 }
 
 type DeclBuilder struct {
