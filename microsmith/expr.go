@@ -3,6 +3,7 @@ package microsmith
 import (
 	"go/ast"
 	"go/token"
+	"math"
 	"math/rand"
 	"strconv"
 )
@@ -15,9 +16,6 @@ type ExprBuilder struct {
 }
 
 type ExprConf struct {
-	// maximum allowed expressions nesting
-	MaxExprDepth int
-
 	// How likely it is to generate an unary expression, expressed as
 	// a value in [0,1]. If 0, every expression is binary; if 1, every
 	// expression is unary.
@@ -157,7 +155,7 @@ func (eb *ExprBuilder) UnaryExpr(t Type) *ast.UnaryExpr {
 
 	// set a 0.2 chance of not generating a nested Expr, even if
 	// we're not at maximum depth
-	if eb.rs.Float64() < 0.2 || eb.depth > eb.conf.MaxExprDepth {
+	if 1/math.Pow(1.2, float64(eb.depth)) < eb.rs.Float64() {
 		ue.X = eb.VarOrLit(t).(ast.Expr)
 	} else {
 		ue.X = eb.Expr(t)
@@ -199,9 +197,7 @@ func (eb *ExprBuilder) BinaryExpr(t Type) *ast.BinaryExpr {
 	}
 
 	// ...then build the two branches.
-	// There's a 0.2 chance of not generating a nested Expr, even if
-	// we're not at maximum depth
-	if eb.rs.Float64() < 0.2 || eb.depth > eb.conf.MaxExprDepth {
+	if 1/math.Pow(1.2, float64(eb.depth)) < eb.rs.Float64() {
 		ue.X = eb.VarOrLit(t).(ast.Expr)
 		ue.Y = eb.VarOrLit(t).(ast.Expr)
 	} else {

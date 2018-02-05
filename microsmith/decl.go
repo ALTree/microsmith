@@ -28,7 +28,6 @@ var DefaultConf = ProgramConf{
 		UseArrays:     false,
 	},
 	ExprConf{
-		MaxExprDepth:     5,
 		UnaryChance:      0.1,
 		LiteralChance:    0.2,
 		ComparisonChance: 0.1,

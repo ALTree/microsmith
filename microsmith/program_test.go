@@ -22,7 +22,6 @@ var TestConfigurations = map[string]microsmith.ProgramConf{
 			UseArrays:     false,
 		},
 		microsmith.ExprConf{
-			MaxExprDepth:     1,
 			UnaryChance:      0.1,
 			LiteralChance:    0.2,
 			ComparisonChance: 0.1,
@@ -41,7 +40,6 @@ var TestConfigurations = map[string]microsmith.ProgramConf{
 			UseArrays:     false,
 		},
 		microsmith.ExprConf{
-			MaxExprDepth:     4,
 			UnaryChance:      0.1,
 			LiteralChance:    0.2,
 			ComparisonChance: 0.1,
@@ -60,7 +58,6 @@ var TestConfigurations = map[string]microsmith.ProgramConf{
 			UseArrays:     false,
 		},
 		microsmith.ExprConf{
-			MaxExprDepth:     6,
 			UnaryChance:      0.1,
 			LiteralChance:    0.2,
 			ComparisonChance: 0.1,
