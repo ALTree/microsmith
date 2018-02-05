@@ -79,7 +79,7 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 	var expr ast.Expr
 
 	eb.depth++
-	if t != TypeString && !t.IsBasic() && eb.rs.Float64() < eb.conf.UnaryChance {
+	if t != TypeString && eb.rs.Float64() < eb.conf.UnaryChance {
 		// there's no unary operator for strings
 		expr = eb.UnaryExpr(t)
 	} else {

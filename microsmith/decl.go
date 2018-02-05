@@ -25,7 +25,7 @@ var DefaultConf = ProgramConf{
 		},
 		MaxBlockVars:  len(SupportedTypes),
 		MaxBlockStmts: 8,
-		UseArrays:     false,
+		UseArrays:     true,
 	},
 	ExprConf{
 		UnaryChance:      0.1,
