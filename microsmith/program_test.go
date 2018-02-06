@@ -88,6 +88,8 @@ func TestGoTypesDefault(t *testing.T) {
 func TestGoTypesRandConf(t *testing.T) {
 	for i := 0; i < 100; i++ {
 		conf := microsmith.RandConf()
+		// leave this (useful for debugging)
+		// fmt.Printf("%+v\n\n", conf)
 		testProgramGoTypes(t, 10, conf)
 	}
 }

@@ -41,17 +41,21 @@ func RandConf() ProgramConf {
 		StmtConf{
 			MaxStmtDepth: 1 + rand.Intn(3),
 			StmtKindChance: []float64{
-				2, 1, 1, 1, 1,
+				float64(rand.Intn(5)),
+				float64(rand.Intn(5)),
+				float64(rand.Intn(5)),
+				float64(rand.Intn(5)),
+				float64(rand.Intn(5)),
 			},
-			MaxBlockVars:  1 + rand.Intn(len(SupportedTypes)),
+			MaxBlockVars:  1 + rand.Intn(6),
 			MaxBlockStmts: 1 + rand.Intn(8),
 			UseArrays:     rand.Int63()%2 == 0,
 		},
 		ExprConf{
-			UnaryChance:      float64(rand.Intn(11)) * 0.1,
-			LiteralChance:    float64(rand.Intn(11)) * 0.1,
-			ComparisonChance: float64(rand.Intn(11)) * 0.1,
-			IndexChance:      float64(rand.Intn(11)) * 0.1,
+			UnaryChance:      float64(rand.Intn(9)) * 0.125,
+			LiteralChance:    float64(rand.Intn(9)) * 0.125,
+			ComparisonChance: float64(rand.Intn(9)) * 0.125,
+			IndexChance:      float64(rand.Intn(9)) * 0.125,
 		},
 	}
 
