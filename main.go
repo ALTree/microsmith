@@ -94,8 +94,8 @@ func Fuzz(seed int64, arch string) {
 		// Interrupt and crash Fuzzer if compilation takes more than
 		// 10 seconds
 		timeout := time.AfterFunc(
-			10*time.Second,
-			func() { log.Fatalf("> 10s compilation time for\n%s\n", gp) },
+			30*time.Second,
+			func() { log.Fatalf("> 30s compilation time for\n%s\n", gp) },
 		)
 
 		out, err := gp.Compile(*toolchainF, *archF)
