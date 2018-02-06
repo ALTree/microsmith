@@ -59,8 +59,20 @@ var crashWhitelist = []*regexp.Regexp{
 // Fuzz with one worker
 func Fuzz(seed int64, arch string) {
 	rand := rand.New(rand.NewSource(seed))
+
+	// Start with the defaul configuration; when not in debug mode
+	// we'll change program configuration once in a while.
+	conf := microsmith.DefaultConf
+
+	counter := 0
 	for true {
-		gp, err := microsmith.NewGoProgram(rand.Int63(), microsmith.DefaultConf)
+		counter++
+		if counter == 32 { // will never be > 1 in debug mode
+			conf = microsmith.RandConf()
+			counter = 0
+		}
+
+		gp, err := microsmith.NewGoProgram(rand.Int63(), conf)
 		if err != nil {
 			log.Fatalf("Bad Conf: %s", err)
 		}
@@ -105,8 +117,8 @@ func Fuzz(seed int64, arch string) {
 			}
 		}
 
-		gp.DeleteFile()
 		atomic.AddInt64(&BuildCount, 1)
+		gp.DeleteFile()
 		if *debugF {
 			os.Exit(0)
 		}
