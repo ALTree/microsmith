@@ -85,6 +85,21 @@ func (pc *ProgramConf) Check(fix bool) error {
 		}
 	}
 
+	// StmtKindChance cannot be all zeros
+	sum := 0.0
+	for _, v := range pc.Stmt.StmtKindChance {
+		sum += v
+	}
+	if sum == 0 {
+		if fix {
+			for i := range pc.Stmt.StmtKindChance {
+				pc.Stmt.StmtKindChance[i] += 1.0
+			}
+		} else {
+			return errors.New("Bad Conf: StmtKindChance is all zeros")
+		}
+	}
+
 	return nil
 }
 

@@ -133,17 +133,25 @@ func TestGoTypesAllUnary(t *testing.T) {
 func testBadConf(t *testing.T, conf microsmith.ProgramConf) {
 	_, err := microsmith.NewGoProgram(rand.Int63(), conf)
 	if err == nil {
-		t.Fatalf("Expected bad conf error for\n%+v\n", conf)
+		t.Errorf("Expected bad conf error for\n%+v\n", conf)
 	}
 }
 
 func TestGoTypesBadConfs(t *testing.T) {
-	// IndexChance = 1  and LiteralChance = 0
+	// IndexChance = 1 and LiteralChance = 0
 	tc := TestConfigurations["medium"]
 	tc.Stmt.UseArrays = true
 	tc.Expr.IndexChance = 1
 	tc.Expr.LiteralChance = 0
 	testBadConf(t, tc)
+
+	// all zero StmtKindChance
+	tc = TestConfigurations["medium"]
+	for i := range tc.Stmt.StmtKindChance {
+		tc.Stmt.StmtKindChance[i] = 0.0
+	}
+	testBadConf(t, tc)
+
 }
 
 // check generated programs with gc (from file)
