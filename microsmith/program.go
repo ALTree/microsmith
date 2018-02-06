@@ -28,9 +28,13 @@ type GoProgram struct {
 
 // NewGoProgram uses a DeclBuilder to generate a new random Go program
 // with the passed seed.
-// TODO: pass exprConf and stmtConf here to make fuzzing configuration
-// dynamic
-func NewGoProgram(seed int64, conf ProgramConf) *GoProgram {
+func NewGoProgram(seed int64, conf ProgramConf) (*GoProgram, error) {
+	// Check wheter conf is a valid one, but without silently fixing
+	// it. We want to return an error upstream.
+	if err := conf.Check(false); err != nil {
+		return nil, err
+	}
+
 	gp := new(GoProgram)
 
 	db := NewDeclBuilder(seed, conf)
@@ -40,7 +44,7 @@ func NewGoProgram(seed int64, conf ProgramConf) *GoProgram {
 	gp.seed = seed
 	gp.source = buf.Bytes()
 
-	return gp
+	return gp, nil
 }
 
 // WriteToFile writes gp in a file having name 'prog<gp.seed>' in the

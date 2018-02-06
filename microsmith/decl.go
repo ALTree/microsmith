@@ -1,6 +1,7 @@
 package microsmith
 
 import (
+	"errors"
 	"fmt"
 	"go/ast"
 	"math/rand"
@@ -36,7 +37,7 @@ var DefaultConf = ProgramConf{
 }
 
 func RandConf() ProgramConf {
-	return ProgramConf{
+	pc := ProgramConf{
 		StmtConf{
 			MaxStmtDepth: 1 + rand.Intn(3),
 			StmtKindChance: []float64{
@@ -47,12 +48,40 @@ func RandConf() ProgramConf {
 			UseArrays:     rand.Int63()%2 == 0,
 		},
 		ExprConf{
-			UnaryChance:      rand.Float64(),
-			LiteralChance:    rand.Float64(),
-			ComparisonChance: rand.Float64(),
-			IndexChance:      rand.Float64(),
+			UnaryChance:      float64(rand.Intn(11)) * 0.1,
+			LiteralChance:    float64(rand.Intn(11)) * 0.1,
+			ComparisonChance: float64(rand.Intn(11)) * 0.1,
+			IndexChance:      float64(rand.Intn(11)) * 0.1,
 		},
 	}
+
+	pc.Check(true) // fix conf without reporting errors
+	return pc
+}
+
+type ConfError string
+
+func (bce ConfError) Error() string {
+	return fmt.Sprintf("Bad Conf: %s", bce)
+}
+
+func (pc *ProgramConf) Check(fix bool) error {
+
+	// LiteralChance cannot be 0 when IndexChance is 1, because when
+	// the latter is 1 we need a literal to stop descending into an
+	// infinite sequence of nested []. Take
+	//   IA[IA[IA[IA[...]]]]
+	// When IndexChance is 1 we'll never generate an TypeInt variable
+	// to use at the bottom so we need to allow int literals.
+	if pc.Expr.IndexChance == 1 && pc.Expr.LiteralChance == 0 {
+		if fix {
+			pc.Expr.LiteralChance = 0.5
+		} else {
+			return errors.New("Bad Conf: Expr.IndexChance = 1, Expr.LiteralChance = 0")
+		}
+	}
+
+	return nil
 }
 
 type DeclBuilder struct {

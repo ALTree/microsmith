@@ -70,8 +70,11 @@ var TestConfigurations = map[string]microsmith.ProgramConf{
 func testProgramGoTypes(t *testing.T, n int, conf microsmith.ProgramConf) {
 	rand := rand.New(rand.NewSource(42))
 	for i := 0; i < n; i++ {
-		gp := microsmith.NewGoProgram(rand.Int63(), conf)
-		err := gp.Check()
+		gp, err := microsmith.NewGoProgram(rand.Int63(), conf)
+		if err != nil {
+			t.Fatalf("BadConf error: %s\n", err)
+		}
+		err = gp.Check()
 		if err != nil {
 			t.Fatalf("Program failed typechecking: %s\n%s", err, gp)
 		}
@@ -84,7 +87,8 @@ func TestGoTypesDefault(t *testing.T) {
 
 func TestGoTypesRandConf(t *testing.T) {
 	for i := 0; i < 100; i++ {
-		testProgramGoTypes(t, 10, microsmith.RandConf())
+		conf := microsmith.RandConf()
+		testProgramGoTypes(t, 10, conf)
 	}
 }
 
@@ -124,6 +128,22 @@ func TestGoTypesAllUnary(t *testing.T) {
 	testProgramGoTypes(t, 1000, tc)
 }
 
+func testBadConf(t *testing.T, conf microsmith.ProgramConf) {
+	_, err := microsmith.NewGoProgram(rand.Int63(), conf)
+	if err == nil {
+		t.Fatalf("Expected bad conf error for\n%+v\n", conf)
+	}
+}
+
+func TestGoTypesBadConfs(t *testing.T) {
+	// IndexChance = 1  and LiteralChance = 0
+	tc := TestConfigurations["medium"]
+	tc.Stmt.UseArrays = true
+	tc.Expr.IndexChance = 1
+	tc.Expr.LiteralChance = 0
+	testBadConf(t, tc)
+}
+
 // check generated programs with gc (from file)
 // Speed is ~10 program/second
 func TestProgramGc(t *testing.T) {
@@ -132,7 +152,7 @@ func TestProgramGc(t *testing.T) {
 	}
 	rand := rand.New(rand.NewSource(42))
 	for i := 0; i < 100; i++ {
-		gp := microsmith.NewGoProgram(rand.Int63(), microsmith.DefaultConf)
+		gp, _ := microsmith.NewGoProgram(rand.Int63(), microsmith.DefaultConf)
 		err := gp.WriteToFile(WorkDir)
 		if err != nil {
 			t.Fatalf("Could not write to file: %s", err)

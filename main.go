@@ -60,12 +60,16 @@ var crashWhitelist = []*regexp.Regexp{
 func Fuzz(seed int64, arch string) {
 	rand := rand.New(rand.NewSource(seed))
 	for true {
-		gp := microsmith.NewGoProgram(rand.Int63(), microsmith.DefaultConf)
+		gp, err := microsmith.NewGoProgram(rand.Int63(), microsmith.DefaultConf)
+		if err != nil {
+			log.Fatalf("Bad Conf: %s", err)
+		}
+
 		if *debugF {
 			fmt.Println(gp)
 		}
 
-		err := gp.Check()
+		err = gp.Check()
 		if err != nil {
 			log.Fatalf("Program failed typechecking: %s\n%s", err, gp)
 		}
