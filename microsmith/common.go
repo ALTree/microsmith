@@ -19,22 +19,24 @@ func RandIndex(probs []float64, rand float64) int {
 		panic("RandIndex: rand > 1")
 	}
 
+	ps := make([]float64, len(probs))
+
 	// normalize
 	sum := 0.0
 	for i := range probs {
 		sum += probs[i]
 	}
 	for i := range probs {
-		probs[i] /= sum
+		ps[i] = probs[i] / sum
 	}
 
 	// progressive sum
-	progSum := probs[0]
+	progSum := ps[0]
 	for i := 0; true; i++ {
 		if rand <= progSum {
 			return i
 		}
-		progSum += probs[i+1]
+		progSum += ps[i+1]
 	}
 
 	panic("unreachable")
