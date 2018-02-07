@@ -84,7 +84,7 @@ func (eb *ExprBuilder) CompositeLit(t Type) *ast.CompositeLit {
 	}
 
 	clElems := []ast.Expr{}
-	for i := 0; i < 1+eb.rs.Intn(5); i++ {
+	for i := 0; i < eb.rs.Intn(5); i++ {
 		clElems = append(clElems, eb.Expr(t.Base()))
 	}
 
@@ -98,6 +98,9 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 	//   - Binary
 	//   - Unary
 	//   - CompositeLit
+	//
+	// TODO:
+	//   - SimpleLit
 	var expr ast.Expr
 
 	eb.depth++
