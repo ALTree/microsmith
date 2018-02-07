@@ -13,7 +13,7 @@ package main
 
 func fun42() {
   var arr []int
-  x := arr[1 + a + (7 + b)]
+  arr = []int{1, 2, 3}
 }
 `
 	fset := token.NewFileSet()

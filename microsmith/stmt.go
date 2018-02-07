@@ -133,6 +133,9 @@ func (sb *StmtBuilder) Stmt() ast.Stmt {
 		if len(sb.inScope[st]) > 0 {
 			inScopeKinds = append(inScopeKinds, st)
 		}
+		if sb.conf.UseArrays && len(sb.inScope[st.Arr()]) > 0 {
+			inScopeKinds = append(inScopeKinds, st.Arr())
+		}
 	}
 
 	if len(inScopeKinds) == 0 {
@@ -176,7 +179,7 @@ func (sb *StmtBuilder) Stmt() ast.Stmt {
 // kind.
 func (sb *StmtBuilder) AssignStmt(t Type) *ast.AssignStmt {
 	var v interface{}
-	if sb.conf.UseArrays && (len(sb.inScope[t.Arr()]) > 0) && sb.rs.Float64() < 0.25 {
+	if t.IsBasic() && sb.conf.UseArrays && (len(sb.inScope[t.Arr()]) > 0) && sb.rs.Float64() < 0.25 {
 		v = sb.eb.IndexExpr(t.Arr())
 	} else {
 		v = RandomInScopeVar(sb.inScope[t], sb.rs)

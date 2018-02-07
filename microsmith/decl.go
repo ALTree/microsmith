@@ -22,17 +22,17 @@ var DefaultConf = ProgramConf{
 	StmtConf{
 		MaxStmtDepth: 2,
 		StmtKindChance: []float64{
-			2, 1, 1, 1, 1,
+			1, 1, 1, 1, 1,
 		},
 		MaxBlockVars:  len(SupportedTypes),
 		MaxBlockStmts: 8,
-		UseArrays:     false,
+		UseArrays:     true,
 	},
 	ExprConf{
-		UnaryChance:      0.1,
+		UnaryChance:      0.2,
 		LiteralChance:    0.2,
-		ComparisonChance: 0.1,
-		IndexChance:      0.1,
+		ComparisonChance: 0.2,
+		IndexChance:      0.2,
 	},
 }
 

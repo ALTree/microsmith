@@ -72,18 +72,45 @@ func (eb *ExprBuilder) BasicLit(t Type) *ast.BasicLit {
 	return bl
 }
 
+func (eb *ExprBuilder) CompositeLit(t Type) *ast.CompositeLit {
+	if t.IsBasic() {
+		panic("CompositeLit: basic type " + t.String())
+	}
+
+	cl := &ast.CompositeLit{
+		Type: &ast.ArrayType{Elt: &ast.Ident{
+			Name: t.Base().String()},
+		},
+	}
+
+	clElems := []ast.Expr{}
+	for i := 0; i < 1+eb.rs.Intn(5); i++ {
+		clElems = append(clElems, eb.Expr(t.Base()))
+	}
+
+	cl.Elts = clElems
+
+	return cl
+}
+
 func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 	// Currently:
 	//   - Binary
 	//   - Unary
+	//   - CompositeLit
 	var expr ast.Expr
 
 	eb.depth++
-	if t != TypeString && eb.rs.Float64() < eb.conf.UnaryChance {
-		// there's no unary operator for strings
-		expr = eb.UnaryExpr(t)
+	if !t.IsBasic() {
+		// no unary or binary operators for composite types
+		expr = eb.CompositeLit(t)
 	} else {
-		expr = eb.BinaryExpr(t)
+		if t != TypeString && eb.rs.Float64() < eb.conf.UnaryChance {
+			// there's no unary operator for strings
+			expr = eb.UnaryExpr(t)
+		} else {
+			expr = eb.BinaryExpr(t)
+		}
 	}
 	eb.depth--
 
