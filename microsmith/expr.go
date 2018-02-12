@@ -54,43 +54,45 @@ func (eb *ExprBuilder) chooseToken(tokens []token.Token) token.Token {
 func (eb *ExprBuilder) BasicLit(t Type) *ast.BasicLit {
 	bl := new(ast.BasicLit)
 
-	switch t {
-	case TypeInt:
+	switch t.Name() {
+	case "int":
 		bl.Kind = token.INT
 		bl.Value = strconv.Itoa(eb.rs.Intn(100))
-	case TypeBool:
+	case "bool":
 		panic("BasicLit: bool is not a BasicLit")
-	case TypeString:
+	case "string":
 		bl.Kind = token.STRING
 		bl.Value = RandString([]string{
 			`"a"`, `"bb"`, `"ccc"`,
 			`"dddd"`, `"eeeee"`, `"ffffff"`,
 		})
 	default:
-		panic("BasicLit: unimplemented type " + t.String())
+		panic("BasicLit: unimplemented type " + t.Name())
 	}
 	return bl
 }
 
 func (eb *ExprBuilder) CompositeLit(t Type) *ast.CompositeLit {
-	if t.IsBasic() {
-		panic("CompositeLit: basic type " + t.String())
+
+	switch t := t.(type) {
+	case BasicType:
+		panic("CompositeLit: basic type " + t.Name())
+	case ArrayType:
+		cl := &ast.CompositeLit{
+			Type: &ast.ArrayType{Elt: &ast.Ident{
+				Name: t.Base().Name()},
+			},
+		}
+		clElems := []ast.Expr{}
+		for i := 0; i < eb.rs.Intn(5); i++ {
+			clElems = append(clElems, eb.Expr(t.Base()))
+		}
+		cl.Elts = clElems
+
+		return cl
+	default:
+		panic("CompositeLit: bad type " + t.Name())
 	}
-
-	cl := &ast.CompositeLit{
-		Type: &ast.ArrayType{Elt: &ast.Ident{
-			Name: t.Base().String()},
-		},
-	}
-
-	clElems := []ast.Expr{}
-	for i := 0; i < eb.rs.Intn(5); i++ {
-		clElems = append(clElems, eb.Expr(t.Base()))
-	}
-
-	cl.Elts = clElems
-
-	return cl
 }
 
 func (eb *ExprBuilder) Expr(t Type) ast.Expr {
@@ -104,16 +106,19 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 	var expr ast.Expr
 
 	eb.depth++
-	if !t.IsBasic() {
-		// no unary or binary operators for composite types
-		expr = eb.CompositeLit(t)
-	} else {
-		if t != TypeString && eb.rs.Float64() < eb.conf.UnaryChance {
+	switch t := t.(type) {
+	case BasicType:
+		if t.Name() != "string" && eb.rs.Float64() < eb.conf.UnaryChance {
 			// there's no unary operator for strings
 			expr = eb.UnaryExpr(t)
 		} else {
 			expr = eb.BinaryExpr(t)
 		}
+	case ArrayType:
+		// no unary or binary operators for composite types
+		expr = eb.CompositeLit(t)
+	default:
+		panic("Expr: bad type " + t.Name())
 	}
 	eb.depth--
 
@@ -129,13 +134,13 @@ func (eb *ExprBuilder) VarOrLit(t Type) interface{} {
 	//   - the dice says "choose literal"
 	if (len(eb.inScope[t]) == 0 && len(eb.inScope[t.Arr()]) == 0) ||
 		eb.rs.Float64() < eb.conf.LiteralChance {
-		switch t {
-		case TypeInt, TypeString:
+		switch t.Name() {
+		case "int", "string":
 			return eb.BasicLit(t)
-		case TypeBool:
+		case "bool":
 			return &ast.Ident{Name: RandString([]string{"true", "false"})}
 		default:
-			panic("VarOrLit: unsupported type " + t.String())
+			panic("VarOrLit: unsupported type " + t.Name())
 		}
 	}
 
@@ -163,7 +168,7 @@ func (eb *ExprBuilder) IndexExpr(t Type) *ast.IndexExpr {
 		X: indexable,
 		// no Expr for the index (for now), because constant exprs
 		// that end up negative cause compilation errors.
-		Index: eb.VarOrLit(TypeInt).(ast.Expr),
+		Index: eb.VarOrLit(BasicType{"int"}).(ast.Expr),
 	}
 
 	return ie
@@ -172,15 +177,15 @@ func (eb *ExprBuilder) IndexExpr(t Type) *ast.IndexExpr {
 func (eb *ExprBuilder) UnaryExpr(t Type) *ast.UnaryExpr {
 	ue := new(ast.UnaryExpr)
 
-	switch t {
-	case TypeInt:
+	switch t.Name() {
+	case "int":
 		ue.Op = eb.chooseToken([]token.Token{token.ADD, token.SUB})
-	case TypeBool:
+	case "bool":
 		ue.Op = eb.chooseToken([]token.Token{token.NOT})
-	case TypeString:
-		panic("UnaryExpr: invalid kind (string)")
+	case "string":
+		panic("UnaryExpr: invalid type string")
 	default:
-		panic("UnaryExpr: unimplemented type " + t.String())
+		panic("UnaryExpr: unimplemented type " + t.Name())
 	}
 
 	// set a 0.2 chance of not generating a nested Expr, even if
@@ -198,10 +203,10 @@ func (eb *ExprBuilder) BinaryExpr(t Type) *ast.BinaryExpr {
 	ue := new(ast.BinaryExpr)
 
 	// First choose the operator...
-	switch t {
-	case TypeInt:
+	switch t.Name() {
+	case "int":
 		ue.Op = eb.chooseToken([]token.Token{token.ADD, token.SUB})
-	case TypeBool:
+	case "bool":
 		if eb.rs.Float64() < eb.conf.ComparisonChance {
 			// generate a bool expr by comparing two exprs of
 			// comparable type
@@ -215,15 +220,15 @@ func (eb *ExprBuilder) BinaryExpr(t Type) *ast.BinaryExpr {
 				t = RandType(SupportedTypes)
 			} else {
 				// and these also support <, <=, >, >=
-				t = RandType([]Type{TypeInt, TypeString})
+				t = RandType([]Type{BasicType{"int"}, BasicType{"string"}})
 			}
 		} else {
 			ue.Op = eb.chooseToken([]token.Token{token.LAND, token.LOR})
 		}
-	case TypeString:
+	case "string":
 		ue.Op = eb.chooseToken([]token.Token{token.ADD})
 	default:
-		panic("BinaryExpr: unimplemented type " + t.String())
+		panic("BinaryExpr: unimplemented type " + t.Name())
 	}
 
 	// ...then build the two branches.

@@ -1,95 +1,69 @@
 package microsmith
 
-type Type int
+import "strings"
 
-const (
-	NoType = iota
-	TypeInt
-	TypeBool
-	TypeString
+type Type interface {
+	// The type name. This is what is used to actually differentiate
+	// types.
+	Name() string
 
-	TypeIntArr
-	TypeBoolArr
-	TypeStringArr
-)
+	// String to use for variable names of this type.
+	Ident() string
 
-func (t Type) IsBasic() bool {
-	switch t {
-	case TypeInt, TypeBool, TypeString:
-		return true
-	default:
-		return false
-	}
+	// Returns an ArrayType which base type is the receiver.
+	Arr() ArrayType
 }
 
-// given a type, it returns the corresponding array type
-func (t Type) Arr() Type {
-	if !t.IsBasic() {
-		panic("Arr: non-basic type " + t.String())
-	}
-	switch t {
-	case TypeInt:
-		return TypeIntArr
-	case TypeBool:
-		return TypeBoolArr
-	case TypeString:
-		return TypeStringArr
-	default:
-		panic("Arr: unimplemented for type " + t.String())
-	}
+// ---------------- //
+//       basic      //
+// ---------------- //
+
+type BasicType struct {
+	n string
+}
+
+func (bt BasicType) Name() string {
+	return bt.n
+}
+
+func (bt BasicType) Ident() string {
+	return strings.ToUpper(bt.n[:1])
+}
+
+func (bt BasicType) Arr() ArrayType {
+	return ArrayType{bt}
+}
+
+// ---------------- //
+//       array      //
+// ---------------- //
+
+type ArrayType struct {
+	Etype Type
+}
+
+func (at ArrayType) Name() string {
+	return "[]" + at.Etype.Name()
+}
+
+func (at ArrayType) Ident() string {
+	return "A" + at.Etype.Ident()
+}
+
+func (at ArrayType) Arr() ArrayType {
+	return ArrayType{at}
 }
 
 // given an array type, it returns the corresponding base type
-func (t Type) Base() Type {
-	if t.IsBasic() {
-		panic("Arr: basic type " + t.String())
-	}
-	switch t {
-	case TypeIntArr:
-		return TypeInt
-	case TypeBoolArr:
-		return TypeBool
-	case TypeStringArr:
-		return TypeString
-	default:
-		panic("Arr: unimplemented for type " + t.String())
-	}
+func (at ArrayType) Base() Type {
+	return at.Etype
 }
 
-func (t Type) VarName() string {
-	switch t {
-	case TypeInt:
-		return "I"
-	case TypeBool:
-		return "B"
-	case TypeString:
-		return "S"
-	case TypeIntArr:
-		return "IA"
-	case TypeBoolArr:
-		return "BA"
-	case TypeStringArr:
-		return "SA"
-	default:
-		panic("VarName: unknown type " + t.String())
-	}
-}
+// ---------------- //
+//      struct      //
+// ---------------- //
 
-func (t Type) String() string {
-	switch t {
-	case TypeInt:
-		return "int"
-	case TypeBool:
-		return "bool"
-	case TypeString:
-		return "string"
-	case TypeIntArr:
-		return "intArr"
-	case TypeBoolArr:
-		return "boolArr"
-	case TypeStringArr:
-		return "stringArr"
-	default:
-		return "<unknown type>"
-	}
+type StructType struct {
+	Ftypes []Type   // fields types
+	Fnames []string // field names
 }

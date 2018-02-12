@@ -16,12 +16,10 @@ type StmtBuilder struct {
 	depth int // how deep the stmt hyerarchy is
 	conf  StmtConf
 
-	// map from type to Scope set. For example
-	//   map[int]
-	// points to a scope type (define above) holding all int
-	// variables that are in scope.
-	// Q: why is this here?
-	// A: because it's StmtBuilder that create new scopes (for now)
+	// Map from Types to Scopes. For example
+	//   map[BasicType{"int"}]
+	// points to a scope (define above) holding all ints variables
+	// that are in scope.
 	inScope map[Type]Scope
 }
 
@@ -75,7 +73,7 @@ func (sb *StmtBuilder) AddIdent(t Type) *ast.Ident {
 
 	inScope := sb.inScope[t]
 
-	name := fmt.Sprintf("%s%v", t.VarName(), len(inScope))
+	name := fmt.Sprintf("%s%v", t.Ident(), len(inScope))
 
 	// build Ident object
 	id := new(ast.Ident)
@@ -179,9 +177,15 @@ func (sb *StmtBuilder) Stmt() ast.Stmt {
 // kind.
 func (sb *StmtBuilder) AssignStmt(t Type) *ast.AssignStmt {
 	var v interface{}
-	if t.IsBasic() && sb.conf.UseArrays && (len(sb.inScope[t.Arr()]) > 0) && sb.rs.Float64() < 0.25 {
-		v = sb.eb.IndexExpr(t.Arr())
-	} else {
+
+	switch t := t.(type) {
+	case BasicType:
+		if sb.conf.UseArrays && (len(sb.inScope[t.Arr()]) > 0) && sb.rs.Float64() < 0.25 {
+			v = sb.eb.IndexExpr(t.Arr())
+		} else {
+			v = RandomInScopeVar(sb.inScope[t], sb.rs)
+		}
+	default:
 		v = RandomInScopeVar(sb.inScope[t], sb.rs)
 	}
 
@@ -294,10 +298,14 @@ func (sb *StmtBuilder) DeclStmt(nVars int, t Type) (*ast.DeclStmt, []*ast.Ident)
 
 	// generate the type specifier
 	var typ ast.Expr
-	if t.IsBasic() {
-		typ = &ast.Ident{Name: t.String()}
-	} else {
-		typ = &ast.ArrayType{Elt: &ast.Ident{Name: t.Base().String()}}
+
+	switch t := t.(type) {
+	case BasicType:
+		typ = &ast.Ident{Name: t.Name()}
+	case ArrayType:
+		typ = &ast.ArrayType{Elt: &ast.Ident{Name: t.Base().Name()}}
+	default:
+		panic("DeclStmt: bad type " + t.Name())
 	}
 
 	gd.Specs = []ast.Spec{
@@ -317,7 +325,7 @@ func (sb *StmtBuilder) ForStmt() *ast.ForStmt {
 	var fs *ast.ForStmt
 	if sb.rs.Float64() < 1 {
 		fs = &ast.ForStmt{
-			Cond: sb.eb.Expr(TypeBool),
+			Cond: sb.eb.Expr(BasicType{"bool"}),
 			Body: sb.BlockStmt(0, 0),
 		}
 	} else {
@@ -329,7 +337,7 @@ func (sb *StmtBuilder) ForStmt() *ast.ForStmt {
 
 func (sb *StmtBuilder) IfStmt() *ast.IfStmt {
 	is := &ast.IfStmt{
-		Cond: sb.eb.Expr(TypeBool),
+		Cond: sb.eb.Expr(BasicType{"bool"}),
 		Body: sb.BlockStmt(0, 0),
 	}
 

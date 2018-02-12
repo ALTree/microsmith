@@ -8,9 +8,9 @@ import (
 )
 
 var SupportedTypes = []Type{
-	TypeInt,
-	TypeBool,
-	TypeString,
+	BasicType{"int"},
+	BasicType{"bool"},
+	BasicType{"string"},
 }
 
 type ProgramConf struct {
@@ -70,7 +70,6 @@ func (bce ConfError) Error() string {
 }
 
 func (pc *ProgramConf) Check(fix bool) error {
-
 	// LiteralChance cannot be 0 when IndexChance is 1, because when
 	// the latter is 1 we need a literal to stop descending into an
 	// infinite sequence of nested []. Take
@@ -104,7 +103,7 @@ func (pc *ProgramConf) Check(fix bool) error {
 }
 
 type DeclBuilder struct {
-	rs *rand.Rand // randomness source
+	rs *rand.Rand
 	sb *StmtBuilder
 
 	// list of function names declared by this DeclBuilder
