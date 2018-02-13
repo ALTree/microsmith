@@ -12,8 +12,8 @@ func main() {
 package main
 
 func fun42() {
-  var arr []int
-  arr = []int{1, 2, 3}
+  var S0 string
+  x := S0 + S0[1:7]
 }
 `
 	fset := token.NewFileSet()

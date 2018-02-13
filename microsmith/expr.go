@@ -129,9 +129,7 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 // there's no variable of the requested type in scope, returns a
 // literal.
 func (eb *ExprBuilder) VarOrLit(t Type) interface{} {
-	// we return a literal if, either
-	//   - there are no variables in scope of the type we need
-	//   - the dice says "choose literal"
+	// return a literal
 	if (len(eb.inScope[t]) == 0 && len(eb.inScope[t.Arr()]) == 0) ||
 		eb.rs.Float64() < eb.conf.LiteralChance {
 		switch t.Name() {
@@ -144,14 +142,20 @@ func (eb *ExprBuilder) VarOrLit(t Type) interface{} {
 		}
 	}
 
-	// if we have to return a variable, choose between a variable of
-	// the given type and indexing into an array of the given type
+	// return a variable
+
+	// index into an array of type []t
 	if (len(eb.inScope[t.Arr()]) > 0 && eb.rs.Float64() < eb.conf.IndexChance) ||
 		len(eb.inScope[t]) == 0 {
 		return eb.IndexExpr(t.Arr())
 	}
-	return RandomInScopeVar(eb.inScope[t], eb.rs)
 
+	// slice expression of type t
+	if t.Sliceable() && eb.rs.Float64() < eb.conf.IndexChance {
+		return eb.SliceExpr(t)
+	}
+
+	return RandomInScopeVar(eb.inScope[t], eb.rs)
 }
 
 // returns an IndexExpr of the given type. Panics if there's no
@@ -172,6 +176,32 @@ func (eb *ExprBuilder) IndexExpr(t Type) *ast.IndexExpr {
 	}
 
 	return ie
+}
+
+func (eb *ExprBuilder) SliceExpr(t Type) *ast.SliceExpr {
+	if !t.Sliceable() {
+		panic("SliceExpr: un-sliceable type " + t.Name())
+	}
+
+	inScope := eb.inScope[t]
+	if len(inScope) == 0 {
+		panic("SliceExpr: empty scope")
+	}
+
+	sliceable := RandomInScopeVar(inScope, eb.rs)
+	se := &ast.SliceExpr{
+		X: sliceable,
+		Low: &ast.BasicLit{
+			Kind:  token.INT,
+			Value: strconv.Itoa(eb.rs.Intn(9)),
+		},
+		High: &ast.BasicLit{
+			Kind:  token.INT,
+			Value: strconv.Itoa(8 + eb.rs.Intn(17)),
+		},
+	}
+
+	return se
 }
 
 func (eb *ExprBuilder) UnaryExpr(t Type) *ast.UnaryExpr {

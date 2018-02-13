@@ -12,6 +12,8 @@ type Type interface {
 
 	// Returns an ArrayType which base type is the receiver.
 	Arr() ArrayType
+
+	Sliceable() bool
 }
 
 // ---------------- //
@@ -32,6 +34,10 @@ func (bt BasicType) Ident() string {
 
 func (bt BasicType) Arr() ArrayType {
 	return ArrayType{bt}
+}
+
+func (bt BasicType) Sliceable() bool {
+	return bt.n == "string"
 }
 
 // ---------------- //
@@ -57,6 +63,10 @@ func (at ArrayType) Arr() ArrayType {
 // given an array type, it returns the corresponding base type
 func (at ArrayType) Base() Type {
 	return at.Etype
+}
+
+func (bt ArrayType) Sliceable() bool {
+	return true
 }
 
 // ---------------- //
