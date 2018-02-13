@@ -69,11 +69,11 @@ func (eb *ExprBuilder) BasicLit(t Type) *ast.BasicLit {
 	default:
 		panic("BasicLit: unimplemented type " + t.Name())
 	}
+
 	return bl
 }
 
 func (eb *ExprBuilder) CompositeLit(t Type) *ast.CompositeLit {
-
 	switch t := t.(type) {
 	case BasicType:
 		panic("CompositeLit: basic type " + t.Name())
@@ -178,6 +178,7 @@ func (eb *ExprBuilder) IndexExpr(t Type) *ast.IndexExpr {
 	return ie
 }
 
+// TODO: use Expr for the slice indices, not just basiclit int
 func (eb *ExprBuilder) SliceExpr(t Type) *ast.SliceExpr {
 	if !t.Sliceable() {
 		panic("SliceExpr: un-sliceable type " + t.Name())
