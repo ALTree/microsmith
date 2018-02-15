@@ -16,10 +16,12 @@ type ExprBuilder struct {
 }
 
 type ExprConf struct {
-	// How likely it is to generate an unary expression, expressed as
-	// a value in [0,1]. If 0, every expression is binary; if 1, every
-	// expression is unary.
-	UnaryChance float64
+
+	// When building a general Expr, chances of generating, in order:
+	//  0. Unary Expression
+	//  1. Binary Expression
+	//  2. Function call
+	ExprKindChance []float64
 
 	// How likely it is to choose a literal (instead of a variable
 	// among the ones in scope) when building an expression; expressed
@@ -97,10 +99,10 @@ func (eb *ExprBuilder) CompositeLit(t Type) *ast.CompositeLit {
 
 func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 	// Currently:
-	//   - Binary
 	//   - Unary
+	//   - Binary
 	//   - CompositeLit
-	//
+	//   - Call
 	// TODO:
 	//   - SimpleLit
 	var expr ast.Expr
@@ -108,11 +110,25 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 	eb.depth++
 	switch t := t.(type) {
 	case BasicType:
-		if t.Name() != "string" && eb.rs.Float64() < eb.conf.UnaryChance {
-			// there's no unary operator for strings
-			expr = eb.UnaryExpr(t)
-		} else {
+		switch RandIndex(eb.conf.ExprKindChance, eb.rs.Float64()) {
+		case 0: // unary
+			if t.Name() == "string" {
+				// no unary operator for strings, return a binary expr
+				expr = eb.BinaryExpr(t)
+			} else {
+				expr = eb.UnaryExpr(t)
+			}
+		case 1: // binary
 			expr = eb.BinaryExpr(t)
+		case 2: // function call
+			if t.Name() == "int" {
+				// only have len for now
+				expr = eb.CallExpr(t)
+			} else {
+				expr = eb.BinaryExpr(t)
+			}
+		default:
+			panic("Expr: bad RandIndex value")
 		}
 	case ArrayType:
 		// no unary or binary operators for composite types
@@ -132,14 +148,27 @@ func (eb *ExprBuilder) VarOrLit(t Type) interface{} {
 	// return a literal
 	if (len(eb.inScope[t]) == 0 && len(eb.inScope[t.Arr()]) == 0) ||
 		eb.rs.Float64() < eb.conf.LiteralChance {
-		switch t.Name() {
-		case "int", "string":
-			return eb.BasicLit(t)
-		case "bool":
-			return &ast.Ident{Name: RandString([]string{"true", "false"})}
-		default:
-			panic("VarOrLit: unsupported type " + t.Name())
+		switch t := t.(type) {
+		case BasicType:
+			if n := t.Name(); n == "int" || n == "string" {
+				return eb.BasicLit(t)
+			} else if n == "bool" {
+				return &ast.Ident{Name: RandString([]string{"true", "false"})}
+			} else {
+				panic("VarOrLit: unsupported basic type " + t.Name())
+			}
+		case ArrayType:
+			return eb.CompositeLit(t)
 		}
+
+		// switch t.Name() {
+		// case "int", "string":
+		// 	return eb.BasicLit(t)
+		// case "bool":
+		// 	return &ast.Ident{Name: RandString([]string{"true", "false"})}
+		// default:
+		// 	panic("VarOrLit: unsupported type " + t.Name())
+		// }
 	}
 
 	// return a variable
@@ -272,4 +301,37 @@ func (eb *ExprBuilder) BinaryExpr(t Type) *ast.BinaryExpr {
 	}
 
 	return ue
+}
+
+// CallExpr returns a call expression with a function call that has
+// return value of type t. For now, we only call len
+// TODO: generalize, factor out len code
+func (eb *ExprBuilder) CallExpr(t Type) *ast.CallExpr {
+	switch t := t.(type) {
+	case BasicType:
+		if t.Name() == "int" {
+			// for a len call, we want a string or an array
+			var typ Type
+			if eb.rs.Float64() < 0.5 {
+				// choose an array of random type
+				typ = ArrayType{BasicType{
+					RandString([]string{"int", "bool", "string"}),
+				}}
+			} else {
+				// call len on string
+				typ = BasicType{"string"}
+			}
+			ce := &ast.CallExpr{
+				Fun: &ast.Ident{Name: LenFun.Name()},
+				Args: []ast.Expr{
+					eb.VarOrLit(typ).(ast.Expr),
+				},
+			}
+			return ce
+		} else {
+			panic("CallExpr: unimplemented type " + t.Name())
+		}
+	default:
+		panic("CallExpr: unimplemented type " + t.Name())
+	}
 }

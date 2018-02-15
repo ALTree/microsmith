@@ -13,7 +13,8 @@ package main
 
 func fun42() {
   var S0 string
-  x := S0 + S0[1:7]
+  x := len(S0)
+
 }
 `
 	fset := token.NewFileSet()

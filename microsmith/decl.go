@@ -29,7 +29,9 @@ var DefaultConf = ProgramConf{
 		UseArrays:     true,
 	},
 	ExprConf{
-		UnaryChance:      0.2,
+		ExprKindChance: []float64{
+			1, 1, 1,
+		},
 		LiteralChance:    0.2,
 		ComparisonChance: 0.2,
 		IndexChance:      0.2,
@@ -52,7 +54,11 @@ func RandConf() ProgramConf {
 			UseArrays:     rand.Int63()%2 == 0,
 		},
 		ExprConf{
-			UnaryChance:      float64(rand.Intn(9)) * 0.125,
+			ExprKindChance: []float64{
+				float64(rand.Intn(5)),
+				float64(rand.Intn(5)),
+				float64(rand.Intn(5)),
+			},
 			LiteralChance:    float64(rand.Intn(9)) * 0.125,
 			ComparisonChance: float64(rand.Intn(9)) * 0.125,
 			IndexChance:      float64(rand.Intn(9)) * 0.125,
@@ -96,6 +102,21 @@ func (pc *ProgramConf) Check(fix bool) error {
 			}
 		} else {
 			return errors.New("Bad Conf: StmtKindChance is all zeros")
+		}
+	}
+
+	// ExprKindChance cannot be all zeros
+	sum = 0.0
+	for _, v := range pc.Expr.ExprKindChance {
+		sum += v
+	}
+	if sum == 0 {
+		if fix {
+			for i := range pc.Expr.ExprKindChance {
+				pc.Expr.ExprKindChance[i] += 1.0
+			}
+		} else {
+			return errors.New("Bad Conf: ExprKindChance is all zeros")
 		}
 	}
 

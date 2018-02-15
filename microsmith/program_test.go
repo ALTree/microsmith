@@ -22,7 +22,9 @@ var TestConfigurations = map[string]microsmith.ProgramConf{
 			UseArrays:     false,
 		},
 		microsmith.ExprConf{
-			UnaryChance:      0.1,
+			ExprKindChance: []float64{
+				1, 1, 1,
+			},
 			LiteralChance:    0.2,
 			ComparisonChance: 0.1,
 			IndexChance:      0.1,
@@ -40,7 +42,9 @@ var TestConfigurations = map[string]microsmith.ProgramConf{
 			UseArrays:     false,
 		},
 		microsmith.ExprConf{
-			UnaryChance:      0.1,
+			ExprKindChance: []float64{
+				1, 1, 1,
+			},
 			LiteralChance:    0.2,
 			ComparisonChance: 0.1,
 			IndexChance:      0.1,
@@ -58,7 +62,9 @@ var TestConfigurations = map[string]microsmith.ProgramConf{
 			UseArrays:     false,
 		},
 		microsmith.ExprConf{
-			UnaryChance:      0.1,
+			ExprKindChance: []float64{
+				1, 1, 1,
+			},
 			LiteralChance:    0.2,
 			ComparisonChance: 0.1,
 			IndexChance:      0.1,
@@ -126,7 +132,7 @@ func TestGoTypesAllLiterals(t *testing.T) {
 
 func TestGoTypesAllUnary(t *testing.T) {
 	tc := TestConfigurations["medium"]
-	tc.Expr.UnaryChance = 1.0
+	tc.Expr.ExprKindChance = []float64{1.0, 0, 0}
 	testProgramGoTypes(t, 1000, tc)
 }
 

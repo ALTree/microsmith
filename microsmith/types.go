@@ -77,3 +77,31 @@ type StructType struct {
 	Ftypes []Type   // fields types
 	Fnames []string // field names
 }
+
+// ---------------- //
+//       func       //
+// ---------------- //
+
+type FuncType struct {
+	n    string
+	Args []Type
+	Ret  []Type
+}
+
+func (ft FuncType) Name() string {
+	return ft.n
+}
+
+func (ft FuncType) Ident() string {
+	return "F"
+}
+
+func (ft FuncType) Arr() ArrayType {
+	return ArrayType{ft}
+}
+
+func (ft FuncType) Sliceable() bool {
+	return false
+}
+
+var LenFun FuncType = FuncType{"len", nil, []Type{BasicType{"int"}}}
