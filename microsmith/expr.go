@@ -160,15 +160,6 @@ func (eb *ExprBuilder) VarOrLit(t Type) interface{} {
 		case ArrayType:
 			return eb.CompositeLit(t)
 		}
-
-		// switch t.Name() {
-		// case "int", "string":
-		// 	return eb.BasicLit(t)
-		// case "bool":
-		// 	return &ast.Ident{Name: RandString([]string{"true", "false"})}
-		// default:
-		// 	panic("VarOrLit: unsupported type " + t.Name())
-		// }
 	}
 
 	// return a variable
@@ -248,8 +239,6 @@ func (eb *ExprBuilder) UnaryExpr(t Type) *ast.UnaryExpr {
 		panic("UnaryExpr: unimplemented type " + t.Name())
 	}
 
-	// set a 0.2 chance of not generating a nested Expr, even if
-	// we're not at maximum depth
 	if 1/math.Pow(1.2, float64(eb.depth)) < eb.rs.Float64() {
 		ue.X = eb.VarOrLit(t).(ast.Expr)
 	} else {
@@ -324,6 +313,7 @@ func (eb *ExprBuilder) CallExpr(t Type) *ast.CallExpr {
 			ce := &ast.CallExpr{
 				Fun: &ast.Ident{Name: LenFun.Name()},
 				Args: []ast.Expr{
+					// TODO: why not Expr?
 					eb.VarOrLit(typ).(ast.Expr),
 				},
 			}
