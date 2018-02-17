@@ -114,7 +114,7 @@ func Fuzz(seed int64) {
 				atomic.AddInt64(&KnownCount, 1)
 			} else {
 				atomic.AddInt64(&CrashCount, 1)
-				log.Fatalf("Program did not compile:\n%s\n%s\n%s", out, err, gp)
+				log.Printf("[%v] program did not compile\n%s\n%s", gp.Seed, out, err)
 			}
 		}
 

@@ -19,7 +19,7 @@ import (
 // the file it was possibly written to).
 // TODO: split to source/seed and filesystem stuff(?)
 type GoProgram struct {
-	seed     int64
+	Seed     int64
 	source   []byte
 	fileName string
 	file     *os.File
@@ -41,7 +41,7 @@ func NewGoProgram(seed int64, conf ProgramConf) (*GoProgram, error) {
 	var buf bytes.Buffer
 	printer.Fprint(&buf, token.NewFileSet(), db.File("main", 1))
 
-	gp.seed = seed
+	gp.Seed = seed
 	gp.source = buf.Bytes()
 
 	return gp, nil
@@ -50,7 +50,7 @@ func NewGoProgram(seed int64, conf ProgramConf) (*GoProgram, error) {
 // WriteToFile writes gp in a file having name 'prog<gp.seed>' in the
 // folder passsed in the path parameter.
 func (gp *GoProgram) WriteToFile(path string) error {
-	fileName := fmt.Sprintf("prog%v.go", gp.seed)
+	fileName := fmt.Sprintf("prog%v.go", gp.Seed)
 	fh, err := os.Create(path + fileName)
 	defer fh.Close()
 	if err != nil {
@@ -142,5 +142,5 @@ func (gp GoProgram) String() string {
 			"----------------\n" +
 			"%s" +
 			"----------------\n"
-	return fmt.Sprintf(fmtstr, gp.seed, gp.source)
+	return fmt.Sprintf(fmtstr, gp.Seed, gp.source)
 }
