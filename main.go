@@ -21,9 +21,10 @@ var KnownCount int64
 
 var (
 	pF         = flag.Int("p", 1, "number of workers")
-	archF      = flag.String("arch", "amd64", "GOARCH to fuzz")
 	debugF     = flag.Bool("debug", false, "run fuzzer in debug mode")
-	toolchainF = flag.String("gocmd", "go", "go toolchain to fuzz")
+	archF      = flag.String("arch", "amd64", "GOARCH to fuzz")
+	toolchainF = flag.String("gobin", "go", "go toolchain to fuzz")
+	nooptF     = flag.Bool("noopt", false, "compile with optimization disabled")
 )
 
 func main() {
@@ -38,7 +39,7 @@ func main() {
 	}
 	fmt.Printf("Fuzzing GOARCH=%v with %v worker(s)\n", *archF, nWorkers)
 	for i := 0; i < nWorkers; i++ {
-		go Fuzz(rs.Int63(), *archF)
+		go Fuzz(rs.Int63())
 	}
 
 	ticker := time.Tick(5 * time.Second)
@@ -57,7 +58,7 @@ var crashWhitelist = []*regexp.Regexp{
 }
 
 // Fuzz with one worker
-func Fuzz(seed int64, arch string) {
+func Fuzz(seed int64) {
 	rand := rand.New(rand.NewSource(seed))
 
 	// Start with the defaul configuration; when not in debug mode
@@ -92,13 +93,13 @@ func Fuzz(seed int64, arch string) {
 		}
 
 		// Interrupt and crash Fuzzer if compilation takes more than
-		// 10 seconds
+		// 30 seconds
 		timeout := time.AfterFunc(
 			30*time.Second,
 			func() { log.Fatalf("> 30s compilation time for\n%s\n", gp) },
 		)
 
-		out, err := gp.Compile(*toolchainF, *archF)
+		out, err := gp.Compile(*toolchainF, *archF, *nooptF)
 		timeout.Stop()
 		if err != nil {
 			var known bool
