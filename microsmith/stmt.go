@@ -14,7 +14,7 @@ type StmtBuilder struct {
 	rs    *rand.Rand // randomness source
 	eb    *ExprBuilder
 	depth int // how deep the stmt hyerarchy is
-	conf  StmtConf
+	conf  ProgramConf
 
 	// Map from Types to Scopes. For example
 	//   map[BasicType{"int"}]
@@ -46,7 +46,7 @@ type StmtConf struct {
 func NewStmtBuilder(rs *rand.Rand, conf ProgramConf) *StmtBuilder {
 	sb := new(StmtBuilder)
 	sb.rs = rs
-	sb.conf = conf.Stmt
+	sb.conf = conf
 
 	if sb.conf.UseArrays {
 		sb.conf.MaxBlockVars *= 2
@@ -54,7 +54,7 @@ func NewStmtBuilder(rs *rand.Rand, conf ProgramConf) *StmtBuilder {
 
 	// initialize scope structures
 	scpMap := make(map[Type]Scope)
-	for _, t := range SupportedTypes {
+	for _, t := range sb.conf.SupportedTypes {
 		scpMap[t] = Scope{}
 		if sb.conf.UseArrays {
 			scpMap[t.Arr()] = Scope{}
@@ -62,7 +62,7 @@ func NewStmtBuilder(rs *rand.Rand, conf ProgramConf) *StmtBuilder {
 	}
 
 	sb.inScope = scpMap
-	sb.eb = NewExprBuilder(rs, conf.Expr, sb.inScope)
+	sb.eb = NewExprBuilder(rs, conf, sb.inScope)
 
 	return sb
 }
@@ -127,7 +127,7 @@ func (sb *StmtBuilder) Stmt() ast.Stmt {
 
 	// types that have at least one variable currently in scope
 	inScopeKinds := []Type{}
-	for _, st := range SupportedTypes {
+	for _, st := range sb.conf.SupportedTypes {
 		if len(sb.inScope[st]) > 0 {
 			inScopeKinds = append(inScopeKinds, st)
 		}
@@ -227,13 +227,13 @@ func (sb *StmtBuilder) BlockStmt(nVars, nStmts int) *ast.BlockStmt {
 	// a minute.
 	nVarsByKind := make(map[Type]int)
 
-	typesNum := len(SupportedTypes)
+	typesNum := len(sb.conf.SupportedTypes)
 	if sb.conf.UseArrays {
 		typesNum *= 2
 	}
 
 	rs := RandSplit(nVars, typesNum)
-	for i, v := range SupportedTypes {
+	for i, v := range sb.conf.SupportedTypes {
 		if sb.conf.UseArrays {
 			nVarsByKind[v] = rs[2*i]
 			nVarsByKind[v.Arr()] = rs[2*i+1]
@@ -350,7 +350,7 @@ func (sb *StmtBuilder) IfStmt() *ast.IfStmt {
 }
 
 func (sb *StmtBuilder) SwitchStmt() *ast.SwitchStmt {
-	t := RandType(SupportedTypes)
+	t := RandType(sb.conf.SupportedTypes)
 	ss := &ast.SwitchStmt{
 		Tag: sb.eb.Expr(t),
 		Body: &ast.BlockStmt{

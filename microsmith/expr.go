@@ -11,7 +11,7 @@ import (
 type ExprBuilder struct {
 	rs      *rand.Rand // randomness source
 	depth   int        // how deep the expr hierarchy is
-	conf    ExprConf
+	conf    ProgramConf
 	inScope map[Type]Scope // passed down by StmtBuilders
 }
 
@@ -41,7 +41,7 @@ type ExprConf struct {
 	ComparisonChance float64
 }
 
-func NewExprBuilder(rs *rand.Rand, conf ExprConf, inscp map[Type]Scope) *ExprBuilder {
+func NewExprBuilder(rs *rand.Rand, conf ProgramConf, inscp map[Type]Scope) *ExprBuilder {
 	return &ExprBuilder{
 		rs:      rs,
 		conf:    conf,
@@ -266,7 +266,7 @@ func (eb *ExprBuilder) BinaryExpr(t Type) *ast.BinaryExpr {
 			})
 			if ue.Op == token.EQL || ue.Op == token.NEQ {
 				// every type is comparable with == and !=
-				t = RandType(SupportedTypes)
+				t = RandType(eb.conf.SupportedTypes)
 			} else {
 				// and these also support <, <=, >, >=
 				t = RandType([]Type{BasicType{"int"}, BasicType{"string"}})

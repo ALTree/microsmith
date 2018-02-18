@@ -21,15 +21,15 @@ type Type interface {
 // ---------------- //
 
 type BasicType struct {
-	n string
+	N string
 }
 
 func (bt BasicType) Name() string {
-	return bt.n
+	return bt.N
 }
 
 func (bt BasicType) Ident() string {
-	return strings.ToUpper(bt.n[:1])
+	return strings.ToUpper(bt.N[:1])
 }
 
 func (bt BasicType) Arr() ArrayType {
@@ -37,7 +37,7 @@ func (bt BasicType) Arr() ArrayType {
 }
 
 func (bt BasicType) Sliceable() bool {
-	return bt.n == "string"
+	return bt.N == "string"
 }
 
 // ---------------- //
@@ -83,13 +83,13 @@ type StructType struct {
 // ---------------- //
 
 type FuncType struct {
-	n    string
+	N    string
 	Args []Type
 	Ret  []Type
 }
 
 func (ft FuncType) Name() string {
-	return ft.n
+	return ft.N
 }
 
 func (ft FuncType) Ident() string {

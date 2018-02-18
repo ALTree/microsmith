@@ -7,15 +7,10 @@ import (
 	"math/rand"
 )
 
-var SupportedTypes = []Type{
-	BasicType{"int"},
-	BasicType{"bool"},
-	BasicType{"string"},
-}
-
 type ProgramConf struct {
-	Stmt StmtConf // defined in stmt.go
-	Expr ExprConf // defined in expr.go
+	StmtConf       // defined in stmt.go
+	ExprConf       // defined in expr.go
+	SupportedTypes []Type
 }
 
 var DefaultConf = ProgramConf{
@@ -24,7 +19,7 @@ var DefaultConf = ProgramConf{
 		StmtKindChance: []float64{
 			1, 1, 1, 1, 1,
 		},
-		MaxBlockVars:  len(SupportedTypes),
+		MaxBlockVars:  3,
 		MaxBlockStmts: 8,
 		UseArrays:     true,
 	},
@@ -35,6 +30,11 @@ var DefaultConf = ProgramConf{
 		LiteralChance:    0.2,
 		ComparisonChance: 0.2,
 		IndexChance:      0.2,
+	},
+	[]Type{
+		BasicType{"int"},
+		BasicType{"bool"},
+		BasicType{"string"},
 	},
 }
 
@@ -63,6 +63,11 @@ func RandConf() ProgramConf {
 			ComparisonChance: float64(rand.Intn(9)) * 0.125,
 			IndexChance:      float64(rand.Intn(9)) * 0.125,
 		},
+		[]Type{
+			BasicType{"int"},
+			BasicType{"bool"},
+			BasicType{"string"},
+		},
 	}
 
 	pc.Check(true) // fix conf without reporting errors
@@ -82,9 +87,9 @@ func (pc *ProgramConf) Check(fix bool) error {
 	//   IA[IA[IA[IA[...]]]]
 	// When IndexChance is 1 we'll never generate an TypeInt variable
 	// to use at the bottom so we need to allow int literals.
-	if pc.Expr.IndexChance == 1 && pc.Expr.LiteralChance == 0 {
+	if pc.IndexChance == 1 && pc.LiteralChance == 0 {
 		if fix {
-			pc.Expr.LiteralChance = 0.5
+			pc.LiteralChance = 0.5
 		} else {
 			return errors.New("Bad Conf: Expr.IndexChance = 1, Expr.LiteralChance = 0")
 		}
@@ -92,13 +97,13 @@ func (pc *ProgramConf) Check(fix bool) error {
 
 	// StmtKindChance cannot be all zeros
 	sum := 0.0
-	for _, v := range pc.Stmt.StmtKindChance {
+	for _, v := range pc.StmtKindChance {
 		sum += v
 	}
 	if sum == 0 {
 		if fix {
-			for i := range pc.Stmt.StmtKindChance {
-				pc.Stmt.StmtKindChance[i] += 1.0
+			for i := range pc.StmtKindChance {
+				pc.StmtKindChance[i] += 1.0
 			}
 		} else {
 			return errors.New("Bad Conf: StmtKindChance is all zeros")
@@ -107,13 +112,13 @@ func (pc *ProgramConf) Check(fix bool) error {
 
 	// ExprKindChance cannot be all zeros
 	sum = 0.0
-	for _, v := range pc.Expr.ExprKindChance {
+	for _, v := range pc.ExprKindChance {
 		sum += v
 	}
 	if sum == 0 {
 		if fix {
-			for i := range pc.Expr.ExprKindChance {
-				pc.Expr.ExprKindChance[i] += 1.0
+			for i := range pc.ExprKindChance {
+				pc.ExprKindChance[i] += 1.0
 			}
 		} else {
 			return errors.New("Bad Conf: ExprKindChance is all zeros")
@@ -149,7 +154,7 @@ func (db *DeclBuilder) FuncDecl() *ast.FuncDecl {
 	// Call BlockStmt with 4 as first parameter so that we're sure
 	// that at the beginning of the function 4 variables of each type
 	// will be in scope.
-	fc.Body = db.sb.BlockStmt(4*len(SupportedTypes), 0)
+	fc.Body = db.sb.BlockStmt(4*3, 0)
 
 	return fc
 }

@@ -29,6 +29,11 @@ var TestConfigurations = map[string]microsmith.ProgramConf{
 			ComparisonChance: 0.1,
 			IndexChance:      0.1,
 		},
+		[]microsmith.Type{
+			microsmith.BasicType{"int"},
+			microsmith.BasicType{"bool"},
+			microsmith.BasicType{"string"},
+		},
 	},
 
 	"medium": {
@@ -37,7 +42,7 @@ var TestConfigurations = map[string]microsmith.ProgramConf{
 			StmtKindChance: []float64{
 				1, 1, 1, 1, 1,
 			},
-			MaxBlockVars:  len(microsmith.SupportedTypes),
+			MaxBlockVars:  3,
 			MaxBlockStmts: 4,
 			UseArrays:     false,
 		},
@@ -49,6 +54,11 @@ var TestConfigurations = map[string]microsmith.ProgramConf{
 			ComparisonChance: 0.1,
 			IndexChance:      0.1,
 		},
+		[]microsmith.Type{
+			microsmith.BasicType{"int"},
+			microsmith.BasicType{"bool"},
+			microsmith.BasicType{"string"},
+		},
 	},
 
 	"big": {
@@ -57,7 +67,7 @@ var TestConfigurations = map[string]microsmith.ProgramConf{
 			StmtKindChance: []float64{
 				1, 1, 1, 1, 1,
 			},
-			MaxBlockVars:  4 * len(microsmith.SupportedTypes),
+			MaxBlockVars:  4 * 3,
 			MaxBlockStmts: 8,
 			UseArrays:     false,
 		},
@@ -68,6 +78,11 @@ var TestConfigurations = map[string]microsmith.ProgramConf{
 			LiteralChance:    0.2,
 			ComparisonChance: 0.1,
 			IndexChance:      0.1,
+		},
+		[]microsmith.Type{
+			microsmith.BasicType{"int"},
+			microsmith.BasicType{"bool"},
+			microsmith.BasicType{"string"},
 		},
 	},
 }
@@ -114,25 +129,25 @@ func TestGoTypesBig(t *testing.T) {
 
 func TestGoTypesArrays(t *testing.T) {
 	tc := TestConfigurations["medium"]
-	tc.Stmt.UseArrays = true
+	tc.UseArrays = true
 	testProgramGoTypes(t, 1000, tc)
 }
 
 func TestGoTypesNoLiterals(t *testing.T) {
 	tc := TestConfigurations["medium"]
-	tc.Expr.LiteralChance = 0.0
+	tc.LiteralChance = 0.0
 	testProgramGoTypes(t, 1000, tc)
 }
 
 func TestGoTypesAllLiterals(t *testing.T) {
 	tc := TestConfigurations["medium"]
-	tc.Expr.LiteralChance = 1.0
+	tc.LiteralChance = 1.0
 	testProgramGoTypes(t, 1000, tc)
 }
 
 func TestGoTypesAllUnary(t *testing.T) {
 	tc := TestConfigurations["medium"]
-	tc.Expr.ExprKindChance = []float64{1.0, 0, 0}
+	tc.ExprKindChance = []float64{1.0, 0, 0}
 	testProgramGoTypes(t, 1000, tc)
 }
 
@@ -146,18 +161,24 @@ func testBadConf(t *testing.T, conf microsmith.ProgramConf) {
 func TestGoTypesBadConfs(t *testing.T) {
 	// IndexChance = 1 and LiteralChance = 0
 	tc := TestConfigurations["medium"]
-	tc.Stmt.UseArrays = true
-	tc.Expr.IndexChance = 1
-	tc.Expr.LiteralChance = 0
+	tc.UseArrays = true
+	tc.IndexChance = 1
+	tc.LiteralChance = 0
 	testBadConf(t, tc)
 
 	// all zero StmtKindChance
 	tc = TestConfigurations["medium"]
-	for i := range tc.Stmt.StmtKindChance {
-		tc.Stmt.StmtKindChance[i] = 0.0
+	for i := range tc.StmtKindChance {
+		tc.StmtKindChance[i] = 0.0
 	}
 	testBadConf(t, tc)
 
+	// all zero ExprKindChance
+	tc = TestConfigurations["medium"]
+	for i := range tc.ExprKindChance {
+		tc.ExprKindChance[i] = 0.0
+	}
+	testBadConf(t, tc)
 }
 
 // check generated programs with gc (from file)
