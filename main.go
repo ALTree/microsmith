@@ -68,7 +68,7 @@ func Fuzz(seed int64) {
 	counter := 0
 	for true {
 		counter++
-		if counter == 32 { // will never be > 1 in debug mode
+		if counter == 64 { // will never be > 1 in debug mode
 			conf = microsmith.RandConf()
 			counter = 0
 		}
