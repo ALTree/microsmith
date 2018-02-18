@@ -87,7 +87,12 @@ func (eb *ExprBuilder) CompositeLit(t Type) *ast.CompositeLit {
 		}
 		clElems := []ast.Expr{}
 		for i := 0; i < eb.rs.Intn(5); i++ {
-			clElems = append(clElems, eb.Expr(t.Base()))
+			if eb.depth < 10 {
+				clElems = append(clElems, eb.Expr(t.Base()))
+			} else {
+				clElems = append(clElems, eb.VarOrLit(t.Base()).(ast.Expr))
+			}
+
 		}
 		cl.Elts = clElems
 
@@ -108,6 +113,10 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 	var expr ast.Expr
 
 	eb.depth++
+	if eb.depth > 128 {
+		panic("eb.depth > 128")
+	}
+
 	switch t := t.(type) {
 	case BasicType:
 		switch RandIndex(eb.conf.ExprKindChance, eb.rs.Float64()) {
@@ -284,6 +293,7 @@ func (eb *ExprBuilder) BinaryExpr(t Type) *ast.BinaryExpr {
 	}
 
 	// ...then build the two branches.
+
 	if 1/math.Pow(1.2, float64(eb.depth)) < eb.rs.Float64() {
 		ue.X = eb.VarOrLit(t).(ast.Expr)
 		ue.Y = eb.VarOrLit(t).(ast.Expr)
