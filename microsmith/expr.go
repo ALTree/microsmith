@@ -257,20 +257,23 @@ func (eb *ExprBuilder) BinaryExpr(t Type) *ast.BinaryExpr {
 		ue.Op = eb.chooseToken([]token.Token{token.ADD, token.SUB})
 	case "bool":
 		if eb.rs.Float64() < eb.conf.ComparisonChance {
-			// generate a bool expr by comparing two exprs of
-			// comparable type
-			ue.Op = eb.chooseToken([]token.Token{
-				token.EQL, token.NEQ,
-				token.LSS, token.LEQ,
-				token.GTR, token.GEQ,
-			})
-			if ue.Op == token.EQL || ue.Op == token.NEQ {
-				// every type is comparable with == and !=
-				t = RandType(eb.conf.SupportedTypes)
-			} else {
-				// and these also support <, <=, >, >=
-				t = RandType([]Type{BasicType{"int"}, BasicType{"string"}})
+			// When requested a bool, we can generate a comparison
+			// between any two other types (among the enabled ones).
+			// If ints and/or strings are enabled, we can generate
+			// '<' & co., otherwise we're restricted to eq/neq.
+
+			// first, choose a random type
+			t = RandType(eb.conf.SupportedTypes)
+
+			// now find a suitable op
+			ops := []token.Token{token.EQL, token.NEQ}
+			if name := t.Name(); name == "int" || name == "string" {
+				ops = append(ops, []token.Token{
+					token.LSS, token.LEQ,
+					token.GTR, token.GEQ,
+				}...)
 			}
+			ue.Op = eb.chooseToken(ops)
 		} else {
 			ue.Op = eb.chooseToken([]token.Token{token.LAND, token.LOR})
 		}
@@ -301,11 +304,9 @@ func (eb *ExprBuilder) CallExpr(t Type) *ast.CallExpr {
 		if t.Name() == "int" {
 			// for a len call, we want a string or an array
 			var typ Type
-			if eb.rs.Float64() < 0.5 {
+			if !IsEnabled("string", eb.conf) || eb.rs.Float64() < 0.5 {
 				// choose an array of random type
-				typ = ArrayType{BasicType{
-					RandString([]string{"int", "bool", "string"}),
-				}}
+				typ = ArrayType{RandType(eb.conf.SupportedTypes)}
 			} else {
 				// call len on string
 				typ = BasicType{"string"}

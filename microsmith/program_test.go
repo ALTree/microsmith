@@ -19,7 +19,7 @@ var TestConfigurations = map[string]microsmith.ProgramConf{
 			},
 			MaxBlockVars:  1,
 			MaxBlockStmts: 1,
-			UseArrays:     false,
+			UseArrays:     true,
 		},
 		microsmith.ExprConf{
 			ExprKindChance: []float64{
@@ -44,7 +44,7 @@ var TestConfigurations = map[string]microsmith.ProgramConf{
 			},
 			MaxBlockVars:  3,
 			MaxBlockStmts: 4,
-			UseArrays:     false,
+			UseArrays:     true,
 		},
 		microsmith.ExprConf{
 			ExprKindChance: []float64{
@@ -69,7 +69,7 @@ var TestConfigurations = map[string]microsmith.ProgramConf{
 			},
 			MaxBlockVars:  4 * 3,
 			MaxBlockStmts: 8,
-			UseArrays:     false,
+			UseArrays:     true,
 		},
 		microsmith.ExprConf{
 			ExprKindChance: []float64{
@@ -102,11 +102,11 @@ func testProgramGoTypes(t *testing.T, n int, conf microsmith.ProgramConf) {
 	}
 }
 
-func TestGoTypesDefault(t *testing.T) {
+func TestDefault(t *testing.T) {
 	testProgramGoTypes(t, 100, microsmith.DefaultConf)
 }
 
-func TestGoTypesRandConf(t *testing.T) {
+func TestRandConf(t *testing.T) {
 	for i := 0; i < 100; i++ {
 		conf := microsmith.RandConf()
 		// leave this (useful for debugging)
@@ -115,40 +115,51 @@ func TestGoTypesRandConf(t *testing.T) {
 	}
 }
 
-func TestGoTypesSmall(t *testing.T) {
+func TestSmall(t *testing.T) {
 	testProgramGoTypes(t, 1000, TestConfigurations["small"])
 }
 
-func TestGoTypesMedium(t *testing.T) {
+func TestMedium(t *testing.T) {
 	testProgramGoTypes(t, 1000, TestConfigurations["medium"])
 }
 
-func TestGoTypesBig(t *testing.T) {
+func TestBig(t *testing.T) {
 	testProgramGoTypes(t, 50, TestConfigurations["big"])
 }
 
-func TestGoTypesArrays(t *testing.T) {
+func TestNoArrays(t *testing.T) {
 	tc := TestConfigurations["medium"]
-	tc.UseArrays = true
+	tc.UseArrays = false
 	testProgramGoTypes(t, 1000, tc)
 }
 
-func TestGoTypesNoLiterals(t *testing.T) {
+func TestNoLiterals(t *testing.T) {
 	tc := TestConfigurations["medium"]
 	tc.LiteralChance = 0.0
 	testProgramGoTypes(t, 1000, tc)
 }
 
-func TestGoTypesAllLiterals(t *testing.T) {
+func TestAllLiterals(t *testing.T) {
 	tc := TestConfigurations["medium"]
 	tc.LiteralChance = 1.0
 	testProgramGoTypes(t, 1000, tc)
 }
 
-func TestGoTypesAllUnary(t *testing.T) {
+func TestAllUnary(t *testing.T) {
 	tc := TestConfigurations["medium"]
 	tc.ExprKindChance = []float64{1.0, 0, 0}
 	testProgramGoTypes(t, 1000, tc)
+}
+
+func TestOnlyOneType(t *testing.T) {
+	tc := TestConfigurations["medium"]
+
+	for _, typ := range []string{"bool", "int", "string"} {
+		t.Run(typ, func(t *testing.T) {
+			tc.SupportedTypes = []microsmith.Type{microsmith.BasicType{typ}}
+			testProgramGoTypes(t, 100, tc)
+		})
+	}
 }
 
 func testBadConf(t *testing.T, conf microsmith.ProgramConf) {
@@ -158,7 +169,7 @@ func testBadConf(t *testing.T, conf microsmith.ProgramConf) {
 	}
 }
 
-func TestGoTypesBadConfs(t *testing.T) {
+func TestBadConfs(t *testing.T) {
 	// IndexChance = 1 and LiteralChance = 0
 	tc := TestConfigurations["medium"]
 	tc.UseArrays = true

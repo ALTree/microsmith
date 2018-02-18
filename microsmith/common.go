@@ -12,6 +12,15 @@ func RandType(ts []Type) Type {
 	return ts[rand.Intn(len(ts))]
 }
 
+func IsEnabled(typ string, conf ProgramConf) bool {
+	for _, t := range conf.SupportedTypes {
+		if t.Name() == typ {
+			return true
+		}
+	}
+	return false
+}
+
 // RandIndex takes a list of probs and a random float64 in [0,1) and
 // returns an i in [0, len(probs)] with chance probs[i]/sum(probs).
 func RandIndex(probs []float64, rand float64) int {

@@ -63,12 +63,22 @@ func RandConf() ProgramConf {
 			ComparisonChance: float64(rand.Intn(9)) * 0.125,
 			IndexChance:      float64(rand.Intn(9)) * 0.125,
 		},
-		[]Type{
-			BasicType{"int"},
-			BasicType{"bool"},
-			BasicType{"string"},
-		},
+		nil,
 	}
+
+	// we'll give each type a 0.75 chance to be enabled
+	types := []Type{
+		BasicType{"int"},
+		BasicType{"bool"},
+		BasicType{"string"},
+	}
+	var enabledTypes []Type
+	for _, t := range types {
+		if rand.Float64() < 0.75 {
+			enabledTypes = append(enabledTypes, t)
+		}
+	}
+	pc.SupportedTypes = enabledTypes
 
 	pc.Check(true) // fix conf without reporting errors
 	return pc
@@ -122,6 +132,19 @@ func (pc *ProgramConf) Check(fix bool) error {
 			}
 		} else {
 			return errors.New("Bad Conf: ExprKindChance is all zeros")
+		}
+	}
+
+	// at least one type needs to be enabled
+	if len(pc.SupportedTypes) == 0 {
+		if fix {
+			pc.SupportedTypes = []Type{
+				BasicType{"int"},
+				BasicType{"bool"},
+				BasicType{"string"},
+			}
+		} else {
+			return errors.New("Bad Conf: len(EnabledTypes) is zero")
 		}
 	}
 
