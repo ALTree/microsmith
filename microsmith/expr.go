@@ -87,12 +87,11 @@ func (eb *ExprBuilder) CompositeLit(t Type) *ast.CompositeLit {
 		}
 		clElems := []ast.Expr{}
 		for i := 0; i < eb.rs.Intn(5); i++ {
-			if eb.depth < 10 {
-				clElems = append(clElems, eb.Expr(t.Base()))
-			} else {
+			if 1/math.Pow(1.2, float64(eb.depth)) < eb.rs.Float64() {
 				clElems = append(clElems, eb.VarOrLit(t.Base()).(ast.Expr))
+			} else {
+				clElems = append(clElems, eb.Expr(t.Base()))
 			}
-
 		}
 		cl.Elts = clElems
 
