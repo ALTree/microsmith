@@ -10,10 +10,12 @@ type Type interface {
 	// String to use for variable names of this type.
 	Ident() string
 
-	// Returns an ArrayType which base type is the receiver.
-	Arr() ArrayType
-
 	Sliceable() bool
+}
+
+// Returns an ArrayType which base type is the receiver.
+func ArrOf(t Type) ArrayType {
+	return ArrayType{t}
 }
 
 // ---------------- //
@@ -30,10 +32,6 @@ func (bt BasicType) Name() string {
 
 func (bt BasicType) Ident() string {
 	return strings.ToUpper(bt.N[:1])
-}
-
-func (bt BasicType) Arr() ArrayType {
-	return ArrayType{bt}
 }
 
 func (bt BasicType) Sliceable() bool {
@@ -54,10 +52,6 @@ func (at ArrayType) Name() string {
 
 func (at ArrayType) Ident() string {
 	return "A" + at.Etype.Ident()
-}
-
-func (at ArrayType) Arr() ArrayType {
-	return ArrayType{at}
 }
 
 // given an array type, it returns the corresponding base type
@@ -94,10 +88,6 @@ func (ft FuncType) Name() string {
 
 func (ft FuncType) Ident() string {
 	return "F"
-}
-
-func (ft FuncType) Arr() ArrayType {
-	return ArrayType{ft}
 }
 
 func (ft FuncType) Sliceable() bool {

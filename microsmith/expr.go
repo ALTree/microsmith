@@ -154,7 +154,7 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 // literal.
 func (eb *ExprBuilder) VarOrLit(t Type) interface{} {
 	// return a literal
-	if (len(eb.inScope[t]) == 0 && len(eb.inScope[t.Arr()]) == 0) ||
+	if (len(eb.inScope[t]) == 0 && len(eb.inScope[ArrOf(t)]) == 0) ||
 		eb.rs.Float64() < eb.conf.LiteralChance {
 		switch t := t.(type) {
 		case BasicType:
@@ -173,9 +173,9 @@ func (eb *ExprBuilder) VarOrLit(t Type) interface{} {
 	// return a variable
 
 	// index into an array of type []t
-	if (len(eb.inScope[t.Arr()]) > 0 && eb.rs.Float64() < eb.conf.IndexChance) ||
+	if (len(eb.inScope[ArrOf(t)]) > 0 && eb.rs.Float64() < eb.conf.IndexChance) ||
 		len(eb.inScope[t]) == 0 {
-		return eb.IndexExpr(t.Arr())
+		return eb.IndexExpr(ArrOf(t))
 	}
 
 	// slice expression of type t

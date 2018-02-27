@@ -57,7 +57,7 @@ func NewStmtBuilder(rs *rand.Rand, conf ProgramConf) *StmtBuilder {
 	for _, t := range sb.conf.SupportedTypes {
 		scpMap[t] = Scope{}
 		if sb.conf.UseArrays {
-			scpMap[t.Arr()] = Scope{}
+			scpMap[ArrOf(t)] = Scope{}
 		}
 	}
 
@@ -131,8 +131,8 @@ func (sb *StmtBuilder) Stmt() ast.Stmt {
 		if len(sb.inScope[st]) > 0 {
 			inScopeKinds = append(inScopeKinds, st)
 		}
-		if sb.conf.UseArrays && len(sb.inScope[st.Arr()]) > 0 {
-			inScopeKinds = append(inScopeKinds, st.Arr())
+		if sb.conf.UseArrays && len(sb.inScope[ArrOf(st)]) > 0 {
+			inScopeKinds = append(inScopeKinds, ArrOf(st))
 		}
 	}
 
@@ -180,8 +180,8 @@ func (sb *StmtBuilder) AssignStmt(t Type) *ast.AssignStmt {
 
 	switch t := t.(type) {
 	case BasicType:
-		if sb.conf.UseArrays && (len(sb.inScope[t.Arr()]) > 0) && sb.rs.Float64() < 0.25 {
-			v = sb.eb.IndexExpr(t.Arr())
+		if sb.conf.UseArrays && (len(sb.inScope[ArrOf(t)]) > 0) && sb.rs.Float64() < 0.25 {
+			v = sb.eb.IndexExpr(ArrOf(t))
 		} else {
 			v = RandomInScopeVar(sb.inScope[t], sb.rs)
 		}
@@ -236,7 +236,7 @@ func (sb *StmtBuilder) BlockStmt(nVars, nStmts int) *ast.BlockStmt {
 	for i, v := range sb.conf.SupportedTypes {
 		if sb.conf.UseArrays {
 			nVarsByKind[v] = rs[2*i]
-			nVarsByKind[v.Arr()] = rs[2*i+1]
+			nVarsByKind[ArrOf(v)] = rs[2*i+1]
 		} else {
 			nVarsByKind[v] = rs[i]
 		}
