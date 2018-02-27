@@ -21,6 +21,9 @@ type StmtBuilder struct {
 	// points to a scope (define above) holding all ints variables
 	// that are in scope.
 	inScope map[Type]Scope
+
+	// ???
+	inScopeStructsTypes []StructType
 }
 
 type StmtConf struct {
@@ -41,6 +44,9 @@ type StmtConf struct {
 
 	// whether to declare and use array variables
 	UseArrays bool
+
+	// whether to declare and use array variables
+	UseStructs bool
 }
 
 func NewStmtBuilder(rs *rand.Rand, conf ProgramConf) *StmtBuilder {
@@ -60,6 +66,18 @@ func NewStmtBuilder(rs *rand.Rand, conf ProgramConf) *StmtBuilder {
 			scpMap[ArrOf(t)] = Scope{}
 		}
 	}
+
+	// var scpStr []StructType
+	// for i := 0; i < 4; i++ {
+	// 	stt := RandStructType(sb.conf.SupportedTypes)
+	// 	scpStr = append(scpStr, stt)
+	// 	fmt.Println(stt)
+	// }
+
+	// for k := range scpMap {
+	// 	fmt.Println(k)
+	// }
+	//os.Exit(0)
 
 	sb.inScope = scpMap
 	sb.eb = NewExprBuilder(rs, conf, sb.inScope)

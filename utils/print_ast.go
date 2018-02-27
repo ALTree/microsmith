@@ -11,10 +11,10 @@ func main() {
 	src := `
 package main
 
-func fun42() {
-  var S0 string
-  x := len(S0)
-
+func f() {
+  var x int
+  y = x + 1
+  y = S.N + 2
 }
 `
 	fset := token.NewFileSet()

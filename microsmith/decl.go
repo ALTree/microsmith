@@ -22,6 +22,7 @@ var DefaultConf = ProgramConf{
 		MaxBlockVars:  3,
 		MaxBlockStmts: 8,
 		UseArrays:     true,
+		UseStructs:    true,
 	},
 	ExprConf{
 		ExprKindChance: []float64{
@@ -52,6 +53,7 @@ func RandConf() ProgramConf {
 			MaxBlockVars:  1 + rand.Intn(6),
 			MaxBlockStmts: 1 + rand.Intn(8),
 			UseArrays:     rand.Int63()%2 == 0,
+			UseStructs:    false,
 		},
 		ExprConf{
 			ExprKindChance: []float64{
