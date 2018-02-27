@@ -73,7 +73,7 @@ func (sb *StmtBuilder) AddIdent(t Type) *ast.Ident {
 
 	inScope := sb.inScope[t]
 
-	name := fmt.Sprintf("%s%v", t.Ident(), len(inScope))
+	name := fmt.Sprintf("%s%v", Ident(t), len(inScope))
 
 	// build Ident object
 	id := new(ast.Ident)

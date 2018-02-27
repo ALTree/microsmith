@@ -7,8 +7,7 @@ type Type interface {
 	// types.
 	Name() string
 
-	// String to use for variable names of this type.
-	Ident() string
+	// Ident() string
 
 	Sliceable() bool
 }
@@ -16,6 +15,20 @@ type Type interface {
 // Returns an ArrayType which base type is the receiver.
 func ArrOf(t Type) ArrayType {
 	return ArrayType{t}
+}
+
+// String to use for variable names of this type.
+func Ident(t Type) string {
+	switch t := t.(type) {
+	case BasicType:
+		return strings.ToUpper(t.N[:1])
+	case ArrayType:
+		return "A" + Ident(t.Etype)
+	case FuncType:
+		return "F"
+	default:
+		panic("Ident: unknown type " + t.Name())
+	}
 }
 
 // ---------------- //
@@ -28,10 +41,6 @@ type BasicType struct {
 
 func (bt BasicType) Name() string {
 	return bt.N
-}
-
-func (bt BasicType) Ident() string {
-	return strings.ToUpper(bt.N[:1])
 }
 
 func (bt BasicType) Sliceable() bool {
@@ -48,10 +57,6 @@ type ArrayType struct {
 
 func (at ArrayType) Name() string {
 	return "[]" + at.Etype.Name()
-}
-
-func (at ArrayType) Ident() string {
-	return "A" + at.Etype.Ident()
 }
 
 // given an array type, it returns the corresponding base type
@@ -84,10 +89,6 @@ type FuncType struct {
 
 func (ft FuncType) Name() string {
 	return ft.N
-}
-
-func (ft FuncType) Ident() string {
-	return "F"
 }
 
 func (ft FuncType) Sliceable() bool {
