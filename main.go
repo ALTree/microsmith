@@ -24,7 +24,8 @@ var (
 	debugF     = flag.Bool("debug", false, "run fuzzer in debug mode")
 	archF      = flag.String("arch", "amd64", "GOARCH to fuzz")
 	toolchainF = flag.String("gobin", "go", "go toolchain to fuzz")
-	nooptF     = flag.Bool("noopt", false, "compile with optimization disabled")
+	nooptF     = flag.Bool("noopt", false, "compile with optimizations disabled")
+	raceF      = flag.Bool("race", false, "compile with -race")
 )
 
 func main() {
@@ -99,7 +100,7 @@ func Fuzz(seed int64) {
 			func() { log.Fatalf("> 30s compilation time for\n%s\n", gp) },
 		)
 
-		out, err := gp.Compile(*toolchainF, *archF, *nooptF)
+		out, err := gp.Compile(*toolchainF, *archF, *nooptF, *raceF)
 		timeout.Stop()
 		if err != nil {
 			var known bool

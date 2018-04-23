@@ -88,19 +88,23 @@ func (gp *GoProgram) Check() error {
 // gp. It assumes that gp was already written to disk using
 // gp.WriteToFile. If the compilatio process fails, it returns gc's
 // error message and the cmd error code.
-func (gp *GoProgram) Compile(toolchain, goarch string, noopt bool) (string, error) {
+func (gp *GoProgram) Compile(toolchain, goarch string, noopt, race bool) (string, error) {
 	if gp.file == nil {
 		return "", errors.New("cannot compile program with no *File")
 	}
 
 	var cmd *exec.Cmd
 	if !strings.Contains(toolchain, "gccgo") {
-		if !noopt {
-			cmd = exec.Command(toolchain, "build", gp.fileName)
-		} else {
-			cmd = exec.Command(toolchain, "build", "-gcflags", "-N", gp.fileName)
+		buildArgs := []string{"build"}
+		if race {
+			buildArgs = append(buildArgs, "-race")
 		}
-		cmd.Env = append(cmd.Env, "GOARCH="+goarch)
+		if noopt {
+			buildArgs = append(buildArgs, "-gcflags", "-N")
+		}
+		buildArgs = append(buildArgs, gp.fileName)
+		cmd = exec.Command(toolchain, buildArgs...)
+		cmd.Env = append(os.Environ(), "GOARCH="+goarch)
 	} else {
 		binName := strings.TrimSuffix(gp.fileName, ".go")
 		oFlag := "-O2"
