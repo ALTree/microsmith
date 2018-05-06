@@ -102,8 +102,8 @@ func Fuzz(seed int64) {
 
 		out, err := gp.Compile(*toolchainF, *archF, *nooptF, *raceF)
 		timeout.Stop()
+		var known bool
 		if err != nil {
-			var known bool
 			for _, crash := range crashWhitelist {
 				if crash.MatchString(out) {
 					known = true
@@ -120,7 +120,9 @@ func Fuzz(seed int64) {
 		}
 
 		atomic.AddInt64(&BuildCount, 1)
-		gp.DeleteFile()
+		if err == nil || known {
+			gp.DeleteFile()
+		}
 		if *debugF {
 			os.Exit(0)
 		}
