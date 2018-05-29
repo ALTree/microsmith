@@ -1,8 +1,8 @@
 
 ## Introduction
 
-Microsmith generates random (but valid) Go program to use to
-stress-test Go compiler.
+Microsmith generates random (but valid) Go programs that can be used
+to stress-test Go compilers.
 
 ### Trophy Case
 
