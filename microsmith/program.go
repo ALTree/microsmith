@@ -105,6 +105,9 @@ func (gp *GoProgram) Compile(toolchain, goarch string, noopt, race bool) (string
 		buildArgs = append(buildArgs, gp.fileName)
 		cmd = exec.Command(toolchain, buildArgs...)
 		cmd.Env = append(os.Environ(), "GOARCH="+goarch)
+		if goarch == "wasm" {
+			cmd.Env = append(cmd.Env, "GOOS=js")
+		}
 	} else {
 		binName := strings.TrimSuffix(gp.fileName, ".go")
 		oFlag := "-O2"
