@@ -88,7 +88,7 @@ func (gp *GoProgram) Check() error {
 // gp. It assumes that gp was already written to disk using
 // gp.WriteToFile. If the compilatio process fails, it returns gc's
 // error message and the cmd error code.
-func (gp *GoProgram) Compile(toolchain, goarch string, noopt, race bool) (string, error) {
+func (gp *GoProgram) Compile(toolchain, goarch string, noopt, race, ssacheck bool) (string, error) {
 	if gp.file == nil {
 		return "", errors.New("cannot compile program with no *File")
 	}
@@ -101,6 +101,9 @@ func (gp *GoProgram) Compile(toolchain, goarch string, noopt, race bool) (string
 		}
 		if noopt {
 			buildArgs = append(buildArgs, "-N")
+		}
+		if ssacheck {
+			buildArgs = append(buildArgs, "-d=ssa/check/on")
 		}
 		buildArgs = append(buildArgs, gp.fileName)
 		cmd = exec.Command(toolchain, buildArgs...)

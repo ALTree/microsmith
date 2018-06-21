@@ -103,7 +103,7 @@ func testProgramGoTypes(t *testing.T, n int, conf microsmith.ProgramConf) {
 }
 
 func TestDefault(t *testing.T) {
-	testProgramGoTypes(t, 100, microsmith.DefaultConf)
+	testProgramGoTypes(t, 200, microsmith.DefaultConf)
 }
 
 func TestRandConf(t *testing.T) {
@@ -205,7 +205,7 @@ func TestProgramGc(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Could not write to file: %s", err)
 		}
-		out, err := gp.Compile("go", "amd64", false, false)
+		out, err := gp.Compile("go", "amd64", false, false, false)
 		if err != nil {
 			t.Fatalf("Program did not compile: %s\n%s\n%s", out, err, gp)
 		}

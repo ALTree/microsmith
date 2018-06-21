@@ -26,6 +26,7 @@ var (
 	toolchainF = flag.String("gobin", "go", "go toolchain to fuzz")
 	nooptF     = flag.Bool("noopt", false, "compile with optimizations disabled")
 	raceF      = flag.Bool("race", false, "compile with -race")
+	ssacheckF  = flag.Bool("ssacheck", false, "compile with -d=ssa/check/on")
 )
 
 func main() {
@@ -100,7 +101,7 @@ func Fuzz(seed int64) {
 			func() { log.Fatalf("> 30s compilation time for\n%s\n", gp) },
 		)
 
-		out, err := gp.Compile(*toolchainF, *archF, *nooptF, *raceF)
+		out, err := gp.Compile(*toolchainF, *archF, *nooptF, *raceF, *ssacheckF)
 		timeout.Stop()
 		var known bool
 		if err != nil {
