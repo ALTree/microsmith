@@ -15,5 +15,6 @@ to stress-test Go compilers.
 - [#25526: internal compiler error: expected branch at write barrier block](https://github.com/golang/go/issues/25516)
 - [#25741: internal compiler error: not lowered: v15, OffPtr PTR64 PTR64](https://github.com/golang/go/issues/25741)
 - [#25993: internal compiler error: bad AuxInt value with ssacheck enabled](https://github.com/golang/go/issues/25993)
-
+- [#26024: internal compiler error: expected successors of write barrier block to be plain](https://github.com/golang/go/issues/26024)
+- [#26043: internal compiler error: panic during prove](https://github.com/golang/go/issues/26043)
 
