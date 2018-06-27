@@ -56,7 +56,7 @@ func main() {
 }
 
 var crashWhitelist = []*regexp.Regexp{
-	regexp.MustCompile("internal compiler error: panic during layout"),
+	regexp.MustCompile("bvbulkalloc too big"),
 }
 
 // Fuzz with one worker
@@ -95,10 +95,10 @@ func Fuzz(seed int64) {
 		}
 
 		// Interrupt and crash Fuzzer if compilation takes more than
-		// 30 seconds
+		// 60 seconds
 		timeout := time.AfterFunc(
-			30*time.Second,
-			func() { log.Fatalf("> 30s compilation time for\n%s\n", gp) },
+			60*time.Second,
+			func() { log.Fatalf("> 60s compilation time for\n%s\n", gp) },
 		)
 
 		out, err := gp.Compile(*toolchainF, *archF, *nooptF, *raceF, *ssacheckF)
