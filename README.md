@@ -17,4 +17,4 @@ to stress-test Go compilers.
 - [#25993: internal compiler error: bad AuxInt value with ssacheck enabled](https://github.com/golang/go/issues/25993)
 - [#26024: internal compiler error: expected successors of write barrier block to be plain](https://github.com/golang/go/issues/26024)
 - [#26043: internal compiler error: panic during prove](https://github.com/golang/go/issues/26043)
-
+- [#28055: compiler crashes with "VARDEF is not a top level statement" error](https://github.com/golang/go/issues/28055)
