@@ -21,8 +21,9 @@ var DefaultConf = ProgramConf{
 		},
 		MaxBlockVars:  2,
 		MaxBlockStmts: 4,
+		UseFloats:     true,
 		UseArrays:     true,
-		UseStructs:    true,
+		UseStructs:    false,
 	},
 	ExprConf{
 		ExprKindChance: []float64{
@@ -33,9 +34,10 @@ var DefaultConf = ProgramConf{
 		IndexChance:      0.2,
 	},
 	[]Type{
-		BasicType{"int"},
-		BasicType{"bool"},
-		BasicType{"string"},
+		//BasicType{"int"},
+		BasicType{"float64"},
+		// BasicType{"bool"},
+		// BasicType{"string"},
 	},
 }
 
@@ -53,6 +55,7 @@ func RandConf() ProgramConf {
 			MaxBlockVars:  1 + rand.Intn(6),
 			MaxBlockStmts: 1 + rand.Intn(8),
 			UseArrays:     rand.Int63()%2 == 0,
+			UseFloats:     rand.Int63()%2 == 0,
 			UseStructs:    false,
 		},
 		ExprConf{
@@ -71,6 +74,7 @@ func RandConf() ProgramConf {
 	// we'll give each type a 0.75 chance to be enabled
 	types := []Type{
 		BasicType{"int"},
+		BasicType{"float64"},
 		BasicType{"bool"},
 		BasicType{"string"},
 	}
@@ -142,6 +146,7 @@ func (pc *ProgramConf) Check(fix bool) error {
 		if fix {
 			pc.SupportedTypes = []Type{
 				BasicType{"int"},
+				BasicType{"float64"},
 				BasicType{"bool"},
 				BasicType{"string"},
 			}

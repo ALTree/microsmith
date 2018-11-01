@@ -20,6 +20,7 @@ var TestConfigurations = map[string]microsmith.ProgramConf{
 			MaxBlockVars:  1,
 			MaxBlockStmts: 1,
 			UseArrays:     true,
+			UseFloats:     true,
 		},
 		microsmith.ExprConf{
 			ExprKindChance: []float64{
@@ -31,6 +32,7 @@ var TestConfigurations = map[string]microsmith.ProgramConf{
 		},
 		[]microsmith.Type{
 			microsmith.BasicType{"int"},
+			microsmith.BasicType{"float64"},
 			microsmith.BasicType{"bool"},
 			microsmith.BasicType{"string"},
 		},
@@ -45,6 +47,7 @@ var TestConfigurations = map[string]microsmith.ProgramConf{
 			MaxBlockVars:  3,
 			MaxBlockStmts: 4,
 			UseArrays:     true,
+			UseFloats:     true,
 		},
 		microsmith.ExprConf{
 			ExprKindChance: []float64{
@@ -56,6 +59,7 @@ var TestConfigurations = map[string]microsmith.ProgramConf{
 		},
 		[]microsmith.Type{
 			microsmith.BasicType{"int"},
+			microsmith.BasicType{"float64"},
 			microsmith.BasicType{"bool"},
 			microsmith.BasicType{"string"},
 		},
@@ -70,6 +74,7 @@ var TestConfigurations = map[string]microsmith.ProgramConf{
 			MaxBlockVars:  4 * 3,
 			MaxBlockStmts: 8,
 			UseArrays:     true,
+			UseFloats:     true,
 		},
 		microsmith.ExprConf{
 			ExprKindChance: []float64{
@@ -81,6 +86,7 @@ var TestConfigurations = map[string]microsmith.ProgramConf{
 		},
 		[]microsmith.Type{
 			microsmith.BasicType{"int"},
+			microsmith.BasicType{"float64"},
 			microsmith.BasicType{"bool"},
 			microsmith.BasicType{"string"},
 		},
@@ -154,7 +160,7 @@ func TestAllUnary(t *testing.T) {
 func TestOnlyOneType(t *testing.T) {
 	tc := TestConfigurations["medium"]
 
-	for _, typ := range []string{"bool", "int", "string"} {
+	for _, typ := range []string{"bool", "int", "string", "float64"} {
 		t.Run(typ, func(t *testing.T) {
 			tc.SupportedTypes = []microsmith.Type{microsmith.BasicType{typ}}
 			testProgramGoTypes(t, 100, tc)
