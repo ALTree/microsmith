@@ -1,29 +1,17 @@
 package microsmith
 
 import (
-	"fmt"
 	"go/ast"
 	"go/token"
 	"math/rand"
 )
-
-// Scope
-type Scope []*ast.Ident
 
 type StmtBuilder struct {
 	rs    *rand.Rand // randomness source
 	eb    *ExprBuilder
 	depth int // how deep the stmt hyerarchy is
 	conf  ProgramConf
-
-	// Map from Types to Scopes. For example
-	//   map[BasicType{"int"}]
-	// points to a scope (define above) holding all ints variables
-	// that are in scope.
-	inScope map[Type]Scope
-
-	// ???
-	inScopeStructsTypes []StructType
+	scope *Scope
 }
 
 type StmtConf struct {
@@ -58,72 +46,12 @@ func NewStmtBuilder(rs *rand.Rand, conf ProgramConf) *StmtBuilder {
 		sb.conf.MaxBlockVars *= 2
 	}
 
-	// initialize scope structures
-	scpMap := make(map[Type]Scope)
-	for _, t := range sb.conf.SupportedTypes {
-		scpMap[t] = Scope{}
-		if sb.conf.UseArrays {
-			scpMap[ArrOf(t)] = Scope{}
-		}
-	}
+	scope := make(Scope, 0)
+	sb.scope = &scope
 
-	// var scpStr []StructType
-	// for i := 0; i < 4; i++ {
-	// 	stt := RandStructType(sb.conf.SupportedTypes)
-	// 	scpStr = append(scpStr, stt)
-	// 	fmt.Println(stt)
-	// }
-
-	// for k := range scpMap {
-	// 	fmt.Println(k)
-	// }
-	//os.Exit(0)
-
-	sb.inScope = scpMap
-	sb.eb = NewExprBuilder(rs, conf, sb.inScope)
+	sb.eb = NewExprBuilder(rs, conf, sb.scope)
 
 	return sb
-}
-
-// AddIdent adds a new variable of 'kind' type to the global scope, and
-// returns a pointer to it.
-func (sb *StmtBuilder) AddIdent(t Type) *ast.Ident {
-
-	inScope := sb.inScope[t]
-
-	name := fmt.Sprintf("%s%v", Ident(t), len(inScope))
-
-	// build Ident object
-	id := new(ast.Ident)
-	id.Obj = &ast.Object{Kind: ast.Var, Name: name}
-	id.Name = name
-
-	// add to kind scope
-	inScope = append(inScope, id)
-	sb.inScope[t] = inScope
-
-	return id
-}
-
-// DeleteIdent deletes the id-th Ident of type kind from its scope.
-// If id < 0, it deletes the last one that was declared.
-func (sb *StmtBuilder) DeleteIdent(t Type, id int) {
-	inScope := sb.inScope[t]
-	if id < 0 {
-		inScope = inScope[:len(inScope)-1]
-	} else {
-		inScope = append(inScope[:id], inScope[id+1:]...)
-	}
-	sb.inScope[t] = inScope
-}
-
-// RandomInScopeVar returns a random variable from the given Scope.
-// Panics if the scope is empty.
-func RandomInScopeVar(inScope Scope, rs *rand.Rand) *ast.Ident {
-	if len(inScope) == 0 {
-		panic("RandomInScopeVar: empty scope")
-	}
-	return inScope[rs.Intn(len(inScope))]
 }
 
 // ---------------- //
@@ -144,28 +72,20 @@ func RandomInScopeVar(inScope Scope, rs *rand.Rand) *ast.Ident {
 func (sb *StmtBuilder) Stmt() ast.Stmt {
 
 	// types that have at least one variable currently in scope
-	inScopeKinds := []Type{}
-	for _, st := range sb.conf.SupportedTypes {
-		if len(sb.inScope[st]) > 0 {
-			inScopeKinds = append(inScopeKinds, st)
-		}
-		if sb.conf.UseArrays && len(sb.inScope[ArrOf(st)]) > 0 {
-			inScopeKinds = append(inScopeKinds, ArrOf(st))
-		}
-	}
+	typesInScope := sb.scope.InScopeTypes()
 
-	if len(inScopeKinds) == 0 {
+	if len(typesInScope) == 0 {
 		panic("Stmt: no inscope variables")
 	}
 
 	if sb.depth >= sb.conf.MaxStmtDepth {
-		return sb.AssignStmt(RandType(inScopeKinds))
+		return sb.AssignStmt(RandType(typesInScope))
 	}
 	// sb.depth < sb.conf.MaxStmtDepth
 
 	switch RandIndex(sb.conf.StmtKindChance, sb.rs.Float64()) {
 	case 0:
-		return sb.AssignStmt(RandType(inScopeKinds))
+		return sb.AssignStmt(RandType(typesInScope))
 	case 1:
 		sb.depth++
 		s := sb.BlockStmt(0, 0)
@@ -191,20 +111,18 @@ func (sb *StmtBuilder) Stmt() ast.Stmt {
 	}
 }
 
-// Build an assign statement with a random inscope variables of type
-// kind.
+// Build an assign statement with a random variable of type t.
 func (sb *StmtBuilder) AssignStmt(t Type) *ast.AssignStmt {
 	var v interface{}
-
 	switch t := t.(type) {
 	case BasicType:
-		if sb.conf.UseArrays && (len(sb.inScope[ArrOf(t)]) > 0) && sb.rs.Float64() < 0.25 {
+		if sb.conf.UseArrays && sb.scope.TypeInScope(ArrOf(t)) && sb.rs.Float64() < 0.25 {
 			v = sb.eb.IndexExpr(ArrOf(t))
 		} else {
-			v = RandomInScopeVar(sb.inScope[t], sb.rs)
+			v = sb.scope.RandomIdent(t, sb.rs)
 		}
 	default:
-		v = RandomInScopeVar(sb.inScope[t], sb.rs)
+		v = sb.scope.RandomIdent(t, sb.rs)
 	}
 
 	as := &ast.AssignStmt{
@@ -289,7 +207,7 @@ func (sb *StmtBuilder) BlockStmt(nVars, nStmts int) *ast.BlockStmt {
 	// ... and then remove them from scope.
 	for typ, nVar := range nVarsByKind {
 		for i := 0; i < nVar; i++ {
-			sb.DeleteIdent(typ, -1)
+			sb.scope.DeleteIdent(typ, -1)
 		}
 	}
 
@@ -311,7 +229,7 @@ func (sb *StmtBuilder) DeclStmt(nVars int, t Type) (*ast.DeclStmt, []*ast.Ident)
 	// generate nVars ast.Idents
 	idents := make([]*ast.Ident, 0)
 	for i := 0; i < nVars; i++ {
-		idents = append(idents, sb.AddIdent(t))
+		idents = append(idents, sb.scope.NewIdent(t))
 	}
 
 	// generate the type specifier

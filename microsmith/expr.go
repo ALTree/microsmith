@@ -9,10 +9,10 @@ import (
 )
 
 type ExprBuilder struct {
-	rs      *rand.Rand // randomness source
-	depth   int        // how deep the expr hierarchy is
-	conf    ProgramConf
-	inScope map[Type]Scope // passed down by StmtBuilders
+	rs    *rand.Rand // randomness source
+	depth int        // how deep the expr hierarchy is
+	conf  ProgramConf
+	scope *Scope // passed down by StmtBuilders
 }
 
 type ExprConf struct {
@@ -41,11 +41,11 @@ type ExprConf struct {
 	ComparisonChance float64
 }
 
-func NewExprBuilder(rs *rand.Rand, conf ProgramConf, inscp map[Type]Scope) *ExprBuilder {
+func NewExprBuilder(rs *rand.Rand, conf ProgramConf, s *Scope) *ExprBuilder {
 	return &ExprBuilder{
-		rs:      rs,
-		conf:    conf,
-		inScope: inscp,
+		rs:    rs,
+		conf:  conf,
+		scope: s,
 	}
 }
 
@@ -154,7 +154,7 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 // literal.
 func (eb *ExprBuilder) VarOrLit(t Type) interface{} {
 	// return a literal
-	if (len(eb.inScope[t]) == 0 && len(eb.inScope[ArrOf(t)]) == 0) ||
+	if (!eb.scope.TypeInScope(t) && !eb.scope.TypeInScope(ArrOf(t))) ||
 		eb.rs.Float64() < eb.conf.LiteralChance {
 		switch t := t.(type) {
 		case BasicType:
@@ -173,8 +173,8 @@ func (eb *ExprBuilder) VarOrLit(t Type) interface{} {
 	// return a variable
 
 	// index into an array of type []t
-	if (len(eb.inScope[ArrOf(t)]) > 0 && eb.rs.Float64() < eb.conf.IndexChance) ||
-		len(eb.inScope[t]) == 0 {
+	if (eb.scope.TypeInScope(ArrOf(t)) && eb.rs.Float64() < eb.conf.IndexChance) ||
+		!eb.scope.TypeInScope(t) {
 		return eb.IndexExpr(ArrOf(t))
 	}
 
@@ -183,19 +183,14 @@ func (eb *ExprBuilder) VarOrLit(t Type) interface{} {
 		return eb.SliceExpr(t)
 	}
 
-	return RandomInScopeVar(eb.inScope[t], eb.rs)
+	return eb.scope.RandomIdent(t, eb.rs)
 }
 
 // returns an IndexExpr of the given type. Panics if there's no
 // indexable variables of the requsted type in scope.
 // TODO: add max allowed index(?)
 func (eb *ExprBuilder) IndexExpr(t Type) *ast.IndexExpr {
-	inScope := eb.inScope[t]
-	if len(inScope) == 0 {
-		panic("IndexExpr: empty scope")
-	}
-
-	indexable := RandomInScopeVar(inScope, eb.rs)
+	indexable := eb.scope.RandomIdent(t, eb.rs)
 	ie := &ast.IndexExpr{
 		X: indexable,
 		// no Expr for the index (for now), because constant exprs
@@ -212,12 +207,7 @@ func (eb *ExprBuilder) SliceExpr(t Type) *ast.SliceExpr {
 		panic("SliceExpr: un-sliceable type " + t.Name())
 	}
 
-	inScope := eb.inScope[t]
-	if len(inScope) == 0 {
-		panic("SliceExpr: empty scope")
-	}
-
-	sliceable := RandomInScopeVar(inScope, eb.rs)
+	sliceable := eb.scope.RandomIdent(t, eb.rs)
 	se := &ast.SliceExpr{
 		X: sliceable,
 		Low: &ast.BasicLit{
