@@ -15,12 +15,12 @@ type ProgramConf struct {
 
 var DefaultConf = ProgramConf{
 	StmtConf{
-		MaxStmtDepth: 2,
+		MaxStmtDepth: 1,
 		StmtKindChance: []float64{
 			1, 1, 1, 1, 1,
 		},
-		MaxBlockVars:  3,
-		MaxBlockStmts: 8,
+		MaxBlockVars:  2,
+		MaxBlockStmts: 4,
 		UseArrays:     true,
 		UseStructs:    true,
 	},
