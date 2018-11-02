@@ -16,6 +16,9 @@ func f() {
     i int
     f float64
   }
+
+  x = st.i
+  x = i
 }
 `
 	fset := token.NewFileSet()

@@ -116,20 +116,20 @@ func (sb *StmtBuilder) Stmt() ast.Stmt {
 
 // Build an assign statement with a random variable of type t.
 func (sb *StmtBuilder) AssignStmt(t Type) *ast.AssignStmt {
-	var v interface{}
+	var v ast.Expr
 	switch t := t.(type) {
 	case BasicType:
 		if sb.conf.UseArrays && sb.scope.TypeInScope(ArrOf(t)) && sb.rs.Float64() < 0.25 {
 			v = sb.eb.IndexExpr(ArrOf(t))
 		} else {
-			v = sb.scope.RandomIdent(t, sb.rs)
+			v = sb.scope.RandomIdentExpr(t, sb.rs)
 		}
 	default:
-		v = sb.scope.RandomIdent(t, sb.rs)
+		v = sb.scope.RandomIdentExpr(t, sb.rs)
 	}
 
 	as := &ast.AssignStmt{
-		Lhs: []ast.Expr{v.(ast.Expr)},
+		Lhs: []ast.Expr{v},
 		Tok: token.ASSIGN,
 		Rhs: []ast.Expr{sb.eb.Expr(t)},
 	}
@@ -161,43 +161,40 @@ func (sb *StmtBuilder) BlockStmt(nVars, nStmts int) *ast.BlockStmt {
 		nVars = 1 + sb.rs.Intn(sb.conf.MaxBlockVars)
 	}
 
-	// nVarsByKind[kind] holds a random nonnegative integer that
-	// indicates how many new variables of type kind we'll declare in
-	// a minute.
-	nVarsByKind := make(map[Type]int)
-
-	typesNum := len(sb.conf.SupportedTypes)
+	// If we have to also use arrays or structs, increment the number
+	// of variables we'll declare, to make space for them.
 	if sb.conf.UseArrays {
-		typesNum *= 2
+		nVars = int(float64(nVars) * 1.2)
 	}
 
-	rs := RandSplit(nVars, typesNum)
-	for i, v := range sb.conf.SupportedTypes {
-		if sb.conf.UseArrays {
-			nVarsByKind[v] = rs[2*i]
-			nVarsByKind[ArrOf(v)] = rs[2*i+1]
-		} else {
-			nVarsByKind[v] = rs[i]
-		}
-	}
+	rs := RandSplit(nVars, len(sb.conf.SupportedTypes))
 
 	// Declare the new variables mentioned above.  Save their names in
 	// newVars so that later we can generate a statement that uses
 	// them before exiting the block scope (to avoid 'unused' errors).
 	var newVars []*ast.Ident
-	for typ, nVar := range nVarsByKind {
-		if nVar > 0 {
-			newDecl, nv := sb.DeclStmt(nVar, typ)
+	for i, t := range sb.conf.SupportedTypes {
+		if rs[i] > 0 {
+			typ := t
+			// 33% of declaring an array of type t (instead of a
+			// simple variable)
+			if sb.conf.UseArrays && rand.Int63()%3 == 0 {
+				typ = ArrOf(t)
+			}
+			newDecl, nv := sb.DeclStmt(rs[i], typ)
 			stmts = append(stmts, newDecl)
 			newVars = append(newVars, nv...)
 		}
 	}
 
-	// always declare a new struct var (test struct generation)
-	// TODO(alb): integrate with the rest of the code
-	structDecl, structVar := sb.DeclStmt(1, RandStructType(sb.conf.SupportedTypes))
-	stmts = append(stmts, structDecl)
-	newVars = append(newVars, structVar...)
+	// declare a few struct (additional ~20% of nVars)
+	if sb.conf.UseStructs {
+		for i := 0; i < nVars/5; i++ {
+			newDecl, nv := sb.DeclStmt(1, RandStructType(sb.conf.SupportedTypes))
+			stmts = append(stmts, newDecl)
+			newVars = append(newVars, nv...)
+		}
+	}
 
 	// Fill the block's body with statements (but *no* new
 	// declaration: we only use the variables we just declared, plus
@@ -213,11 +210,10 @@ func (sb *StmtBuilder) BlockStmt(nVars, nStmts int) *ast.BlockStmt {
 	if len(newVars) > 0 {
 		stmts = append(stmts, sb.UseVars(newVars))
 	}
+
 	// ... and then remove them from scope.
-	for typ, nVar := range nVarsByKind {
-		for i := 0; i < nVar; i++ {
-			sb.scope.DeleteIdent(typ, -1)
-		}
+	for _, v := range newVars {
+		sb.scope.DeleteIdentByName(v)
 	}
 
 	bs.List = stmts

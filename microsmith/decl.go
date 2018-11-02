@@ -15,11 +15,11 @@ type ProgramConf struct {
 
 var DefaultConf = ProgramConf{
 	StmtConf{
-		MaxStmtDepth: 1,
+		MaxStmtDepth: 2,
 		StmtKindChance: []float64{
 			1, 1, 1, 1, 1,
 		},
-		MaxBlockVars:  2,
+		MaxBlockVars:  4,
 		MaxBlockStmts: 4,
 		UseFloats:     true,
 		UseArrays:     true,
@@ -97,15 +97,31 @@ func (bce ConfError) Error() string {
 }
 
 func (pc *ProgramConf) Check(fix bool) error {
-	// LiteralChance cannot be 0 when IndexChance is 1, because when
-	// the latter is 1 we need a literal to stop descending into an
-	// infinite sequence of nested []. Take
-	//   IA[IA[IA[IA[...]]]]
-	// When IndexChance is 1 we'll never generate an TypeInt variable
-	// to use at the bottom so we need to allow int literals.
+	// IndexChance cannot be zero if we generate arrays
+	if pc.IndexChance == 0 && pc.UseArrays {
+		if fix {
+			pc.IndexChance = 0.2
+		} else {
+			return errors.New("Bad Conf: Expr.IndexChance = 0, UseArrays is true")
+		}
+	}
+
+	// LiteralChance cannot be 0 if we generate arrays, because when
+	// we need a literal or a variable of type int to stop descending
+	// into an infinite sequence of nested []. If we don't have an int
+	// variable in scope and we don't allow literals, we'll get stuck
+	// in a infinite mutual recursion between VarOrLit and IndexExpr.
+	if pc.LiteralChance == 0 && pc.UseArrays {
+		if fix {
+			pc.LiteralChance = 0.2
+		} else {
+			return errors.New("Bad Conf: Expr.LiteralChance = 0, UseArrays is true")
+		}
+	}
+
 	if pc.IndexChance == 1 && pc.LiteralChance == 0 {
 		if fix {
-			pc.LiteralChance = 0.5
+			pc.LiteralChance = 0.2
 		} else {
 			return errors.New("Bad Conf: Expr.IndexChance = 1, Expr.LiteralChance = 0")
 		}

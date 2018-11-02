@@ -145,6 +145,7 @@ func TestNoArrays(t *testing.T) {
 func TestNoLiterals(t *testing.T) {
 	tc := TestConfigurations["medium"]
 	tc.LiteralChance = 0.0
+	tc.UseArrays = false
 	testProgramGoTypes(t, 1000, tc)
 }
 

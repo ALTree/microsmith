@@ -170,10 +170,13 @@ func (eb *ExprBuilder) VarOrLit(t Type) interface{} {
 			}
 		case ArrayType:
 			return eb.CompositeLit(t)
+		case StructType:
+			panic("what")
+			// TODO(alb): implement
 		}
 	}
 
-	// return a variable
+	// return a variable expression
 
 	// index into an array of type []t
 	if (eb.scope.TypeInScope(ArrOf(t)) && eb.rs.Float64() < eb.conf.IndexChance) ||
@@ -186,14 +189,17 @@ func (eb *ExprBuilder) VarOrLit(t Type) interface{} {
 		return eb.SliceExpr(t)
 	}
 
-	return eb.scope.RandomIdent(t, eb.rs)
+	return eb.scope.RandomIdentExpr(t, eb.rs)
 }
 
 // returns an IndexExpr of the given type. Panics if there's no
 // indexable variables of the requsted type in scope.
 // TODO: add max allowed index(?)
 func (eb *ExprBuilder) IndexExpr(t Type) *ast.IndexExpr {
-	indexable := eb.scope.RandomIdent(t, eb.rs)
+	if !t.Sliceable() {
+		panic("IndexExpr: un-indexable type " + t.Name())
+	}
+	indexable := eb.scope.RandomIdentExpr(t, eb.rs)
 	ie := &ast.IndexExpr{
 		X: indexable,
 		// no Expr for the index (for now), because constant exprs
@@ -210,7 +216,7 @@ func (eb *ExprBuilder) SliceExpr(t Type) *ast.SliceExpr {
 		panic("SliceExpr: un-sliceable type " + t.Name())
 	}
 
-	sliceable := eb.scope.RandomIdent(t, eb.rs)
+	sliceable := eb.scope.RandomIdentExpr(t, eb.rs)
 	se := &ast.SliceExpr{
 		X: sliceable,
 		Low: &ast.BasicLit{

@@ -78,6 +78,20 @@ func (s *Scope) DeleteIdent(t Type, id int) {
 	}
 }
 
+func (s *Scope) DeleteIdentByName(name *ast.Ident) {
+	del := -1
+	for i := range *s {
+		if v := (*s)[i]; v.Name.Name == name.Name {
+			del = i
+			break
+		}
+	}
+
+	if del != -1 {
+		*s = append((*s)[:del], (*s)[del+1:]...)
+	}
+}
+
 // TypeInScope returns true if at least one variable of Type t is
 // currently in scope.
 func (ls Scope) TypeInScope(t Type) bool {
@@ -95,8 +109,10 @@ func (ls Scope) InScopeTypes() []Type {
 	tMap := make(map[Type]struct{})
 	for _, v := range ls {
 		switch v.Type.(type) {
-		case StructType: // TODO(alb): fix
-			continue
+		case StructType:
+			for _, t := range v.Type.(StructType).Ftypes {
+				tMap[t] = struct{}{}
+			}
 		default:
 			tMap[v.Type] = struct{}{}
 		}
@@ -125,4 +141,42 @@ func (ls Scope) RandomIdent(t Type, rs *rand.Rand) *ast.Ident {
 	}
 
 	return ts[rs.Intn(len(ts))].Name
+}
+
+// return an expression made of an ident of the given type
+func (ls Scope) RandomIdentExpr(t Type, rs *rand.Rand) ast.Expr {
+
+	// we'll collect expressions of two types:
+	//   1. simple ast.Expr wrapping an ast.Ident
+	//   2. ast.SelectorExpr wrapping a struct field access
+	exprs := make([]ast.Expr, 0)
+	for _, v := range ls {
+		switch v.Type.(type) {
+		case StructType:
+			// loop over the struct's fields, collect selector exprs
+			// for the one of type t
+			for i, ft := range v.Type.(StructType).Ftypes {
+				if ft == t {
+					exprs = append(
+						exprs,
+						&ast.SelectorExpr{
+							X:   v.Name,
+							Sel: &ast.Ident{Name: v.Type.(StructType).Fnames[i]},
+						},
+					)
+				}
+			}
+		default:
+			// simple variable, wrap it in an ast.Expr
+			if v.Type == t {
+				exprs = append(exprs, v.Name)
+			}
+		}
+	}
+
+	if len(exprs) == 0 {
+		panic("Empty scope")
+	}
+
+	return exprs[rs.Intn(len(exprs))]
 }
