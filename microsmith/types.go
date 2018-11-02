@@ -30,6 +30,8 @@ func Ident(t Type) string {
 		return "A" + Ident(t.Etype)
 	case FuncType:
 		return "F"
+	case StructType: // TODO(alb): structs needs a better naming system
+		return "ST"
 	default:
 		panic("Ident: unknown type " + t.Name())
 	}

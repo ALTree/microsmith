@@ -23,7 +23,7 @@ var DefaultConf = ProgramConf{
 		MaxBlockStmts: 4,
 		UseFloats:     true,
 		UseArrays:     true,
-		UseStructs:    false,
+		UseStructs:    true,
 	},
 	ExprConf{
 		ExprKindChance: []float64{
@@ -34,10 +34,10 @@ var DefaultConf = ProgramConf{
 		IndexChance:      0.2,
 	},
 	[]Type{
-		//BasicType{"int"},
+		BasicType{"int"},
 		BasicType{"float64"},
-		// BasicType{"bool"},
-		// BasicType{"string"},
+		BasicType{"bool"},
+		BasicType{"string"},
 	},
 }
 
@@ -56,7 +56,7 @@ func RandConf() ProgramConf {
 			MaxBlockStmts: 1 + rand.Intn(8),
 			UseArrays:     rand.Int63()%2 == 0,
 			UseFloats:     rand.Int63()%2 == 0,
-			UseStructs:    false,
+			UseStructs:    rand.Int63()%2 == 0,
 		},
 		ExprConf{
 			ExprKindChance: []float64{

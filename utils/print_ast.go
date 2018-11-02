@@ -12,9 +12,10 @@ func main() {
 package main
 
 func f() {
-  var x int
-  y = x + 1
-  y = S.N + 2
+  var st struct {
+    i int
+    f float64
+  }
 }
 `
 	fset := token.NewFileSet()

@@ -21,6 +21,7 @@ var TestConfigurations = map[string]microsmith.ProgramConf{
 			MaxBlockStmts: 1,
 			UseArrays:     true,
 			UseFloats:     true,
+			UseStructs:    true,
 		},
 		microsmith.ExprConf{
 			ExprKindChance: []float64{
@@ -48,6 +49,7 @@ var TestConfigurations = map[string]microsmith.ProgramConf{
 			MaxBlockStmts: 4,
 			UseArrays:     true,
 			UseFloats:     true,
+			UseStructs:    true,
 		},
 		microsmith.ExprConf{
 			ExprKindChance: []float64{
@@ -75,6 +77,7 @@ var TestConfigurations = map[string]microsmith.ProgramConf{
 			MaxBlockStmts: 8,
 			UseArrays:     true,
 			UseFloats:     true,
+			UseStructs:    true,
 		},
 		microsmith.ExprConf{
 			ExprKindChance: []float64{

@@ -193,6 +193,12 @@ func (sb *StmtBuilder) BlockStmt(nVars, nStmts int) *ast.BlockStmt {
 		}
 	}
 
+	// always declare a new struct var (test struct generation)
+	// TODO(alb): integrate with the rest of the code
+	structDecl, structVar := sb.DeclStmt(1, RandStructType(sb.conf.SupportedTypes))
+	stmts = append(stmts, structDecl)
+	newVars = append(newVars, structVar...)
+
 	// Fill the block's body with statements (but *no* new
 	// declaration: we only use the variables we just declared, plus
 	// the ones in scope when we enter the block).
@@ -243,6 +249,8 @@ func (sb *StmtBuilder) DeclStmt(nVars int, t Type) (*ast.DeclStmt, []*ast.Ident)
 		typ = &ast.Ident{Name: t.Name()}
 	case ArrayType:
 		typ = &ast.ArrayType{Elt: &ast.Ident{Name: t.Base().Name()}}
+	case StructType:
+		typ = BuildStructAst(t)
 	default:
 		panic("DeclStmt: bad type " + t.Name())
 	}
@@ -258,6 +266,25 @@ func (sb *StmtBuilder) DeclStmt(nVars int, t Type) (*ast.DeclStmt, []*ast.Ident)
 	ds.Decl = gd
 
 	return ds, idents
+}
+
+func BuildStructAst(t StructType) *ast.StructType {
+
+	fields := make([]*ast.Field, 0, len(t.Fnames))
+
+	for i := range t.Fnames {
+		field := &ast.Field{
+			Names: []*ast.Ident{&ast.Ident{Name: t.Fnames[i]}},
+			Type:  &ast.Ident{Name: t.Ftypes[i].Name()},
+		}
+		fields = append(fields, field)
+	}
+
+	return &ast.StructType{
+		Fields: &ast.FieldList{
+			List: fields,
+		},
+	}
 }
 
 func (sb *StmtBuilder) ForStmt() *ast.ForStmt {

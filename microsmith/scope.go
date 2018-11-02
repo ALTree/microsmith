@@ -35,9 +35,20 @@ func (ls Scope) String() string {
 // pointer to it
 func (s *Scope) NewIdent(t Type) *ast.Ident {
 	tc := 0
-	for _, v := range *s {
-		if v.Type == t {
-			tc++
+	switch t.(type) {
+	case StructType:
+		// we increment at every struct var, even if technically they
+		// are not the same type
+		for _, v := range *s {
+			if _, ok := v.Type.(StructType); ok {
+				tc++
+			}
+		}
+	default:
+		for _, v := range *s {
+			if v.Type == t {
+				tc++
+			}
 		}
 	}
 	name := fmt.Sprintf("%s%v", Ident(t), tc)
@@ -83,7 +94,12 @@ func (ls Scope) TypeInScope(t Type) bool {
 func (ls Scope) InScopeTypes() []Type {
 	tMap := make(map[Type]struct{})
 	for _, v := range ls {
-		tMap[v.Type] = struct{}{}
+		switch v.Type.(type) {
+		case StructType: // TODO(alb): fix
+			continue
+		default:
+			tMap[v.Type] = struct{}{}
+		}
 	}
 
 	tArr := make([]Type, 0, len(tMap))
