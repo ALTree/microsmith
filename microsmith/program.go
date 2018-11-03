@@ -107,7 +107,7 @@ func (gp *GoProgram) Compile(toolchain, goarch string, noopt, race, ssacheck boo
 		}
 		buildArgs = append(buildArgs, gp.fileName)
 		cmd = exec.Command(toolchain, buildArgs...)
-		cmd.Env = append(os.Environ(), "GOARCH="+goarch)
+		cmd.Env = append(os.Environ(), "GOOS=linux", "GOARCH="+goarch)
 		if goarch == "wasm" {
 			cmd.Env = append(cmd.Env, "GOOS=js")
 		}

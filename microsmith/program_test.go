@@ -20,7 +20,6 @@ var TestConfigurations = map[string]microsmith.ProgramConf{
 			MaxBlockVars:  1,
 			MaxBlockStmts: 1,
 			UseArrays:     true,
-			UseFloats:     true,
 			UseStructs:    true,
 		},
 		microsmith.ExprConf{
@@ -48,7 +47,6 @@ var TestConfigurations = map[string]microsmith.ProgramConf{
 			MaxBlockVars:  3,
 			MaxBlockStmts: 4,
 			UseArrays:     true,
-			UseFloats:     true,
 			UseStructs:    true,
 		},
 		microsmith.ExprConf{
@@ -76,7 +74,6 @@ var TestConfigurations = map[string]microsmith.ProgramConf{
 			MaxBlockVars:  4 * 3,
 			MaxBlockStmts: 8,
 			UseArrays:     true,
-			UseFloats:     true,
 			UseStructs:    true,
 		},
 		microsmith.ExprConf{

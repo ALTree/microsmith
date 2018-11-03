@@ -33,9 +33,6 @@ type StmtConf struct {
 	// whether to declare and use array variables
 	UseArrays bool
 
-	// whether to use float numbers
-	UseFloats bool
-
 	// whether to declare and use structs
 	UseStructs bool
 }

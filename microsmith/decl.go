@@ -19,9 +19,8 @@ var DefaultConf = ProgramConf{
 		StmtKindChance: []float64{
 			1, 1, 1, 1, 1,
 		},
-		MaxBlockVars:  4,
-		MaxBlockStmts: 4,
-		UseFloats:     true,
+		MaxBlockVars:  6,
+		MaxBlockStmts: 6,
 		UseArrays:     true,
 		UseStructs:    true,
 	},
@@ -55,7 +54,6 @@ func RandConf() ProgramConf {
 			MaxBlockVars:  1 + rand.Intn(6),
 			MaxBlockStmts: 1 + rand.Intn(8),
 			UseArrays:     rand.Int63()%2 == 0,
-			UseFloats:     rand.Int63()%2 == 0,
 			UseStructs:    rand.Int63()%2 == 0,
 		},
 		ExprConf{
