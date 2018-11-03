@@ -36,6 +36,8 @@ func (ls Scope) String() string {
 func (s *Scope) NewIdent(t Type) *ast.Ident {
 	tc := 0
 	switch t.(type) {
+	case FuncType:
+		panic("NewIdent: not for building functions")
 	case StructType:
 		// we increment at every struct var, even if technically they
 		// are not the same type
@@ -61,21 +63,6 @@ func (s *Scope) NewIdent(t Type) *ast.Ident {
 	*s = append(*s, Variable{t, id})
 
 	return id
-}
-
-// DeleteIdent deletes the id-th Ident of type kind from the scope.
-// If id < 0, it deletes the last one that was declared.
-func (s *Scope) DeleteIdent(t Type, id int) {
-	var lastI int = -1
-	for i := range *s {
-		if v := (*s)[i]; v.Type == t {
-			lastI = i
-		}
-	}
-
-	if lastI != -1 {
-		*s = append((*s)[:lastI], (*s)[lastI+1:]...)
-	}
 }
 
 func (s *Scope) DeleteIdentByName(name *ast.Ident) {
@@ -109,6 +96,9 @@ func (ls Scope) InScopeTypes() []Type {
 	tMap := make(map[Type]struct{})
 	for _, v := range ls {
 		switch v.Type.(type) {
+		case FuncType:
+			// functions are handled differently
+			continue
 		case StructType:
 			for _, t := range v.Type.(StructType).Ftypes {
 				tMap[t] = struct{}{}
@@ -124,6 +114,23 @@ func (ls Scope) InScopeTypes() []Type {
 	}
 
 	return tArr
+}
+
+// returns a list of function that are in scope and have return type t
+func (ls Scope) InScopeFuncs(t Type) []Variable {
+	funcs := make([]Variable, 0)
+	for _, v := range ls {
+		switch v.Type.(type) {
+		case FuncType:
+			if v.Type.(FuncType).Ret[0] == t {
+				funcs = append(funcs, v)
+			}
+		default:
+			continue
+		}
+	}
+
+	return funcs
 }
 
 // RandomIdent returns a random in-scope identifier of type t. It

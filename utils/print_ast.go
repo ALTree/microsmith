@@ -12,13 +12,8 @@ func main() {
 package main
 
 func f() {
-  var st struct {
-    i int
-    f float64
-  }
-
-  x = st.i
-  x = i
+  var i int
+  i = int(3.2)
 }
 `
 	fset := token.NewFileSet()

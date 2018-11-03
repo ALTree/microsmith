@@ -47,6 +47,28 @@ func NewStmtBuilder(rs *rand.Rand, conf ProgramConf) *StmtBuilder {
 	}
 
 	scope := make(Scope, 0)
+
+	// pre-declared function are always in scope
+	scope = append(scope, Variable{
+		LenFun,
+		&ast.Ident{Name: LenFun.Name()}},
+	)
+	scope = append(scope,
+		Variable{
+			FloatConv,
+			&ast.Ident{Name: FloatConv.Name()},
+		})
+
+	// int() conversion are not enabled because int(Expr()) will fail
+	// at compile-time if Expr() is a float64 expression made up of
+	// only literals.
+	//
+	// scope = append(scope,
+	// 	Variable{
+	// 		IntConv,
+	// 		&ast.Ident{Name: IntConv.Name()},
+	// 	})
+
 	sb.scope = &scope
 
 	sb.eb = NewExprBuilder(rs, conf, sb.scope)

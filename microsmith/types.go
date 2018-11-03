@@ -140,4 +140,20 @@ func (ft FuncType) Sliceable() bool {
 	return false
 }
 
-var LenFun FuncType = FuncType{"len", nil, []Type{BasicType{"int"}}}
+var LenFun FuncType = FuncType{
+	"len",
+	nil, // len args are handled separately
+	[]Type{BasicType{"int"}},
+}
+
+var FloatConv FuncType = FuncType{
+	"float64",
+	[]Type{BasicType{"int"}}, // for now we only convert ints
+	[]Type{BasicType{"float64"}},
+}
+
+var IntConv FuncType = FuncType{
+	"int",
+	[]Type{BasicType{"float64"}}, // for now we only convert ints
+	[]Type{BasicType{"int"}},
+}

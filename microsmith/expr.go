@@ -132,11 +132,17 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 		case 1: // binary
 			expr = eb.BinaryExpr(t)
 		case 2: // function call
-			if t.Name() == "int" {
-				// only have len for now
+			if len(eb.scope.InScopeFuncs(t)) > 0 {
 				expr = eb.CallExpr(t)
 			} else {
-				expr = eb.BinaryExpr(t)
+				// no function in scope with return type t, fallback
+				// to generating an Expr.
+				if t.Name() == "string" || eb.conf.ExprConf.ExprKindChance[0] < eb.rs.Float64() {
+					expr = eb.BinaryExpr(t)
+				} else {
+					expr = eb.UnaryExpr(t)
+				}
+
 			}
 		default:
 			panic("Expr: bad RandIndex value")
@@ -219,9 +225,11 @@ func (eb *ExprBuilder) SliceExpr(t Type) *ast.SliceExpr {
 	sliceable := eb.scope.RandomIdentExpr(t, eb.rs)
 	se := &ast.SliceExpr{
 		X: sliceable,
+		// no Expr for the Low and High (for now), because constant
+		// exprs that end up negative cause compilation errors.
 		Low: &ast.BasicLit{
 			Kind:  token.INT,
-			Value: strconv.Itoa(eb.rs.Intn(9)),
+			Value: strconv.Itoa(0),
 		},
 		High: &ast.BasicLit{
 			Kind:  token.INT,
@@ -307,30 +315,59 @@ func (eb *ExprBuilder) BinaryExpr(t Type) *ast.BinaryExpr {
 // return value of type t. For now, we only call len
 // TODO: generalize, factor out len code
 func (eb *ExprBuilder) CallExpr(t Type) *ast.CallExpr {
-	switch t := t.(type) {
-	case BasicType:
-		if t.Name() == "int" {
-			// for a len call, we want a string or an array
-			var typ Type
-			if !IsEnabled("string", eb.conf) || eb.rs.Float64() < 0.5 {
-				// choose an array of random type
-				typ = ArrayType{RandType(eb.conf.SupportedTypes)}
-			} else {
-				// call len on string
-				typ = BasicType{"string"}
-			}
-			ce := &ast.CallExpr{
-				Fun: &ast.Ident{Name: LenFun.Name()},
-				Args: []ast.Expr{
-					// TODO: why not Expr?
-					eb.VarOrLit(typ).(ast.Expr),
-				},
-			}
-			return ce
-		} else {
-			panic("CallExpr: unimplemented type " + t.Name())
-		}
-	default:
-		panic("CallExpr: unimplemented type " + t.Name())
+
+	// functions that are in scope and have return type t
+	funcs := eb.scope.InScopeFuncs(t)
+
+	if len(funcs) == 0 {
+		// this should be handled by the caller
+		panic("CallExpr: no function in scope")
 	}
+
+	// choose one of them at random
+	fun := funcs[eb.rs.Intn(len(funcs))]
+
+	// len() calls are handled separately, since the argument can be
+	// either an array or a string
+	if fun.Name.Name == "len" {
+		return eb.MakeLenCall()
+	}
+
+	if fun.Name.Name == "float64" {
+		ce := &ast.CallExpr{
+			Fun:  &ast.Ident{Name: "float64"},
+			Args: []ast.Expr{eb.Expr(BasicType{"int"})},
+		}
+		return ce
+	}
+
+	// not enabled at the moment; see comment in NewStmtBuilder().
+	if fun.Name.Name == "int" {
+		ce := &ast.CallExpr{
+			Fun:  &ast.Ident{Name: "int"},
+			Args: []ast.Expr{eb.Expr(BasicType{"float64"})},
+		}
+		return ce
+	}
+
+	// TODO(alb): handle generic function types
+
+	panic("unreachable")
+}
+
+func (eb *ExprBuilder) MakeLenCall() *ast.CallExpr {
+	// for a len call, we want a string or an array
+	var typ Type
+	if !IsEnabled("string", eb.conf) || eb.rs.Float64() < 0.5 {
+		// choose an array of random type
+		typ = ArrayType{RandType(eb.conf.SupportedTypes)}
+	} else {
+		// call len on string
+		typ = BasicType{"string"}
+	}
+	ce := &ast.CallExpr{
+		Fun:  &ast.Ident{Name: "len"},
+		Args: []ast.Expr{eb.VarOrLit(typ).(ast.Expr)},
+	}
+	return ce
 }
