@@ -29,7 +29,7 @@ func Ident(t Type) string {
 	case ArrayType:
 		return "A" + Ident(t.Etype)
 	case FuncType:
-		return "F"
+		return "FNC"
 	case StructType: // TODO(alb): structs needs a better naming system
 		return "ST"
 	default:

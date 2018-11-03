@@ -35,6 +35,7 @@ var DefaultConf = ProgramConf{
 	[]Type{
 		BasicType{"int"},
 		BasicType{"float64"},
+		BasicType{"complex128"},
 		BasicType{"bool"},
 		BasicType{"string"},
 	},
@@ -73,6 +74,7 @@ func RandConf() ProgramConf {
 	types := []Type{
 		BasicType{"int"},
 		BasicType{"float64"},
+		BasicType{"complex128"},
 		BasicType{"bool"},
 		BasicType{"string"},
 	}
@@ -161,6 +163,7 @@ func (pc *ProgramConf) Check(fix bool) error {
 			pc.SupportedTypes = []Type{
 				BasicType{"int"},
 				BasicType{"float64"},
+				BasicType{"complex128"},
 				BasicType{"bool"},
 				BasicType{"string"},
 			}

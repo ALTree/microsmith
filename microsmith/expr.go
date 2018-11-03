@@ -63,6 +63,10 @@ func (eb *ExprBuilder) BasicLit(t Type) *ast.BasicLit {
 	case "float64":
 		bl.Kind = token.FLOAT
 		bl.Value = strconv.FormatFloat(100*(eb.rs.Float64()), 'f', 3, 64)
+	case "complex128":
+		// There's no complex basiclit, generate an IMAG
+		bl.Kind = token.IMAG
+		bl.Value = strconv.FormatFloat(10*(eb.rs.Float64()), 'f', 3, 64) + "i"
 	case "bool":
 		panic("BasicLit: bool is not a BasicLit")
 	case "string":
@@ -167,7 +171,7 @@ func (eb *ExprBuilder) VarOrLit(t Type) interface{} {
 		eb.rs.Float64() < eb.conf.LiteralChance {
 		switch t := t.(type) {
 		case BasicType:
-			if n := t.Name(); n == "int" || n == "string" || n == "float64" {
+			if n := t.Name(); n == "int" || n == "string" || n == "float64" || n == "complex128" {
 				return eb.BasicLit(t)
 			} else if n == "bool" {
 				return &ast.Ident{Name: RandString([]string{"true", "false"})}
@@ -244,7 +248,7 @@ func (eb *ExprBuilder) UnaryExpr(t Type) *ast.UnaryExpr {
 	ue := new(ast.UnaryExpr)
 
 	switch t.Name() {
-	case "int", "float64":
+	case "int", "float64", "complex128":
 		ue.Op = eb.chooseToken([]token.Token{token.ADD, token.SUB})
 	case "bool":
 		ue.Op = eb.chooseToken([]token.Token{token.NOT})
@@ -268,7 +272,7 @@ func (eb *ExprBuilder) BinaryExpr(t Type) *ast.BinaryExpr {
 
 	// First choose the operator...
 	switch t.Name() {
-	case "int", "float64":
+	case "int", "float64", "complex128":
 		ue.Op = eb.chooseToken([]token.Token{token.ADD, token.SUB})
 	case "bool":
 		if eb.rs.Float64() < eb.conf.ComparisonChance {
