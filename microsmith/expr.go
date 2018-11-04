@@ -220,11 +220,27 @@ func (eb *ExprBuilder) IndexExpr(t Type) *ast.IndexExpr {
 		panic("IndexExpr: un-indexable type " + t.Name())
 	}
 	indexable := eb.scope.RandomIdentExpr(t, eb.rs)
+
+	var index ast.Expr
+
+	// We can't just generate an Expr for the index, because constant
+	// exprs that end up negative cause compilation errors. If there's
+	// at least one int variable in scope, generate 'I + Expr()',
+	// which is guaranteed not to be constant. If not, just to use a
+	// literal.
+	if eb.scope.TypeInScope(BasicType{"int"}) &&
+		1/math.Pow(1.2, float64(eb.depth)) >= eb.rs.Float64() {
+		index = &ast.BinaryExpr{
+			X:  eb.scope.RandomIdentExpr(BasicType{"int"}, eb.rs),
+			Op: token.ADD,
+			Y:  eb.Expr(BasicType{"int"}),
+		}
+	} else {
+		index = eb.VarOrLit(BasicType{"int"}).(ast.Expr)
+	}
 	ie := &ast.IndexExpr{
-		X: indexable,
-		// no Expr for the index (for now), because constant exprs
-		// that end up negative cause compilation errors.
-		Index: eb.VarOrLit(BasicType{"int"}).(ast.Expr),
+		X:     indexable,
+		Index: index,
 	}
 
 	return ie
@@ -237,18 +253,40 @@ func (eb *ExprBuilder) SliceExpr(t Type) *ast.SliceExpr {
 	}
 
 	sliceable := eb.scope.RandomIdentExpr(t, eb.rs)
-	se := &ast.SliceExpr{
-		X: sliceable,
-		// no Expr for the Low and High (for now), because constant
-		// exprs that end up negative cause compilation errors.
-		Low: &ast.BasicLit{
+	var low, high ast.Expr
+
+	// We can't just generate an Expr for low and high, because
+	// constant exprs that end up being negative cause compilation
+	// errors. If there's at least one int variable in scope, generate
+	// 'I + Expr()', which is guaranteed not to be constant. If not,
+	// just to use literals.
+	if eb.scope.TypeInScope(BasicType{"int"}) &&
+		1/math.Pow(1.2, float64(eb.depth)) >= eb.rs.Float64() {
+		low = &ast.BinaryExpr{
+			X:  eb.scope.RandomIdentExpr(BasicType{"int"}, eb.rs),
+			Op: token.ADD,
+			Y:  eb.Expr(BasicType{"int"}),
+		}
+		high = &ast.BinaryExpr{
+			X:  eb.scope.RandomIdentExpr(BasicType{"int"}, eb.rs),
+			Op: token.ADD,
+			Y:  eb.Expr(BasicType{"int"}),
+		}
+	} else {
+		low = &ast.BasicLit{
 			Kind:  token.INT,
-			Value: strconv.Itoa(0),
-		},
-		High: &ast.BasicLit{
+			Value: strconv.Itoa(eb.rs.Intn(8)),
+		}
+		high = &ast.BasicLit{
 			Kind:  token.INT,
 			Value: strconv.Itoa(8 + eb.rs.Intn(17)),
-		},
+		}
+	}
+
+	se := &ast.SliceExpr{
+		X:    sliceable,
+		Low:  low,
+		High: high,
 	}
 
 	return se
