@@ -21,6 +21,7 @@ var TestConfigurations = map[string]microsmith.ProgramConf{
 			MaxBlockStmts: 1,
 			UseArrays:     true,
 			UseStructs:    true,
+			UsePointers:   true,
 		},
 		microsmith.ExprConf{
 			ExprKindChance: []float64{
@@ -49,6 +50,7 @@ var TestConfigurations = map[string]microsmith.ProgramConf{
 			MaxBlockStmts: 4,
 			UseArrays:     true,
 			UseStructs:    true,
+			UsePointers:   true,
 		},
 		microsmith.ExprConf{
 			ExprKindChance: []float64{
@@ -73,10 +75,11 @@ var TestConfigurations = map[string]microsmith.ProgramConf{
 			StmtKindChance: []float64{
 				1, 1, 1, 1, 1,
 			},
-			MaxBlockVars:  4 * 3,
+			MaxBlockVars:  12,
 			MaxBlockStmts: 8,
 			UseArrays:     true,
 			UseStructs:    true,
+			UsePointers:   true,
 		},
 		microsmith.ExprConf{
 			ExprKindChance: []float64{
@@ -119,7 +122,7 @@ func TestRandConf(t *testing.T) {
 	for i := 0; i < 100; i++ {
 		conf := microsmith.RandConf()
 		// leave this (useful for debugging)
-		// fmt.Printf("%+v\n\n", conf)
+		//fmt.Printf("%+v\n\n", conf)
 		testProgramGoTypes(t, 10, conf)
 	}
 }
@@ -139,7 +142,19 @@ func TestBig(t *testing.T) {
 func TestNoArrays(t *testing.T) {
 	tc := TestConfigurations["medium"]
 	tc.UseArrays = false
-	testProgramGoTypes(t, 1000, tc)
+	testProgramGoTypes(t, 500, tc)
+}
+
+func TestNoStructs(t *testing.T) {
+	tc := TestConfigurations["medium"]
+	tc.UseStructs = false
+	testProgramGoTypes(t, 500, tc)
+}
+
+func TestNoPointers(t *testing.T) {
+	tc := TestConfigurations["medium"]
+	tc.UsePointers = false
+	testProgramGoTypes(t, 500, tc)
 }
 
 func TestNoLiterals(t *testing.T) {

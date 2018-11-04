@@ -83,8 +83,17 @@ func (s *Scope) DeleteIdentByName(name *ast.Ident) {
 // currently in scope.
 func (ls Scope) TypeInScope(t Type) bool {
 	for _, v := range ls {
-		if v.Type == t {
-			return true
+		switch v.Type.(type) {
+		case StructType:
+			for _, ft := range v.Type.(StructType).Ftypes {
+				if ft == t {
+					return true
+				}
+			}
+		default:
+			if v.Type == t {
+				return true
+			}
 		}
 	}
 	return false
@@ -133,23 +142,6 @@ func (ls Scope) InScopeFuncs(t Type) []Variable {
 	return funcs
 }
 
-// RandomIdent returns a random in-scope identifier of type t. It
-// panics if no variable of Type t is in scope.
-func (ls Scope) RandomIdent(t Type, rs *rand.Rand) *ast.Ident {
-	ts := make([]Variable, 0)
-	for _, v := range ls {
-		if v.Type == t {
-			ts = append(ts, v)
-		}
-	}
-
-	if len(ts) == 0 {
-		panic("Empty scope")
-	}
-
-	return ts[rs.Intn(len(ts))].Name
-}
-
 // return an expression made of an ident of the given type
 func (ls Scope) RandomIdentExpr(t Type, rs *rand.Rand) ast.Expr {
 
@@ -182,6 +174,7 @@ func (ls Scope) RandomIdentExpr(t Type, rs *rand.Rand) ast.Expr {
 	}
 
 	if len(exprs) == 0 {
+		// it's up the the caller to make sure the scope is not empty
 		panic("Empty scope")
 	}
 

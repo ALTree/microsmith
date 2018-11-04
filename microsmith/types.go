@@ -32,6 +32,8 @@ func Ident(t Type) string {
 		return "FNC"
 	case StructType: // TODO(alb): structs needs a better naming system
 		return "ST"
+	case PointerType:
+		return "P" + Ident(t.Btype)
 	default:
 		panic("Ident: unknown type " + t.Name())
 	}
@@ -51,6 +53,29 @@ func (bt BasicType) Name() string {
 
 func (bt BasicType) Sliceable() bool {
 	return bt.N == "string"
+}
+
+// ---------------- //
+//      pointer     //
+// ---------------- //
+type PointerType struct {
+	Btype Type
+}
+
+func (pt PointerType) Name() string {
+	return "*" + pt.Btype.Name()
+}
+
+func (pt PointerType) Base() Type {
+	return pt.Btype
+}
+
+func (pt PointerType) Sliceable() bool {
+	return false
+}
+
+func PointerOf(t Type) PointerType {
+	return PointerType{t}
 }
 
 // ---------------- //

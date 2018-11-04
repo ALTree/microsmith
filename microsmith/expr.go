@@ -154,6 +154,17 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 	case ArrayType:
 		// no unary or binary operators for composite types
 		expr = eb.CompositeLit(t)
+	case PointerType:
+		if !eb.scope.TypeInScope(t.Base()) {
+			//nothing is scope we could take the address of, just
+			//return a nil literal
+			expr = &ast.Ident{Name: "nil"}
+		} else {
+			expr = &ast.UnaryExpr{
+				Op: token.AND,
+				X:  eb.scope.RandomIdentExpr(t.Base(), eb.rs),
+			}
+		}
 	default:
 		panic("Expr: bad type " + t.Name())
 	}
@@ -180,9 +191,8 @@ func (eb *ExprBuilder) VarOrLit(t Type) interface{} {
 			}
 		case ArrayType:
 			return eb.CompositeLit(t)
-		case StructType:
-			panic("what")
-			// TODO(alb): implement
+		default:
+			// do nothing
 		}
 	}
 
@@ -246,6 +256,16 @@ func (eb *ExprBuilder) SliceExpr(t Type) *ast.SliceExpr {
 
 func (eb *ExprBuilder) UnaryExpr(t Type) *ast.UnaryExpr {
 	ue := new(ast.UnaryExpr)
+
+	// if there are pointers to t in scope, generate a t by
+	// dereferencing it with chance 0.33
+	if eb.rs.Int63()%3 == 0 && eb.scope.TypeInScope(PointerOf(t)) {
+		ue.Op = token.MUL
+		// can't use Expr because if we get a 'nil' literal we won't
+		// be allowed to dereference it.
+		ue.X = eb.VarOrLit(PointerOf(t)).(ast.Expr)
+		return ue
+	}
 
 	switch t.Name() {
 	case "int", "float64", "complex128":

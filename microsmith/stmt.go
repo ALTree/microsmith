@@ -35,6 +35,9 @@ type StmtConf struct {
 
 	// whether to declare and use structs
 	UseStructs bool
+
+	// whether to declare and use pointer types
+	UsePointers bool
 }
 
 func NewStmtBuilder(rs *rand.Rand, conf ProgramConf) *StmtBuilder {
@@ -180,10 +183,13 @@ func (sb *StmtBuilder) BlockStmt(nVars, nStmts int) *ast.BlockStmt {
 		nVars = 1 + sb.rs.Intn(sb.conf.MaxBlockVars)
 	}
 
-	// If we have to also use arrays or structs, increment the number
-	// of variables we'll declare, to make space for them.
-	if sb.conf.UseArrays {
-		nVars = int(float64(nVars) * 1.2)
+	var ns int = 0 // number of struct we'll declare
+
+	// If structs are enabled, 20% of our declaration will be of
+	// structs
+	if sb.conf.UseStructs {
+		ns = nVars / 5
+		nVars -= ns
 	}
 
 	rs := RandSplit(nVars, len(sb.conf.SupportedTypes))
@@ -195,24 +201,52 @@ func (sb *StmtBuilder) BlockStmt(nVars, nStmts int) *ast.BlockStmt {
 	for i, t := range sb.conf.SupportedTypes {
 		if rs[i] > 0 {
 			typ := t
-			// 33% of declaring an array of type t (instead of a
-			// simple variable)
-			if sb.conf.UseArrays && rand.Int63()%3 == 0 {
-				typ = ArrOf(t)
+
+			// respectively the number of plain, array, and pointer
+			// variables of type t we'll declare
+			n, na, np := rs[i], 0, 0
+
+			// If arrays are enabled, 25% of our declaration will be of arrays
+			if sb.conf.UseArrays {
+				na = n / 4
 			}
-			newDecl, nv := sb.DeclStmt(rs[i], typ)
-			stmts = append(stmts, newDecl)
-			newVars = append(newVars, nv...)
+
+			// If pointers are enabled, 25% of our declaration will be
+			// of pointer type
+			if sb.conf.UseArrays {
+				np = n / 4
+			}
+
+			n -= (na + np)
+
+			if n > 0 {
+				newDecl, nv := sb.DeclStmt(n, typ)
+				stmts = append(stmts, newDecl)
+				newVars = append(newVars, nv...)
+			}
+
+			if na > 0 {
+				newDecl, nv := sb.DeclStmt(na, ArrOf(typ))
+				stmts = append(stmts, newDecl)
+				newVars = append(newVars, nv...)
+			}
+
+			if np > 0 {
+				newDecl, nv := sb.DeclStmt(np, PointerOf(typ))
+				stmts = append(stmts, newDecl)
+				newVars = append(newVars, nv...)
+			}
 		}
 	}
 
-	// declare a few struct (additional ~20% of nVars)
-	if sb.conf.UseStructs {
-		for i := 0; i < nVars/5; i++ {
-			newDecl, nv := sb.DeclStmt(1, RandStructType(sb.conf.SupportedTypes))
-			stmts = append(stmts, newDecl)
-			newVars = append(newVars, nv...)
-		}
+	for i := 0; i < ns; i++ {
+		newDecl, nv := sb.DeclStmt(1, RandStructType(sb.conf.SupportedTypes))
+		stmts = append(stmts, newDecl)
+		newVars = append(newVars, nv...)
+	}
+
+	if len(newVars) != ns+nVars {
+		panic("BlockStmt: variable count mismatch")
 	}
 
 	// Fill the block's body with statements (but *no* new
@@ -264,6 +298,8 @@ func (sb *StmtBuilder) DeclStmt(nVars int, t Type) (*ast.DeclStmt, []*ast.Ident)
 		typ = &ast.Ident{Name: t.Name()}
 	case ArrayType:
 		typ = &ast.ArrayType{Elt: &ast.Ident{Name: t.Base().Name()}}
+	case PointerType:
+		typ = &ast.StarExpr{X: &ast.Ident{Name: t.Base().Name()}}
 	case StructType:
 		typ = BuildStructAst(t)
 	default:

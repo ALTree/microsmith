@@ -12,8 +12,8 @@ func main() {
 package main
 
 func f() {
-  var c complex128
-  c = 12.1 + 13.3i
+  var c int
+  cp := nil
 }
 `
 	fset := token.NewFileSet()
