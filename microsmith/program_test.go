@@ -238,13 +238,42 @@ func TestProgramGc(t *testing.T) {
 	}
 }
 
+var BenchConf = microsmith.ProgramConf{
+	microsmith.StmtConf{
+		MaxStmtDepth: 2,
+		StmtKindChance: []float64{
+			1, 1, 1, 1, 1,
+		},
+		MaxBlockVars:  8,
+		MaxBlockStmts: 6,
+		UseArrays:     true,
+		UseStructs:    true,
+		UsePointers:   true,
+	},
+	microsmith.ExprConf{
+		ExprKindChance: []float64{
+			1, 2, 2,
+		},
+		LiteralChance:    0.4,
+		ComparisonChance: 0.4,
+		IndexChance:      0.4,
+	},
+	[]microsmith.Type{
+		microsmith.BasicType{"int"},
+		microsmith.BasicType{"float64"},
+		microsmith.BasicType{"complex128"},
+		microsmith.BasicType{"bool"},
+		microsmith.BasicType{"string"},
+	},
+}
+
 var gp *ast.File
 
 func BenchmarkProgramGeneration(b *testing.B) {
 	b.ReportAllocs()
 	rand := rand.New(rand.NewSource(19))
 	for i := 0; i < b.N; i++ {
-		db := microsmith.NewDeclBuilder(rand.Int63(), microsmith.DefaultConf)
+		db := microsmith.NewDeclBuilder(rand.Int63(), BenchConf)
 		gp = db.File("main", 1)
 	}
 }
