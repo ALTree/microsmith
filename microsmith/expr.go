@@ -3,7 +3,6 @@ package microsmith
 import (
 	"go/ast"
 	"go/token"
-	"math"
 	"math/rand"
 	"strconv"
 )
@@ -47,6 +46,33 @@ func NewExprBuilder(rs *rand.Rand, conf ProgramConf, s *Scope) *ExprBuilder {
 		conf:  conf,
 		scope: s,
 	}
+}
+
+// returns true if the expression tree currently being built is
+// allowed to become deeper.
+func (eb *ExprBuilder) CanDeepen() bool {
+	if eb.depth > 9 {
+		return false
+	}
+
+	// We want the chance of getting deeper to decrease exponentially.
+	//
+	// Threesholds are computed as
+	//   t = (⅘)ⁿ - 0.10
+	// for n in [0, 9]
+	var ExprDepthChance = [10]float64{
+		0.9,
+		0.7,
+		0.54,
+		0.412,
+		0.3096,
+		0.22768,
+		0.162144,
+		0.1097152,
+		0.06777216,
+		0.034217728,
+	}
+	return eb.rs.Float64() < ExprDepthChance[eb.depth]
 }
 
 func (eb *ExprBuilder) chooseToken(tokens []token.Token) token.Token {
@@ -94,10 +120,10 @@ func (eb *ExprBuilder) CompositeLit(t Type) *ast.CompositeLit {
 		}
 		clElems := []ast.Expr{}
 		for i := 0; i < eb.rs.Intn(5); i++ {
-			if 1/math.Pow(1.2, float64(eb.depth)) < eb.rs.Float64() {
-				clElems = append(clElems, eb.VarOrLit(t.Base()).(ast.Expr))
-			} else {
+			if eb.CanDeepen() {
 				clElems = append(clElems, eb.Expr(t.Base()))
+			} else {
+				clElems = append(clElems, eb.VarOrLit(t.Base()).(ast.Expr))
 			}
 		}
 		cl.Elts = clElems
@@ -229,7 +255,7 @@ func (eb *ExprBuilder) IndexExpr(t Type) *ast.IndexExpr {
 	// which is guaranteed not to be constant. If not, just to use a
 	// literal.
 	if eb.scope.TypeInScope(BasicType{"int"}) &&
-		1/math.Pow(1.2, float64(eb.depth)) >= eb.rs.Float64() {
+		eb.CanDeepen() {
 		index = &ast.BinaryExpr{
 			X:  eb.scope.RandomIdentExpr(BasicType{"int"}, eb.rs),
 			Op: token.ADD,
@@ -261,7 +287,7 @@ func (eb *ExprBuilder) SliceExpr(t Type) *ast.SliceExpr {
 	// 'I + Expr()', which is guaranteed not to be constant. If not,
 	// just to use literals.
 	if eb.scope.TypeInScope(BasicType{"int"}) &&
-		1/math.Pow(1.2, float64(eb.depth)) >= eb.rs.Float64() {
+		eb.CanDeepen() {
 		low = &ast.BinaryExpr{
 			X:  eb.scope.RandomIdentExpr(BasicType{"int"}, eb.rs),
 			Op: token.ADD,
@@ -316,10 +342,10 @@ func (eb *ExprBuilder) UnaryExpr(t Type) *ast.UnaryExpr {
 		panic("UnaryExpr: unimplemented type " + t.Name())
 	}
 
-	if 1/math.Pow(1.2, float64(eb.depth)) < eb.rs.Float64() {
-		ue.X = eb.VarOrLit(t).(ast.Expr)
-	} else {
+	if eb.CanDeepen() {
 		ue.X = eb.Expr(t)
+	} else {
+		ue.X = eb.VarOrLit(t).(ast.Expr)
 	}
 
 	return ue
@@ -362,12 +388,12 @@ func (eb *ExprBuilder) BinaryExpr(t Type) *ast.BinaryExpr {
 
 	// ...then build the two branches.
 
-	if 1/math.Pow(1.2, float64(eb.depth)) < eb.rs.Float64() {
-		ue.X = eb.VarOrLit(t).(ast.Expr)
-		ue.Y = eb.VarOrLit(t).(ast.Expr)
-	} else {
+	if eb.CanDeepen() {
 		ue.X = eb.Expr(t)
 		ue.Y = eb.Expr(t)
+	} else {
+		ue.X = eb.VarOrLit(t).(ast.Expr)
+		ue.Y = eb.VarOrLit(t).(ast.Expr)
 	}
 
 	return ue

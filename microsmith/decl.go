@@ -58,7 +58,7 @@ func RandConf() ProgramConf {
 			// decide how many variables and statements actually use,
 			// there's no need to randomly vary the upper limits too.
 			MaxBlockVars:  8,
-			MaxBlockStmts: 8,
+			MaxBlockStmts: 10,
 
 			UseArrays:   rand.Int63()%2 == 0,
 			UseStructs:  rand.Int63()%2 == 0,
@@ -66,9 +66,9 @@ func RandConf() ProgramConf {
 		},
 		ExprConf{
 			ExprKindChance: []float64{
-				float64(rand.Intn(2)), // unary expr
+				float64(rand.Intn(3)), // unary expr
 				float64(rand.Intn(6)), // binary expr
-				float64(rand.Intn(4)), // fun call
+				float64(rand.Intn(3)), // fun call
 			},
 			LiteralChance:    float64(rand.Intn(9)) * 0.125,
 			ComparisonChance: float64(rand.Intn(9)) * 0.125,
