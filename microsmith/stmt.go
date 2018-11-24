@@ -141,7 +141,9 @@ func (sb *StmtBuilder) AssignStmt(t Type) *ast.AssignStmt {
 	var v ast.Expr
 	switch t := t.(type) {
 	case BasicType:
-		if sb.conf.UseArrays && sb.scope.TypeInScope(ArrOf(t)) && sb.rs.Float64() < 0.25 {
+		if sb.conf.UseArrays &&
+			sb.scope.TypeInScope(ArrOf(t)) &&
+			sb.rs.Float64() < sb.conf.IndexChance {
 			v = sb.eb.IndexExpr(ArrOf(t))
 		} else {
 			v = sb.scope.RandomIdentExpr(t, sb.rs)

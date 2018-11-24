@@ -47,23 +47,28 @@ func RandConf() ProgramConf {
 		StmtConf{
 			MaxStmtDepth: 1 + rand.Intn(3),
 			StmtKindChance: []float64{
-				float64(rand.Intn(5)),
-				float64(rand.Intn(5)),
-				float64(rand.Intn(5)),
-				float64(rand.Intn(5)),
-				float64(rand.Intn(5)),
+				float64(rand.Intn(5)), // assign stms
+				float64(rand.Intn(5)), // block stms
+				float64(rand.Intn(5)), // for stms
+				float64(rand.Intn(5)), // if stms
+				float64(rand.Intn(5)), // switch stms
 			},
-			MaxBlockVars:  1 + rand.Intn(8),
-			MaxBlockStmts: 1 + rand.Intn(6),
-			UseArrays:     rand.Int63()%2 == 0,
-			UseStructs:    rand.Int63()%2 == 0,
-			UsePointers:   rand.Int63()%2 == 0,
+
+			// since the Stmt builder already calls rand(1,Max) to
+			// decide how many variables and statements actually use,
+			// there's no need to randomly vary the upper limits too.
+			MaxBlockVars:  8,
+			MaxBlockStmts: 8,
+
+			UseArrays:   rand.Int63()%2 == 0,
+			UseStructs:  rand.Int63()%2 == 0,
+			UsePointers: rand.Int63()%2 == 0,
 		},
 		ExprConf{
 			ExprKindChance: []float64{
-				float64(rand.Intn(5)),
-				float64(rand.Intn(5)),
-				float64(rand.Intn(5)),
+				float64(rand.Intn(2)), // unary expr
+				float64(rand.Intn(6)), // binary expr
+				float64(rand.Intn(4)), // fun call
 			},
 			LiteralChance:    float64(rand.Intn(9)) * 0.125,
 			ComparisonChance: float64(rand.Intn(9)) * 0.125,
@@ -72,7 +77,7 @@ func RandConf() ProgramConf {
 		nil,
 	}
 
-	// we'll give each type a 0.75 chance to be enabled
+	// give each type a 0.75 chance to be enabled
 	types := []Type{
 		BasicType{"int"},
 		BasicType{"float64"},
@@ -200,10 +205,10 @@ func (db *DeclBuilder) FuncDecl() *ast.FuncDecl {
 
 	fc.Type = &ast.FuncType{0, new(ast.FieldList), nil}
 
-	// Call BlockStmt with 4 as first parameter so that we're sure
-	// that at the beginning of the function 4 variables of each type
-	// will be in scope.
-	fc.Body = db.sb.BlockStmt(4*3, 0)
+	// Immediately declare 8 variables (at the beginning of the
+	// function). More will be (possibly) declared by the statement
+	// builder, in inner scopes inside blocks.
+	fc.Body = db.sb.BlockStmt(8, 0)
 
 	return fc
 }
