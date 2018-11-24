@@ -148,35 +148,63 @@ func (ls Scope) RandomIdentExpr(t Type, rs *rand.Rand) ast.Expr {
 	// we'll collect expressions of two types:
 	//   1. simple ast.Expr wrapping an ast.Ident
 	//   2. ast.SelectorExpr wrapping a struct field access
-	exprs := make([]ast.Expr, 0)
+	//
+	// To reduce allocations, instead of looping over every suitable
+	// ident collecting ast.Expr and then choosing one at random, we
+	// make a first pass just counting the number of idents of the
+	// requested type, then we draw a random number, and finally we
+	// make a last pass over the idents, returning a new expression
+	// when we reach the one at the position selected by the random
+	// number.
+
+	cnt := 0
 	for _, v := range ls {
 		switch v.Type.(type) {
 		case StructType:
-			// loop over the struct's fields, collect selector exprs
-			// for the one of type t
-			for i, ft := range v.Type.(StructType).Ftypes {
+			for _, ft := range v.Type.(StructType).Ftypes {
 				if ft == t {
-					exprs = append(
-						exprs,
-						&ast.SelectorExpr{
-							X:   v.Name,
-							Sel: &ast.Ident{Name: v.Type.(StructType).Fnames[i]},
-						},
-					)
+					cnt++
 				}
 			}
 		default:
-			// simple variable, wrap it in an ast.Expr
 			if v.Type == t {
-				exprs = append(exprs, v.Name)
+				cnt++
 			}
 		}
 	}
 
-	if len(exprs) == 0 {
-		// it's up the the caller to make sure the scope is not empty
+	// it's up the the caller to make sure the scope is not empty
+	if cnt == 0 {
 		panic("Empty scope")
 	}
 
-	return exprs[rs.Intn(len(exprs))]
+	rand := 1 + rs.Intn(cnt)
+	cnt = 0
+	for _, v := range ls {
+		switch v.Type.(type) {
+		case StructType:
+			for i, ft := range v.Type.(StructType).Ftypes {
+				if ft == t {
+					cnt++
+				}
+				if cnt == rand {
+					return &ast.SelectorExpr{
+						X:   v.Name,
+						Sel: &ast.Ident{Name: v.Type.(StructType).Fnames[i]},
+					}
+				}
+			}
+		default:
+			if v.Type == t {
+				cnt++
+			}
+			if cnt == rand {
+				return v.Name
+			}
+		}
+	}
+
+	// should never happen
+	panic("something went wrong when counting idents")
+
 }
