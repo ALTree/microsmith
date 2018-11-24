@@ -3,6 +3,7 @@ package microsmith
 import (
 	"fmt"
 	"go/ast"
+	"go/token"
 	"math/rand"
 )
 
@@ -166,6 +167,12 @@ func (ls Scope) RandomIdentExpr(t Type, rs *rand.Rand) ast.Expr {
 					cnt++
 				}
 			}
+		case PointerType:
+			if v.Type == t {
+				cnt++
+			} else if v.Type.(PointerType).Base() == t {
+				cnt++
+			}
 		default:
 			if v.Type == t {
 				cnt++
@@ -191,6 +198,27 @@ func (ls Scope) RandomIdentExpr(t Type, rs *rand.Rand) ast.Expr {
 					return &ast.SelectorExpr{
 						X:   v.Name,
 						Sel: &ast.Ident{Name: v.Type.(StructType).Fnames[i]},
+					}
+				}
+			}
+		case PointerType:
+			// pointers in scope are useful in two cases:
+			//   1. when the caller requested a pointer ident
+			//   2. when the caller requested a type that is the base
+			//   type of the pointer
+			// In the first case, we count the pointer ident itself, in
+			// the second case we'll return *p
+			if v.Type == t {
+				cnt++
+				if cnt == rand {
+					return v.Name
+				}
+			} else if v.Type.(PointerType).Base() == t {
+				cnt++
+				if cnt == rand {
+					return &ast.UnaryExpr{
+						Op: token.MUL,
+						X:  &ast.Ident{Name: v.Name.Name},
 					}
 				}
 			}
