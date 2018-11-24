@@ -28,7 +28,11 @@ func RandIndex(probs []float64, rand float64) int {
 		panic("RandIndex: rand > 1")
 	}
 
-	ps := make([]float64, len(probs))
+	// ps will be allocated on the stack if len(probs) <= 8
+	ps := make([]float64, 8)
+	if len(probs) > 8 {
+		ps = make([]float64, len(probs))
+	}
 
 	// normalize
 	sum := 0.0
