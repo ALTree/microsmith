@@ -1,6 +1,7 @@
 package microsmith
 
 import (
+	"go/ast"
 	"math/rand"
 	"strconv"
 	"strings"
@@ -182,3 +183,13 @@ var IntConv FuncType = FuncType{
 	[]Type{BasicType{"float64"}}, // for now we only convert ints
 	[]Type{BasicType{"int"}},
 }
+
+var BoolIdent = &ast.Ident{Name: "bool"}
+var IntIdent = &ast.Ident{Name: "int"}
+var FloatIdent = &ast.Ident{Name: "float64"}
+var ComplexIdent = &ast.Ident{Name: "complex128"}
+var StringIdent = &ast.Ident{Name: "string"}
+
+var LenIdent = &ast.Ident{Name: "len"}
+var TrueIdent = &ast.Ident{Name: "true"}
+var FalseIdent = &ast.Ident{Name: "false"}

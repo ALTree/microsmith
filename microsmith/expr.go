@@ -211,7 +211,11 @@ func (eb *ExprBuilder) VarOrLit(t Type) interface{} {
 			if n := t.Name(); n == "int" || n == "string" || n == "float64" || n == "complex128" {
 				return eb.BasicLit(t)
 			} else if n == "bool" {
-				return &ast.Ident{Name: RandString([]string{"true", "false"})}
+				if eb.rs.Int63()%2 == 0 {
+					return TrueIdent
+				} else {
+					return FalseIdent
+				}
 			} else {
 				panic("VarOrLit: unsupported basic type " + t.Name())
 			}
@@ -423,7 +427,7 @@ func (eb *ExprBuilder) CallExpr(t Type) *ast.CallExpr {
 
 	if fun.Name.Name == "float64" {
 		ce := &ast.CallExpr{
-			Fun:  &ast.Ident{Name: "float64"},
+			Fun:  FloatIdent,
 			Args: []ast.Expr{eb.Expr(BasicType{"int"})},
 		}
 		return ce
@@ -454,7 +458,7 @@ func (eb *ExprBuilder) MakeLenCall() *ast.CallExpr {
 		typ = BasicType{"string"}
 	}
 	ce := &ast.CallExpr{
-		Fun:  &ast.Ident{Name: "len"},
+		Fun:  LenIdent,
 		Args: []ast.Expr{eb.Expr(typ)},
 	}
 	return ce

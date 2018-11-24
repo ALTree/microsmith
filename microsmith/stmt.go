@@ -287,7 +287,7 @@ func (sb *StmtBuilder) DeclStmt(nVars int, t Type) (*ast.DeclStmt, []*ast.Ident)
 	gd.Tok = token.VAR
 
 	// generate nVars ast.Idents
-	idents := make([]*ast.Ident, 0)
+	idents := make([]*ast.Ident, 0, nVars)
 	for i := 0; i < nVars; i++ {
 		idents = append(idents, sb.scope.NewIdent(t))
 	}
@@ -297,7 +297,20 @@ func (sb *StmtBuilder) DeclStmt(nVars int, t Type) (*ast.DeclStmt, []*ast.Ident)
 
 	switch t := t.(type) {
 	case BasicType:
-		typ = &ast.Ident{Name: t.Name()}
+		switch t.Name() {
+		case "bool":
+			typ = BoolIdent
+		case "int":
+			typ = IntIdent
+		case "float64":
+			typ = FloatIdent
+		case "complex128":
+			typ = ComplexIdent
+		case "string":
+			typ = StringIdent
+		default:
+			panic("not preallocated basic type: " + t.Name())
+		}
 	case ArrayType:
 		typ = &ast.ArrayType{Elt: &ast.Ident{Name: t.Base().Name()}}
 	case PointerType:
