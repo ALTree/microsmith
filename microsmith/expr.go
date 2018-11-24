@@ -455,7 +455,7 @@ func (eb *ExprBuilder) MakeLenCall() *ast.CallExpr {
 	}
 	ce := &ast.CallExpr{
 		Fun:  &ast.Ident{Name: "len"},
-		Args: []ast.Expr{eb.VarOrLit(typ).(ast.Expr)},
+		Args: []ast.Expr{eb.Expr(typ)},
 	}
 	return ce
 }
