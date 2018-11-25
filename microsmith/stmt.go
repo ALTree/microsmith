@@ -255,7 +255,12 @@ func (sb *StmtBuilder) BlockStmt(nVars, nStmts int) *ast.BlockStmt {
 	// declaration: we only use the variables we just declared, plus
 	// the ones in scope when we enter the block).
 	if nStmts < 1 {
-		nStmts = 1 + sb.rs.Intn(sb.conf.MaxBlockStmts)
+		if sb.conf.MaxBlockStmts < 4 {
+			nStmts = sb.conf.MaxBlockStmts
+		} else {
+			nStmts = 4 + sb.rs.Intn(sb.conf.MaxBlockStmts-3)
+		}
+
 	}
 	for i := 0; i < nStmts; i++ {
 		stmts = append(stmts, sb.Stmt())
