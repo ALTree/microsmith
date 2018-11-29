@@ -360,8 +360,10 @@ func (eb *ExprBuilder) BinaryExpr(t Type) *ast.BinaryExpr {
 
 	// First choose the operator...
 	switch t.Name() {
-	case "int", "float64", "complex128":
+	case "int":
 		ue.Op = eb.chooseToken([]token.Token{token.ADD, token.SUB})
+	case "float64", "complex128":
+		ue.Op = eb.chooseToken([]token.Token{token.ADD, token.SUB, token.MUL})
 	case "bool":
 		if eb.rs.Float64() < eb.conf.ComparisonChance {
 			// When requested a bool, we can generate a comparison
@@ -374,7 +376,7 @@ func (eb *ExprBuilder) BinaryExpr(t Type) *ast.BinaryExpr {
 
 			// now find a suitable op
 			ops := []token.Token{token.EQL, token.NEQ}
-			if name := t.Name(); name == "int" || name == "string" {
+			if name := t.Name(); name != "bool" && name != "complex128" {
 				ops = append(ops, []token.Token{
 					token.LSS, token.LEQ,
 					token.GTR, token.GEQ,
