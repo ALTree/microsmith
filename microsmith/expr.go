@@ -326,12 +326,10 @@ func (eb *ExprBuilder) UnaryExpr(t Type) *ast.UnaryExpr {
 	ue := new(ast.UnaryExpr)
 
 	// if there are pointers to t in scope, generate a t by
-	// dereferencing it with chance 0.33
-	if eb.rs.Int63()%3 == 0 && eb.scope.TypeInScope(PointerOf(t)) {
+	// dereferencing it with chance 0.5
+	if eb.rs.Int63()%2 == 0 && eb.scope.TypeInScope(PointerOf(t)) {
 		ue.Op = token.MUL
-		// can't use Expr because if we get a 'nil' literal we won't
-		// be allowed to dereference it.
-		ue.X = eb.VarOrLit(PointerOf(t)).(ast.Expr)
+		ue.X = eb.Expr(PointerOf(t))
 		return ue
 	}
 
