@@ -70,9 +70,9 @@ func RandConf() ProgramConf {
 				float64(rand.Intn(6)), // binary expr
 				float64(rand.Intn(3)), // fun call
 			},
-			LiteralChance:    float64(rand.Intn(5)) * 0.125,
-			ComparisonChance: float64(rand.Intn(9)) * 0.125,
-			IndexChance:      float64(rand.Intn(9)) * 0.125,
+			LiteralChance:    float64(rand.Intn(7)) * 0.125,
+			ComparisonChance: float64(rand.Intn(7)) * 0.125,
+			IndexChance:      float64(rand.Intn(5)) * 0.125,
 		},
 		nil,
 	}
