@@ -350,17 +350,29 @@ func BuildStructAst(t StructType) *ast.StructType {
 }
 
 func (sb *StmtBuilder) ForStmt() *ast.ForStmt {
-	var fs *ast.ForStmt
-	if sb.rs.Float64() < 1 {
-		fs = &ast.ForStmt{
-			Cond: sb.eb.Expr(BasicType{"bool"}),
-			Body: sb.BlockStmt(),
-		}
+	var fs ast.ForStmt
+
+	// Add
+	//   - a Cond stmt with chance 0.94 (1-1/16)
+	//   - Init and Post statements with chance 0.5
+	//   - A body with chance 0.97 (1-1/32)
+	if sb.rs.Int63()%16 != 0 {
+		fs.Cond = sb.eb.Expr(BasicType{"bool"})
+	}
+	if sb.rs.Int63()%2 == 0 {
+		fs.Init = sb.AssignStmt(RandType(sb.scope.InScopeTypes()))
+	}
+	if sb.rs.Int63()%2 == 0 {
+		fs.Post = sb.AssignStmt(RandType(sb.scope.InScopeTypes()))
+	}
+	if sb.rs.Int63()%32 != 0 {
+		fs.Body = sb.BlockStmt()
 	} else {
-		// TODO: for init; cond; post { ..
+		// empty loop body, still needs a BlockStmt
+		fs.Body = &ast.BlockStmt{}
 	}
 
-	return fs
+	return &fs
 }
 
 func (sb *StmtBuilder) IfStmt() *ast.IfStmt {

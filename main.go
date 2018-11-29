@@ -98,8 +98,8 @@ func Fuzz(seed int64) {
 		// Interrupt and crash Fuzzer if compilation takes more than
 		// 60 seconds
 		timeout := time.AfterFunc(
-			60*time.Second,
-			func() { log.Fatalf("> 60s compilation time for\n%s\n", gp) },
+			120*time.Second,
+			func() { log.Fatalf("> 120s compilation time for\n%s\n", gp) },
 		)
 
 		out, err := gp.Compile(*toolchainF, *archF, *nooptF, *raceF, *ssacheckF)

@@ -12,13 +12,8 @@ func main() {
 package main
 
 func f() {
-  var I0 int
-  switch I0.(type) {
-    case int:
-      println("i")
-    case float64:
-      println("f")
-  }
+  b := true
+  for !b { }
 }
 `
 	fset := token.NewFileSet()
