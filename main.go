@@ -80,13 +80,14 @@ func Fuzz(seed int64) {
 			log.Fatalf("Bad Conf: %s", err)
 		}
 
-		if *debugF {
-			fmt.Println(gp)
-		}
-
 		err = gp.Check()
 		if err != nil {
 			log.Fatalf("Program failed typechecking: %s\n%s", err, gp)
+		}
+
+		if *debugF {
+			fmt.Println(gp)
+			os.Exit(0)
 		}
 
 		err = gp.WriteToFile(WorkDir)
