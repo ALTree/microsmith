@@ -113,7 +113,7 @@ func (sb *StmtBuilder) Stmt() ast.Stmt {
 		return sb.AssignStmt(RandType(typesInScope))
 	case 1:
 		sb.depth++
-		s := sb.BlockStmt(0, 0)
+		s := sb.BlockStmt()
 		sb.depth--
 		return s
 	case 2:
@@ -165,14 +165,8 @@ func (sb *StmtBuilder) AssignStmt(t Type) *ast.AssignStmt {
 // always a valid block. It up to BlockStmt's caller to make sure
 // BlockStmt is only called when we have not yet reached max depth.
 //
-// nVars controls the number of new variables declared at the top of
-// the block. nStmt controls the number of new statements that will be
-// included in the returned block. If there are zero, BlockStmt will
-// decide by itself how many new variables it'll declare or how many
-// statement to include in the block.
-//
 // TODO: move depth increment and decrement here(?)
-func (sb *StmtBuilder) BlockStmt(nVars, nStmts int) *ast.BlockStmt {
+func (sb *StmtBuilder) BlockStmt() *ast.BlockStmt {
 
 	bs := new(ast.BlockStmt)
 	stmts := []ast.Stmt{}
@@ -181,9 +175,7 @@ func (sb *StmtBuilder) BlockStmt(nVars, nStmts int) *ast.BlockStmt {
 	//
 	// First, declare nVars variables that will be in scope in this
 	// block (together with the outer scopes ones).
-	if nVars < 1 {
-		nVars = 1 + sb.rs.Intn(sb.conf.MaxBlockVars)
-	}
+	nVars := 1 + sb.rs.Intn(sb.conf.MaxBlockVars)
 
 	var ns int = 0 // number of struct we'll declare
 
@@ -251,17 +243,16 @@ func (sb *StmtBuilder) BlockStmt(nVars, nStmts int) *ast.BlockStmt {
 		panic("BlockStmt: variable count mismatch")
 	}
 
-	// Fill the block's body with statements (but *no* new
-	// declaration: we only use the variables we just declared, plus
-	// the ones in scope when we enter the block).
-	if nStmts < 1 {
-		if sb.conf.MaxBlockStmts < 4 {
-			nStmts = sb.conf.MaxBlockStmts
-		} else {
-			nStmts = 4 + sb.rs.Intn(sb.conf.MaxBlockStmts-3)
-		}
-
+	var nStmts int
+	if sb.conf.MaxBlockStmts < 4 {
+		nStmts = sb.conf.MaxBlockStmts
+	} else {
+		nStmts = 4 + sb.rs.Intn(sb.conf.MaxBlockStmts-3)
 	}
+
+	// Fill the block's body with statements (but *no* new declaration:
+	// we only use the variables we just declared, plus the ones in
+	// scope when we enter the block).
 	for i := 0; i < nStmts; i++ {
 		stmts = append(stmts, sb.Stmt())
 	}
@@ -363,7 +354,7 @@ func (sb *StmtBuilder) ForStmt() *ast.ForStmt {
 	if sb.rs.Float64() < 1 {
 		fs = &ast.ForStmt{
 			Cond: sb.eb.Expr(BasicType{"bool"}),
-			Body: sb.BlockStmt(0, 0),
+			Body: sb.BlockStmt(),
 		}
 	} else {
 		// TODO: for init; cond; post { ..
@@ -375,12 +366,12 @@ func (sb *StmtBuilder) ForStmt() *ast.ForStmt {
 func (sb *StmtBuilder) IfStmt() *ast.IfStmt {
 	is := &ast.IfStmt{
 		Cond: sb.eb.Expr(BasicType{"bool"}),
-		Body: sb.BlockStmt(0, 0),
+		Body: sb.BlockStmt(),
 	}
 
 	// optionally attach an 'else'
 	if sb.rs.Float64() < 0.5 {
-		is.Else = sb.BlockStmt(0, 0)
+		is.Else = sb.BlockStmt()
 	}
 
 	return is

@@ -200,16 +200,9 @@ func NewDeclBuilder(seed int64, conf ProgramConf) *DeclBuilder {
 
 func (db *DeclBuilder) FuncDecl() *ast.FuncDecl {
 	fc := new(ast.FuncDecl)
-
 	fc.Name = db.FuncIdent()
-
 	fc.Type = &ast.FuncType{0, new(ast.FieldList), nil}
-
-	// Immediately declare 8 variables (at the beginning of the
-	// function). More will be (possibly) declared by the statement
-	// builder, in inner scopes inside blocks.
-	fc.Body = db.sb.BlockStmt(8, 0)
-
+	fc.Body = db.sb.BlockStmt()
 	return fc
 }
 
