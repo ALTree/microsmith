@@ -388,6 +388,11 @@ func (sb *StmtBuilder) IfStmt() *ast.IfStmt {
 
 func (sb *StmtBuilder) SwitchStmt() *ast.SwitchStmt {
 	t := RandType(sb.conf.SupportedTypes)
+	if sb.rs.Int63()%2 == 0 && sb.scope.TypeInScope(PointerOf(t)) {
+		// sometimes switch on a pointer value
+		t = PointerOf(t)
+	}
+
 	ss := &ast.SwitchStmt{
 		Tag: sb.eb.Expr(t),
 		Body: &ast.BlockStmt{
