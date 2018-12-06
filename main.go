@@ -44,7 +44,7 @@ func main() {
 		go Fuzz(rs.Int63())
 	}
 
-	ticker := time.Tick(5 * time.Second)
+	ticker := time.Tick(10 * time.Second)
 	for _ = range ticker {
 		log.Printf("Build: %4d  [crash: %v, known: %v]\n",
 			atomic.LoadInt64(&BuildCount),
