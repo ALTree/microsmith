@@ -15,7 +15,7 @@ var TestConfigurations = map[string]microsmith.ProgramConf{
 		microsmith.StmtConf{
 			MaxStmtDepth: 1,
 			StmtKindChance: []float64{
-				1, 1, 1, 1, 1,
+				1, 1, 1, 1, 1, 1,
 			},
 			MaxBlockVars:  1,
 			MaxBlockStmts: 1,
@@ -44,7 +44,7 @@ var TestConfigurations = map[string]microsmith.ProgramConf{
 		microsmith.StmtConf{
 			MaxStmtDepth: 2,
 			StmtKindChance: []float64{
-				1, 1, 1, 1, 1,
+				1, 1, 1, 1, 1, 1,
 			},
 			MaxBlockVars:  3,
 			MaxBlockStmts: 4,
@@ -73,7 +73,7 @@ var TestConfigurations = map[string]microsmith.ProgramConf{
 		microsmith.StmtConf{
 			MaxStmtDepth: 3,
 			StmtKindChance: []float64{
-				1, 1, 1, 1, 1,
+				1, 1, 1, 1, 1, 1,
 			},
 			MaxBlockVars:  12,
 			MaxBlockStmts: 8,
@@ -242,7 +242,7 @@ var BenchConf = microsmith.ProgramConf{
 	microsmith.StmtConf{
 		MaxStmtDepth: 2,
 		StmtKindChance: []float64{
-			1, 1, 1, 1, 1,
+			1, 1, 1, 1, 1, 1,
 		},
 		MaxBlockVars:  8,
 		MaxBlockStmts: 6,

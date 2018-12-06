@@ -12,8 +12,8 @@ func main() {
 package main
 
 func f() {
-  b := true
-  for !b { }
+  var i int
+  i++
 }
 `
 	fset := token.NewFileSet()

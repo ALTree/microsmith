@@ -24,6 +24,7 @@ type StmtConf struct {
 	//   2. For Stmt
 	//   3. If Stmt
 	//   4. Switch Stmt
+	//   5. IncDec Stmt
 	StmtKindChance []float64
 
 	// max amount of variables and statements inside new block
@@ -89,6 +90,7 @@ func NewStmtBuilder(rs *rand.Rand, conf ProgramConf) *StmtBuilder {
 //   - ForStmt
 //   - IfStmt
 //   - SwitchStmt
+//   - IndDecStmt
 //
 // DeclStmt is implemented and used, but is not used directly here (by
 // Stmt. It's only used inside BlockStmt, which takes care of setting
@@ -103,8 +105,14 @@ func (sb *StmtBuilder) Stmt() ast.Stmt {
 		panic("Stmt: no inscope variables")
 	}
 
+	// If the maximum allowed stmt depth has been reached, only
+	// generate stmt that do not nest (assignments and incdec).
 	if sb.depth >= sb.conf.MaxStmtDepth {
-		return sb.AssignStmt(RandType(typesInScope))
+		if t, ok := sb.CanIncDec(); ok && sb.rs.Int63()%2 == 0 {
+			return sb.IncDecStmt(t)
+		} else {
+			return sb.AssignStmt(RandType(typesInScope))
+		}
 	}
 	// sb.depth < sb.conf.MaxStmtDepth
 
@@ -131,6 +139,15 @@ func (sb *StmtBuilder) Stmt() ast.Stmt {
 		s := sb.SwitchStmt()
 		sb.depth--
 		return s
+	case 5:
+		// TODO(alb): inefficient
+		if t, ok := sb.CanIncDec(); ok && sb.rs.Int63()%2 == 0 {
+			s := sb.IncDecStmt(t)
+			return s
+		} else {
+			s := sb.AssignStmt(RandType(typesInScope))
+			return s
+		}
 	default:
 		panic("Stmt: bad RandIndex")
 	}
@@ -293,6 +310,7 @@ func (sb *StmtBuilder) DeclStmt(nVars int, t Type) (*ast.DeclStmt, []*ast.Ident)
 
 	switch t := t.(type) {
 	case BasicType:
+		// TODO(alb): refactor
 		switch t.Name() {
 		case "bool":
 			typ = BoolIdent
@@ -363,7 +381,11 @@ func (sb *StmtBuilder) ForStmt() *ast.ForStmt {
 		fs.Init = sb.AssignStmt(RandType(sb.scope.InScopeTypes()))
 	}
 	if sb.rs.Int63()%2 == 0 {
-		fs.Post = sb.AssignStmt(RandType(sb.scope.InScopeTypes()))
+		if t, ok := sb.CanIncDec(); ok && sb.rs.Int63()%2 == 0 {
+			fs.Post = sb.IncDecStmt(t)
+		} else {
+			fs.Post = sb.AssignStmt(RandType(sb.scope.InScopeTypes()))
+		}
 	}
 	if sb.rs.Int63()%32 != 0 {
 		fs.Body = sb.BlockStmt()
@@ -426,6 +448,48 @@ func (sb *StmtBuilder) CaseClause(t Type, def bool) *ast.CaseClause {
 	cc.Body = stmtList
 
 	return cc
+}
+
+// returns <nil, false> if there's no variable in scope we can inc or
+// dec. Otherwise, returns <t, true>; where t is a random type that
+// can be inc/dec and has a variable in scope.
+func (sb *StmtBuilder) CanIncDec() (Type, bool) {
+	inScope := make([]Type, 0)
+	if sb.scope.TypeInScope(BasicType{"int"}) {
+		inScope = append(inScope, BasicType{"int"})
+	}
+	if sb.scope.TypeInScope(ArrOf(BasicType{"int"})) {
+		inScope = append(inScope, ArrOf(BasicType{"int"}))
+	}
+	if sb.scope.TypeInScope(BasicType{"float64"}) {
+		inScope = append(inScope, BasicType{"float64"})
+	}
+	if sb.scope.TypeInScope(ArrOf(BasicType{"float64"})) {
+		inScope = append(inScope, ArrOf(BasicType{"float64"}))
+	}
+
+	if len(inScope) == 0 {
+		return nil, false
+	}
+
+	return RandType(inScope), true
+}
+
+func (sb *StmtBuilder) IncDecStmt(t Type) *ast.IncDecStmt {
+	is := new(ast.IncDecStmt)
+	if t.Name() == "int" || t.Name() == "float64" {
+		is.X = sb.scope.RandomIdentExpr(t, sb.rs)
+	} else {
+		is.X = sb.eb.IndexExpr(t)
+	}
+
+	if sb.rs.Int63()%2 == 0 {
+		is.Tok = token.INC
+	} else {
+		is.Tok = token.DEC
+	}
+
+	return is
 }
 
 // Spec says this cannot be any Expr.
