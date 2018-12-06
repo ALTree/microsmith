@@ -190,6 +190,23 @@ var FloatIdent = &ast.Ident{Name: "float64"}
 var ComplexIdent = &ast.Ident{Name: "complex128"}
 var StringIdent = &ast.Ident{Name: "string"}
 
+func TypeIdent(t string) *ast.Ident {
+	switch t {
+	case "bool":
+		return BoolIdent
+	case "int":
+		return IntIdent
+	case "float64":
+		return FloatIdent
+	case "complex128":
+		return ComplexIdent
+	case "string":
+		return StringIdent
+	default:
+		panic("TypeIdent: cannot handle type " + t)
+	}
+}
+
 var LenIdent = &ast.Ident{Name: "len"}
 var TrueIdent = &ast.Ident{Name: "true"}
 var FalseIdent = &ast.Ident{Name: "false"}

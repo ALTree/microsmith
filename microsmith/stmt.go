@@ -308,9 +308,9 @@ func (sb *StmtBuilder) DeclStmt(nVars int, t Type) (*ast.DeclStmt, []*ast.Ident)
 			panic("not preallocated basic type: " + t.Name())
 		}
 	case ArrayType:
-		typ = &ast.ArrayType{Elt: &ast.Ident{Name: t.Base().Name()}}
+		typ = &ast.ArrayType{Elt: TypeIdent(t.Base().Name())}
 	case PointerType:
-		typ = &ast.StarExpr{X: &ast.Ident{Name: t.Base().Name()}}
+		typ = &ast.StarExpr{X: TypeIdent(t.Base().Name())}
 	case StructType:
 		typ = BuildStructAst(t)
 	default:
@@ -337,7 +337,7 @@ func BuildStructAst(t StructType) *ast.StructType {
 	for i := range t.Fnames {
 		field := &ast.Field{
 			Names: []*ast.Ident{&ast.Ident{Name: t.Fnames[i]}},
-			Type:  &ast.Ident{Name: t.Ftypes[i].Name()},
+			Type:  TypeIdent(t.Ftypes[i].Name()),
 		}
 		fields = append(fields, field)
 	}

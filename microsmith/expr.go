@@ -436,7 +436,7 @@ func (eb *ExprBuilder) CallExpr(t Type) *ast.CallExpr {
 	// not enabled at the moment; see comment in NewStmtBuilder().
 	if fun.Name.Name == "int" {
 		ce := &ast.CallExpr{
-			Fun:  &ast.Ident{Name: "int"},
+			Fun:  IntIdent,
 			Args: []ast.Expr{eb.Expr(BasicType{"float64"})},
 		}
 		return ce
