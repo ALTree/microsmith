@@ -60,7 +60,7 @@ func RandConf() ProgramConf {
 			// decide how many variables and statements actually use,
 			// there's no need to randomly vary the upper limits too.
 			MaxBlockVars:  8,
-			MaxBlockStmts: 8,
+			MaxBlockStmts: 6,
 
 			UseArrays:   rand.Int63()%2 == 0,
 			UseStructs:  rand.Int63()%2 == 0,

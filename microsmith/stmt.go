@@ -269,10 +269,19 @@ func (sb *StmtBuilder) BlockStmt() *ast.BlockStmt {
 	}
 
 	var nStmts int
-	if sb.conf.MaxBlockStmts < 5 {
-		nStmts = sb.conf.MaxBlockStmts
+	if sb.depth == sb.conf.MaxStmtDepth {
+		// at maxdepth, only assignments and incdec are allowed.
+		// Guarantee 8 of them, to be sure not to generate
+		// almost-empty blocks.
+		nStmts = 8
 	} else {
-		nStmts = 5 + sb.rs.Intn(sb.conf.MaxBlockStmts-4)
+		// othewise, generate at least min(4, MaxBlockStmt) and at
+		// most MaxBlockStmts.
+		if sb.conf.MaxBlockStmts < 4 {
+			nStmts = sb.conf.MaxBlockStmts
+		} else {
+			nStmts = 4 + sb.rs.Intn(sb.conf.MaxBlockStmts-3)
+		}
 	}
 
 	// Fill the block's body with statements (but *no* new declaration:
