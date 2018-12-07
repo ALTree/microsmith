@@ -423,10 +423,15 @@ func (eb *ExprBuilder) CallExpr(t Type) *ast.CallExpr {
 	case "len":
 		return eb.MakeLenCall()
 	case "float64":
-		return &ast.CallExpr{
-			Fun:  FloatIdent,
-			Args: []ast.Expr{eb.Expr(BasicType{"int"})},
+		ce := &ast.CallExpr{
+			Fun: FloatIdent,
 		}
+		if eb.CanDeepen() {
+			ce.Args = []ast.Expr{eb.Expr(BasicType{"int"})}
+		} else {
+			ce.Args = []ast.Expr{eb.VarOrLit(BasicType{"int"}).(ast.Expr)}
+		}
+		return ce
 	case "int":
 		// not enabled at the moment; see comment in NewStmtBuilder().
 		panic("CallExpr: int() calls should not be generated")
@@ -449,19 +454,39 @@ func (eb *ExprBuilder) MakeLenCall() *ast.CallExpr {
 		// call len on string
 		typ = BasicType{"string"}
 	}
+
 	ce := &ast.CallExpr{
-		Fun:  LenIdent,
-		Args: []ast.Expr{eb.Expr(typ)},
+		Fun: LenIdent,
 	}
+
+	if eb.CanDeepen() {
+		ce.Args = []ast.Expr{eb.Expr(typ)}
+	} else {
+		ce.Args = []ast.Expr{eb.VarOrLit(typ).(ast.Expr)}
+	}
+
 	return ce
 }
 
 func (eb *ExprBuilder) MakeMathCall(fun Variable) *ast.CallExpr {
-	return &ast.CallExpr{
+	ce := &ast.CallExpr{
 		Fun: &ast.SelectorExpr{
 			X:   &ast.Ident{Name: "math"},
 			Sel: &ast.Ident{Name: fun.Name.Name[len("math."):]},
 		},
-		Args: []ast.Expr{eb.Expr(fun.Type.(FuncType).Args[0])},
 	}
+
+	cd := eb.CanDeepen()
+	args := []ast.Expr{}
+	for _, arg := range fun.Type.(FuncType).Args {
+		if cd {
+			args = append(args, eb.Expr(arg))
+		} else {
+			args = append(args, eb.VarOrLit(arg).(ast.Expr))
+		}
+
+	}
+	ce.Args = args
+
+	return ce
 }

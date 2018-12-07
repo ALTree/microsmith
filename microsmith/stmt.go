@@ -64,6 +64,12 @@ func NewStmtBuilder(rs *rand.Rand, conf ProgramConf) *StmtBuilder {
 	scope = append(scope, Variable{
 		MathSqrt,
 		&ast.Ident{Name: MathSqrt.Name()}})
+	scope = append(scope, Variable{
+		MathMax,
+		&ast.Ident{Name: MathMax.Name()}})
+	scope = append(scope, Variable{
+		MathMod,
+		&ast.Ident{Name: MathMod.Name()}})
 
 	// int() conversion are not enabled because int(Expr()) will fail
 	// at compile-time if Expr() is a float64 expression made up of

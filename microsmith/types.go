@@ -189,6 +189,16 @@ var MathSqrt FuncType = FuncType{
 	[]Type{BasicType{"float64"}},
 	[]Type{BasicType{"float64"}},
 }
+var MathMax FuncType = FuncType{
+	"math.Max",
+	[]Type{BasicType{"float64"}, BasicType{"float64"}},
+	[]Type{BasicType{"float64"}},
+}
+var MathMod FuncType = FuncType{
+	"math.Mod",
+	[]Type{BasicType{"float64"}, BasicType{"float64"}},
+	[]Type{BasicType{"float64"}},
+}
 
 var BoolIdent = &ast.Ident{Name: "bool"}
 var IntIdent = &ast.Ident{Name: "int"}
