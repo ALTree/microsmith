@@ -456,7 +456,7 @@ func (sb *StmtBuilder) CaseClause(t Type, def bool) *ast.CaseClause {
 // dec. Otherwise, returns <t, true>; where t is a random type that
 // can be inc/dec and has a variable in scope.
 func (sb *StmtBuilder) CanIncDec() (Type, bool) {
-	inScope := make([]Type, 0)
+	inScope := make([]Type, 0, 4)
 	if sb.scope.TypeInScope(BasicType{"int"}) {
 		inScope = append(inScope, BasicType{"int"})
 	}

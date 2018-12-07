@@ -54,15 +54,11 @@ func (s *Scope) NewIdent(t Type) *ast.Ident {
 			}
 		}
 	}
-	name := fmt.Sprintf("%s%v", Ident(t), tc)
 
-	// build Ident object
-	id := new(ast.Ident)
-	id.Obj = &ast.Object{Kind: ast.Var, Name: name}
-	id.Name = name
+	name := fmt.Sprintf("%s%v", Ident(t), tc)
+	id := &ast.Ident{Name: name}
 
 	*s = append(*s, Variable{t, id})
-
 	return id
 }
 
