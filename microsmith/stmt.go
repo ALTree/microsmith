@@ -326,21 +326,7 @@ func (sb *StmtBuilder) DeclStmt(nVars int, t Type) (*ast.DeclStmt, []*ast.Ident)
 
 	switch t := t.(type) {
 	case BasicType:
-		// TODO(alb): refactor
-		switch t.Name() {
-		case "bool":
-			typ = BoolIdent
-		case "int":
-			typ = IntIdent
-		case "float64":
-			typ = FloatIdent
-		case "complex128":
-			typ = ComplexIdent
-		case "string":
-			typ = StringIdent
-		default:
-			panic("not preallocated basic type: " + t.Name())
-		}
+		typ = TypeIdent(t.Name())
 	case ArrayType:
 		typ = &ast.ArrayType{Elt: TypeIdent(t.Base().Name())}
 	case PointerType:

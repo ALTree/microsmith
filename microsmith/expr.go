@@ -277,7 +277,6 @@ func (eb *ExprBuilder) IndexExpr(t Type) *ast.IndexExpr {
 	return ie
 }
 
-// TODO: use Expr for the slice indices, not just basiclit int
 func (eb *ExprBuilder) SliceExpr(t Type) *ast.SliceExpr {
 	if !t.Sliceable() {
 		panic("SliceExpr: un-sliceable type " + t.Name())
@@ -406,7 +405,6 @@ func (eb *ExprBuilder) BinaryExpr(t Type) *ast.BinaryExpr {
 
 // CallExpr returns a call expression with a function call that has
 // return value of type t. For now, we only call len
-// TODO: generalize, factor out len code
 func (eb *ExprBuilder) CallExpr(t Type) *ast.CallExpr {
 
 	// functions that are in scope and have return type t
