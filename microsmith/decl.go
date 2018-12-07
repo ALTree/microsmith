@@ -49,11 +49,11 @@ func RandConf() ProgramConf {
 			MaxStmtDepth: 1 + rand.Intn(3),
 			StmtKindChance: []float64{
 				float64(rand.Intn(5)), // assign stms
-				float64(rand.Intn(5)), // block stms
+				float64(rand.Intn(3)), // block stms
 				float64(rand.Intn(5)), // for stms
 				float64(rand.Intn(5)), // if stms
 				float64(rand.Intn(5)), // switch stms
-				float64(rand.Intn(5)), // inc and dec stms
+				float64(rand.Intn(2)), // inc and dec stms
 			},
 
 			// since the Stmt builder already calls rand(1,Max) to
