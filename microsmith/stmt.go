@@ -456,25 +456,38 @@ func (sb *StmtBuilder) CaseClause(t Type, def bool) *ast.CaseClause {
 // dec. Otherwise, returns <t, true>; where t is a random type that
 // can be inc/dec and has a variable in scope.
 func (sb *StmtBuilder) CanIncDec() (Type, bool) {
-	inScope := make([]Type, 0, 4)
+	// collect in scope types as int to avoid contT2I allocating every
+	// time we put a Type in an interface Type array.
+	inScope := make([]int, 0, 4)
 	if sb.scope.TypeInScope(BasicType{"int"}) {
-		inScope = append(inScope, BasicType{"int"})
+		inScope = append(inScope, 1)
 	}
 	if sb.scope.TypeInScope(ArrOf(BasicType{"int"})) {
-		inScope = append(inScope, ArrOf(BasicType{"int"}))
+		inScope = append(inScope, 2)
 	}
 	if sb.scope.TypeInScope(BasicType{"float64"}) {
-		inScope = append(inScope, BasicType{"float64"})
+		inScope = append(inScope, 3)
 	}
 	if sb.scope.TypeInScope(ArrOf(BasicType{"float64"})) {
-		inScope = append(inScope, ArrOf(BasicType{"float64"}))
+		inScope = append(inScope, 4)
 	}
 
 	if len(inScope) == 0 {
 		return nil, false
 	}
 
-	return RandType(inScope), true
+	switch inScope[sb.rs.Int63n(int64(len(inScope)))] {
+	case 1:
+		return BasicType{"int"}, true
+	case 2:
+		return ArrOf(BasicType{"int"}), true
+	case 3:
+		return BasicType{"float64"}, true
+	case 4:
+		return ArrOf(BasicType{"float64"}), true
+	default:
+		panic("CanIncDec: bad type")
+	}
 }
 
 func (sb *StmtBuilder) IncDecStmt(t Type) *ast.IncDecStmt {
