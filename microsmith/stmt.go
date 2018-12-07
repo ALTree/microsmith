@@ -148,7 +148,6 @@ func (sb *StmtBuilder) Stmt() ast.Stmt {
 		sb.depth--
 		return s
 	case 5:
-		// TODO(alb): inefficient
 		if t, ok := sb.CanIncDec(); ok && sb.rs.Int63()%4 == 0 {
 			s := sb.IncDecStmt(t)
 			return s

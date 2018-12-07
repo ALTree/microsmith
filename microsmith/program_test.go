@@ -241,8 +241,15 @@ func TestProgramGc(t *testing.T) {
 var BenchConf = microsmith.ProgramConf{
 	microsmith.StmtConf{
 		MaxStmtDepth: 2,
+
+		// Assign
+		// Block
+		// For
+		// If
+		// Switch
+		// IncDec
 		StmtKindChance: []float64{
-			1, 1, 1, 1, 1, 1,
+			3, 1, 3, 3, 3, 1,
 		},
 		MaxBlockVars:  8,
 		MaxBlockStmts: 6,
@@ -256,7 +263,7 @@ var BenchConf = microsmith.ProgramConf{
 		},
 		LiteralChance:    0.4,
 		ComparisonChance: 0.4,
-		IndexChance:      0.4,
+		IndexChance:      0.25,
 	},
 	[]microsmith.Type{
 		microsmith.BasicType{"int"},
