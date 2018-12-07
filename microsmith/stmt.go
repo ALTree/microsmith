@@ -116,7 +116,7 @@ func (sb *StmtBuilder) Stmt() ast.Stmt {
 	// If the maximum allowed stmt depth has been reached, only
 	// generate stmt that do not nest (assignments and incdec).
 	if sb.depth >= sb.conf.MaxStmtDepth {
-		if t, ok := sb.CanIncDec(); ok && sb.rs.Int63()%2 == 0 {
+		if t, ok := sb.CanIncDec(); ok && sb.rs.Int63()%4 == 0 {
 			return sb.IncDecStmt(t)
 		} else {
 			return sb.AssignStmt(RandType(typesInScope))
@@ -149,7 +149,7 @@ func (sb *StmtBuilder) Stmt() ast.Stmt {
 		return s
 	case 5:
 		// TODO(alb): inefficient
-		if t, ok := sb.CanIncDec(); ok && sb.rs.Int63()%2 == 0 {
+		if t, ok := sb.CanIncDec(); ok && sb.rs.Int63()%4 == 0 {
 			s := sb.IncDecStmt(t)
 			return s
 		} else {
@@ -269,10 +269,10 @@ func (sb *StmtBuilder) BlockStmt() *ast.BlockStmt {
 	}
 
 	var nStmts int
-	if sb.conf.MaxBlockStmts < 4 {
+	if sb.conf.MaxBlockStmts < 5 {
 		nStmts = sb.conf.MaxBlockStmts
 	} else {
-		nStmts = 4 + sb.rs.Intn(sb.conf.MaxBlockStmts-3)
+		nStmts = 5 + sb.rs.Intn(sb.conf.MaxBlockStmts-4)
 	}
 
 	// Fill the block's body with statements (but *no* new declaration:
