@@ -5,6 +5,7 @@ import (
 	"go/token"
 	"math/rand"
 	"strconv"
+	"strings"
 )
 
 type ExprBuilder struct {
@@ -418,31 +419,22 @@ func (eb *ExprBuilder) CallExpr(t Type) *ast.CallExpr {
 
 	// choose one of them at random
 	fun := funcs[eb.rs.Intn(len(funcs))]
-
-	// len() calls are handled separately, since the argument can be
-	// either an array or a string
-	if fun.Name.Name == "len" {
+	switch name := fun.Name.Name; name {
+	case "len":
 		return eb.MakeLenCall()
-	}
-
-	if fun.Name.Name == "float64" {
-		ce := &ast.CallExpr{
+	case "float64":
+		return &ast.CallExpr{
 			Fun:  FloatIdent,
 			Args: []ast.Expr{eb.Expr(BasicType{"int"})},
 		}
-		return ce
-	}
-
-	// not enabled at the moment; see comment in NewStmtBuilder().
-	if fun.Name.Name == "int" {
-		ce := &ast.CallExpr{
-			Fun:  IntIdent,
-			Args: []ast.Expr{eb.Expr(BasicType{"float64"})},
+	case "int":
+		// not enabled at the moment; see comment in NewStmtBuilder().
+		panic("CallExpr: int() calls should not be generated")
+	default:
+		if strings.HasPrefix(name, "math.") {
+			return eb.MakeMathCall(fun)
 		}
-		return ce
 	}
-
-	// TODO(alb): handle generic function types
 
 	panic("unreachable")
 }
@@ -462,4 +454,14 @@ func (eb *ExprBuilder) MakeLenCall() *ast.CallExpr {
 		Args: []ast.Expr{eb.Expr(typ)},
 	}
 	return ce
+}
+
+func (eb *ExprBuilder) MakeMathCall(fun Variable) *ast.CallExpr {
+	return &ast.CallExpr{
+		Fun: &ast.SelectorExpr{
+			X:   &ast.Ident{Name: "math"},
+			Sel: &ast.Ident{Name: fun.Name.Name[len("math."):]},
+		},
+		Args: []ast.Expr{eb.Expr(fun.Type.(FuncType).Args[0])},
+	}
 }

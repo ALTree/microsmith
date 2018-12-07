@@ -55,13 +55,15 @@ func NewStmtBuilder(rs *rand.Rand, conf ProgramConf) *StmtBuilder {
 	// pre-declared function are always in scope
 	scope = append(scope, Variable{
 		LenFun,
-		&ast.Ident{Name: LenFun.Name()}},
-	)
-	scope = append(scope,
-		Variable{
-			FloatConv,
-			&ast.Ident{Name: FloatConv.Name()},
-		})
+		&ast.Ident{Name: LenFun.Name()}})
+	scope = append(scope, Variable{
+		FloatConv,
+		&ast.Ident{Name: FloatConv.Name()}})
+
+	// a few functions from the math package
+	scope = append(scope, Variable{
+		MathSqrt,
+		&ast.Ident{Name: MathSqrt.Name()}})
 
 	// int() conversion are not enabled because int(Expr()) will fail
 	// at compile-time if Expr() is a float64 expression made up of

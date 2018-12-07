@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"go/ast"
+	"go/importer"
 	"go/parser"
 	"go/printer"
 	"go/token"
@@ -75,7 +76,7 @@ func (gp *GoProgram) Check() error {
 		return err // parse error
 	}
 
-	conf := types.Config{}
+	conf := types.Config{Importer: importer.Default()}
 	_, err = conf.Check(gp.fileName, fset, []*ast.File{f}, nil)
 	if err != nil {
 		return err // typecheck error

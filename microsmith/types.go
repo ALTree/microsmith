@@ -184,6 +184,12 @@ var IntConv FuncType = FuncType{
 	[]Type{BasicType{"int"}},
 }
 
+var MathSqrt FuncType = FuncType{
+	"math.Sqrt",
+	[]Type{BasicType{"float64"}},
+	[]Type{BasicType{"float64"}},
+}
+
 var BoolIdent = &ast.Ident{Name: "bool"}
 var IntIdent = &ast.Ident{Name: "int"}
 var FloatIdent = &ast.Ident{Name: "float64"}

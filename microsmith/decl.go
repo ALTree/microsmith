@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"go/ast"
+	"go/token"
 	"math/rand"
 )
 
@@ -226,14 +227,44 @@ func (db *DeclBuilder) FuncIdent() *ast.Ident {
 // containing fCount functions.
 func (db *DeclBuilder) File(pName string, fCount int) *ast.File {
 	af := new(ast.File)
-
 	af.Name = &ast.Ident{0, pName, nil}
 	af.Decls = []ast.Decl{}
+
+	// import "math"
+	mathImport := &ast.GenDecl{
+		Tok: token.IMPORT,
+		Specs: []ast.Spec{
+			&ast.ImportSpec{
+				Path: &ast.BasicLit{Kind: token.STRING, Value: `"math"`},
+			},
+		},
+	}
+	af.Decls = append(af.Decls, mathImport)
+
+	// var _ = math.Sqrt
+	// (to avoid "unused package" errors)
+	mathUsage := &ast.GenDecl{
+		Tok: token.VAR,
+		Specs: []ast.Spec{
+			&ast.ValueSpec{
+				Names: []*ast.Ident{&ast.Ident{Name: "_"}},
+				Values: []ast.Expr{
+					&ast.SelectorExpr{
+						X:   &ast.Ident{Name: "math"},
+						Sel: &ast.Ident{Name: "Sqrt"},
+					},
+				},
+			},
+		},
+	}
+	af.Decls = append(af.Decls, mathUsage)
+
+	// now, a few functions
 	for i := 0; i < fCount; i++ {
 		af.Decls = append(af.Decls, db.FuncDecl())
 	}
 
-	// add empty main func
+	// finally, an empty main func
 	if pName == "main" {
 		mainF := &ast.FuncDecl{
 			Name: &ast.Ident{Name: "main"},
