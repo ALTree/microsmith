@@ -200,6 +200,12 @@ var MathMod FuncType = FuncType{
 	[]Type{BasicType{"float64"}},
 }
 
+var RandIntn FuncType = FuncType{
+	"rand.Intn",
+	[]Type{BasicType{"int"}},
+	[]Type{BasicType{"int"}},
+}
+
 var BoolIdent = &ast.Ident{Name: "bool"}
 var IntIdent = &ast.Ident{Name: "int"}
 var FloatIdent = &ast.Ident{Name: "float64"}

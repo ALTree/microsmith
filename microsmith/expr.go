@@ -434,8 +434,11 @@ func (eb *ExprBuilder) CallExpr(t Type) *ast.CallExpr {
 		// not enabled at the moment; see comment in NewStmtBuilder().
 		panic("CallExpr: int() calls should not be generated")
 	default:
+		// TODO(alb): merge MakeMathCall and MakeRandCall
 		if strings.HasPrefix(name, "math.") {
 			return eb.MakeMathCall(fun)
+		} else if strings.HasPrefix(name, "rand.") {
+			return eb.MakeRandCall(fun)
 		}
 	}
 
@@ -471,6 +474,29 @@ func (eb *ExprBuilder) MakeMathCall(fun Variable) *ast.CallExpr {
 		Fun: &ast.SelectorExpr{
 			X:   &ast.Ident{Name: "math"},
 			Sel: &ast.Ident{Name: fun.Name.Name[len("math."):]},
+		},
+	}
+
+	cd := eb.CanDeepen()
+	args := []ast.Expr{}
+	for _, arg := range fun.Type.(FuncType).Args {
+		if cd {
+			args = append(args, eb.Expr(arg))
+		} else {
+			args = append(args, eb.VarOrLit(arg).(ast.Expr))
+		}
+
+	}
+	ce.Args = args
+
+	return ce
+}
+
+func (eb *ExprBuilder) MakeRandCall(fun Variable) *ast.CallExpr {
+	ce := &ast.CallExpr{
+		Fun: &ast.SelectorExpr{
+			X:   &ast.Ident{Name: "rand"},
+			Sel: &ast.Ident{Name: fun.Name.Name[len("rand."):]},
 		},
 	}
 

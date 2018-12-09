@@ -230,34 +230,14 @@ func (db *DeclBuilder) File(pName string, fCount int) *ast.File {
 	af.Name = &ast.Ident{0, pName, nil}
 	af.Decls = []ast.Decl{}
 
-	// import "math"
-	mathImport := &ast.GenDecl{
-		Tok: token.IMPORT,
-		Specs: []ast.Spec{
-			&ast.ImportSpec{
-				Path: &ast.BasicLit{Kind: token.STRING, Value: `"math"`},
-			},
-		},
-	}
-	af.Decls = append(af.Decls, mathImport)
+	af.Decls = append(af.Decls, MakeImport(`"math"`))
+	af.Decls = append(af.Decls, MakeImport(`"math/rand"`))
 
-	// var _ = math.Sqrt
+	// eg:
+	//   var _ = math.Sqrt
 	// (to avoid "unused package" errors)
-	mathUsage := &ast.GenDecl{
-		Tok: token.VAR,
-		Specs: []ast.Spec{
-			&ast.ValueSpec{
-				Names: []*ast.Ident{&ast.Ident{Name: "_"}},
-				Values: []ast.Expr{
-					&ast.SelectorExpr{
-						X:   &ast.Ident{Name: "math"},
-						Sel: &ast.Ident{Name: "Sqrt"},
-					},
-				},
-			},
-		},
-	}
-	af.Decls = append(af.Decls, mathUsage)
+	af.Decls = append(af.Decls, MakeUsePakage(`"math"`))
+	af.Decls = append(af.Decls, MakeUsePakage(`"math/rand"`))
 
 	// now, a few functions
 	for i := 0; i < fCount; i++ {
@@ -275,4 +255,42 @@ func (db *DeclBuilder) File(pName string, fCount int) *ast.File {
 	}
 
 	return af
+}
+
+// Builds this:
+//   import "<p>"
+// p must be include a " char in the 1st and last position.
+func MakeImport(p string) *ast.GenDecl {
+	return &ast.GenDecl{
+		Tok: token.IMPORT,
+		Specs: []ast.Spec{
+			&ast.ImportSpec{
+				Path: &ast.BasicLit{Kind: token.STRING, Value: p},
+			},
+		},
+	}
+}
+
+func MakeUsePakage(p string) *ast.GenDecl {
+	se := &ast.SelectorExpr{}
+	switch p {
+	case `"math"`:
+		se.X = &ast.Ident{Name: "math"}
+		se.Sel = &ast.Ident{Name: "Sqrt"}
+	case `"math/rand"`:
+		se.X = &ast.Ident{Name: "rand"}
+		se.Sel = &ast.Ident{Name: "Int"}
+	default:
+		panic("MakeUsePackage: bad package " + p)
+	}
+
+	return &ast.GenDecl{
+		Tok: token.VAR,
+		Specs: []ast.Spec{
+			&ast.ValueSpec{
+				Names:  []*ast.Ident{&ast.Ident{Name: "_"}},
+				Values: []ast.Expr{se},
+			},
+		},
+	}
 }
