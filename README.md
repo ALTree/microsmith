@@ -18,3 +18,5 @@ to stress-test Go compilers.
 - [#26024: internal compiler error: expected successors of write barrier block to be plain](https://github.com/golang/go/issues/26024)
 - [#26043: internal compiler error: panic during prove](https://github.com/golang/go/issues/26043)
 - [#28055: compiler crashes with "VARDEF is not a top level statement" error](https://github.com/golang/go/issues/28055)
+- [#29215: cmd/compile: internal compiler error: panic during lower](https://github.com/golang/go/issues/29215)
+- [#29218: cmd/compile: internal compiler error: bad live variable at entry](https://github.com/golang/go/issues/29218)
