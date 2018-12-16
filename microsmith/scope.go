@@ -47,6 +47,12 @@ func (s *Scope) NewIdent(t Type) *ast.Ident {
 				tc++
 			}
 		}
+	case ChanType:
+		for _, v := range *s {
+			if _, ok := v.Type.(ChanType); ok {
+				tc++
+			}
+		}
 	default:
 		for _, v := range *s {
 			if v.Type == t {
@@ -87,6 +93,10 @@ func (ls Scope) TypeInScope(t Type) bool {
 					return true
 				}
 			}
+		case ChanType:
+			if v.Type.(ChanType).Base() == t {
+				return true
+			}
 		default:
 			if v.Type == t {
 				return true
@@ -109,6 +119,8 @@ func (ls Scope) InScopeTypes() []Type {
 			for _, t := range v.Type.(StructType).Ftypes {
 				tMap[t] = struct{}{}
 			}
+		case ChanType:
+			tMap[v.Type.(ChanType).Base()] = struct{}{}
 		default:
 			tMap[v.Type] = struct{}{}
 		}
@@ -139,6 +151,19 @@ func (ls Scope) InScopeFuncs(t Type) []Variable {
 	return funcs
 }
 
+// return a list of in-scope channel variables
+func (ls Scope) InScopeChans() []Variable {
+	chans := make([]Variable, 0)
+	for _, v := range ls {
+		switch v.Type.(type) {
+		case ChanType:
+			chans = append(chans, v)
+		}
+	}
+
+	return chans
+}
+
 // return an expression made of an ident of the given type
 func (ls Scope) RandomIdentExpr(t Type, rs *rand.Rand) ast.Expr {
 
@@ -167,6 +192,12 @@ func (ls Scope) RandomIdentExpr(t Type, rs *rand.Rand) ast.Expr {
 			if v.Type == t {
 				cnt++
 			} else if v.Type.(PointerType).Base() == t {
+				cnt++
+			}
+		case ChanType:
+			if v.Type == t {
+				cnt++
+			} else if v.Type.(ChanType).Base() == t {
 				cnt++
 			}
 		default:
@@ -216,6 +247,119 @@ func (ls Scope) RandomIdentExpr(t Type, rs *rand.Rand) ast.Expr {
 						Op: token.MUL,
 						X:  &ast.Ident{Name: v.Name.Name},
 					}
+				}
+			}
+		case ChanType:
+			if v.Type == t {
+				cnt++
+				if cnt == rand {
+					return v.Name
+				}
+			} else if v.Type.(ChanType).Base() == t {
+				cnt++
+				if cnt == rand {
+					return &ast.UnaryExpr{
+						Op: token.ARROW,
+						X:  &ast.Ident{Name: v.Name.Name},
+					}
+				}
+			}
+		default:
+			if v.Type == t {
+				cnt++
+			}
+			if cnt == rand {
+				return v.Name
+			}
+		}
+	}
+
+	// should never happen
+	panic("something went wrong when counting idents")
+
+}
+
+// We need this e.g. when calling for &(Expr()) because the one above
+// could return a chan which is not addressable.
+// We also use this for AssignStmt since you can't assign to <-CH
+//
+// TODO(alb): merge with the one above
+func (ls Scope) RandomIdentExprAddressable(t Type, rs *rand.Rand) ast.Expr {
+	cnt := 0
+	for _, v := range ls {
+		switch v.Type.(type) {
+		case StructType:
+			for _, ft := range v.Type.(StructType).Ftypes {
+				if ft == t {
+					cnt++
+				}
+			}
+		case PointerType:
+			if v.Type == t {
+				cnt++
+			} else if v.Type.(PointerType).Base() == t {
+				cnt++
+			}
+		case ChanType:
+			if v.Type == t {
+				cnt++
+			} else if v.Type.(ChanType).Base() == t {
+				// won't be addressable
+			}
+		default:
+			if v.Type == t {
+				cnt++
+			}
+		}
+	}
+
+	// it's up the the caller to make sure the scope is not empty
+	if cnt == 0 {
+		panic("Empty scope")
+	}
+
+	rand := 1 + rs.Intn(cnt)
+	cnt = 0
+	for _, v := range ls {
+		switch v.Type.(type) {
+		case StructType:
+			for i, ft := range v.Type.(StructType).Ftypes {
+				if ft == t {
+					cnt++
+				}
+				if cnt == rand {
+					return &ast.SelectorExpr{
+						X:   v.Name,
+						Sel: &ast.Ident{Name: v.Type.(StructType).Fnames[i]},
+					}
+				}
+			}
+		case PointerType:
+			// pointers in scope are useful in two cases:
+			//   1. when the caller requested a pointer ident
+			//   2. when the caller requested a type that is the base
+			//   type of the pointer
+			// In the first case, we count the pointer ident itself, in
+			// the second case we'll return *p
+			if v.Type == t {
+				cnt++
+				if cnt == rand {
+					return v.Name
+				}
+			} else if v.Type.(PointerType).Base() == t {
+				cnt++
+				if cnt == rand {
+					return &ast.UnaryExpr{
+						Op: token.MUL,
+						X:  &ast.Ident{Name: v.Name.Name},
+					}
+				}
+			}
+		case ChanType:
+			if v.Type == t {
+				cnt++
+				if cnt == rand {
+					return v.Name
 				}
 			}
 		default:

@@ -189,7 +189,7 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 		} else {
 			expr = &ast.UnaryExpr{
 				Op: token.AND,
-				X:  eb.scope.RandomIdentExpr(t.Base(), eb.rs),
+				X:  eb.scope.RandomIdentExprAddressable(t.Base(), eb.rs),
 			}
 		}
 	default:

@@ -22,6 +22,10 @@ func ArrOf(t Type) ArrayType {
 	return ArrayType{t}
 }
 
+func ChanOf(t Type) ChanType {
+	return ChanType{t}
+}
+
 // String to use for variable names of this type.
 func Ident(t Type) string {
 	switch t := t.(type) {
@@ -33,6 +37,8 @@ func Ident(t Type) string {
 		return "FNC"
 	case StructType: // TODO(alb): structs needs a better naming system
 		return "ST"
+	case ChanType:
+		return "CH"
 	case PointerType:
 		return "P" + Ident(t.Btype)
 	default:
@@ -205,6 +211,31 @@ var RandIntn FuncType = FuncType{
 	[]Type{BasicType{"int"}},
 	[]Type{BasicType{"int"}},
 }
+
+// ---------------- //
+//       chan       //
+// ---------------- //
+
+type ChanType struct {
+	T Type
+}
+
+func (ct ChanType) Name() string {
+	return "chan " + ct.T.Name()
+}
+
+// given a chan type, it returns the corresponding base type
+func (ct ChanType) Base() Type {
+	return ct.T
+}
+
+func (ct ChanType) Sliceable() bool {
+	return false
+}
+
+// -------------------- //
+//       prealloc       //
+// -------------------- //
 
 var BoolIdent = &ast.Ident{Name: "bool"}
 var IntIdent = &ast.Ident{Name: "int"}

@@ -25,6 +25,7 @@ type StmtConf struct {
 	//   3. If Stmt
 	//   4. Switch Stmt
 	//   5. IncDec Stmt
+	//   6. Send Stmt
 	StmtKindChance []float64
 
 	// max amount of variables and statements inside new block
@@ -36,6 +37,9 @@ type StmtConf struct {
 
 	// whether to declare and use structs
 	UseStructs bool
+
+	// whether to declare and use channels
+	UseChans bool
 
 	// whether to declare and use pointer types
 	UsePointers bool
@@ -102,7 +106,8 @@ func NewStmtBuilder(rs *rand.Rand, conf ProgramConf) *StmtBuilder {
 //   - ForStmt
 //   - IfStmt
 //   - SwitchStmt
-//   - IndDecStmt
+//   - IncDecStmt
+//   - SendStmt
 //
 // DeclStmt is implemented and used, but is not used directly here (by
 // Stmt. It's only used inside BlockStmt, which takes care of setting
@@ -159,6 +164,9 @@ func (sb *StmtBuilder) Stmt() ast.Stmt {
 			s := sb.AssignStmt(RandType(typesInScope))
 			return s
 		}
+	case 6:
+		s := sb.SendStmt()
+		return s
 	default:
 		panic("Stmt: bad RandIndex")
 	}
@@ -174,7 +182,7 @@ func (sb *StmtBuilder) AssignStmt(t Type) *ast.AssignStmt {
 			sb.rs.Float64() < sb.conf.IndexChance {
 			v = sb.eb.IndexExpr(ArrOf(t))
 		} else {
-			v = sb.scope.RandomIdentExpr(t, sb.rs)
+			v = sb.scope.RandomIdentExprAddressable(t, sb.rs)
 		}
 	default:
 		v = sb.scope.RandomIdentExpr(t, sb.rs)
@@ -224,13 +232,19 @@ func (sb *StmtBuilder) BlockStmt() *ast.BlockStmt {
 		if rs[i] > 0 {
 			typ := t
 
-			// respectively the number of plain, array, and pointer
-			// variables of type t we'll declare
-			n, na, np := rs[i], 0, 0
+			// respectively the number of plain, array, chan, and and
+			// pointer variables of type t we'll declare
+			n, na, nc, np := rs[i], 0, 0, 0
 
 			// If arrays are enabled, 25% of our declaration will be of arrays
 			if sb.conf.UseArrays {
 				na = n / 4
+			}
+
+			// If channles are enabled, 25% of our declaration will be
+			// of chan
+			if sb.conf.UseChans {
+				nc = n / 4
 			}
 
 			// If pointers are enabled, 25% of our declaration will be
@@ -239,7 +253,7 @@ func (sb *StmtBuilder) BlockStmt() *ast.BlockStmt {
 				np = n / 4
 			}
 
-			n -= (na + np)
+			n -= (na + np + nc)
 
 			if n > 0 {
 				newDecl, nv := sb.DeclStmt(n, typ)
@@ -249,6 +263,12 @@ func (sb *StmtBuilder) BlockStmt() *ast.BlockStmt {
 
 			if na > 0 {
 				newDecl, nv := sb.DeclStmt(na, ArrOf(typ))
+				stmts = append(stmts, newDecl)
+				newVars = append(newVars, nv...)
+			}
+
+			if nc > 0 {
+				newDecl, nv := sb.DeclStmt(na, ChanOf(typ))
 				stmts = append(stmts, newDecl)
 				newVars = append(newVars, nv...)
 			}
@@ -337,6 +357,8 @@ func (sb *StmtBuilder) DeclStmt(nVars int, t Type) (*ast.DeclStmt, []*ast.Ident)
 		typ = &ast.StarExpr{X: TypeIdent(t.Base().Name())}
 	case StructType:
 		typ = BuildStructAst(t)
+	case ChanType:
+		typ = &ast.ChanType{Dir: 3, Value: TypeIdent(t.Base().Name())}
 	default:
 		panic("DeclStmt: bad type " + t.Name())
 	}
@@ -497,7 +519,7 @@ func (sb *StmtBuilder) CanIncDec() (Type, bool) {
 func (sb *StmtBuilder) IncDecStmt(t Type) *ast.IncDecStmt {
 	is := new(ast.IncDecStmt)
 	if t.Name() == "int" || t.Name() == "float64" {
-		is.X = sb.scope.RandomIdentExpr(t, sb.rs)
+		is.X = sb.scope.RandomIdentExprAddressable(t, sb.rs)
 	} else {
 		is.X = sb.eb.IndexExpr(t)
 	}
@@ -509,6 +531,35 @@ func (sb *StmtBuilder) IncDecStmt(t Type) *ast.IncDecStmt {
 	}
 
 	return is
+}
+
+func (sb *StmtBuilder) SendStmt() *ast.SendStmt {
+
+	// get the variable .Name
+	st := new(ast.SendStmt)
+
+	chs := sb.scope.InScopeChans()
+	if len(chs) == 0 {
+		// no channels in scope, but we can send to a brand
+		// new one (e.g. make(chan int) <- 1)
+		t := RandType(sb.conf.SupportedTypes)
+		st.Chan = &ast.CallExpr{
+			Fun: &ast.Ident{Name: "make"},
+			Args: []ast.Expr{
+				&ast.ChanType{
+					Dir:   3,
+					Value: TypeIdent(t.Name()),
+				},
+			},
+		}
+		st.Value = sb.eb.Expr(t)
+	} else {
+		randChan := chs[sb.rs.Int63n(int64(len(chs)))]
+		st.Chan = randChan.Name
+		st.Value = sb.eb.Expr(randChan.Type.(ChanType).Base())
+	}
+
+	return st
 }
 
 // Spec says this cannot be any Expr.

@@ -11,9 +11,9 @@ func main() {
 	src := `
 package main
 
-import "math/rand"
-
 func f() {
+  var c chan float64
+  make(chan int) <- 1
 
 }
 `
