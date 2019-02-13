@@ -4,6 +4,7 @@ import (
 	"go/ast"
 	"go/token"
 	"math/rand"
+	"strings"
 )
 
 type StmtBuilder struct {
@@ -165,8 +166,8 @@ func (sb *StmtBuilder) Stmt() ast.Stmt {
 			return s
 		}
 	case 6:
-		s := sb.SendStmt()
-		return s
+		return sb.SendStmt()
+		// return sb.ExprStmt()
 	default:
 		panic("Stmt: bad RandIndex")
 	}
@@ -562,21 +563,54 @@ func (sb *StmtBuilder) SendStmt() *ast.SendStmt {
 	return st
 }
 
-// Spec says this cannot be any Expr.
-// Rigth now we generate things like
-//   1+3
-// which do not compile. What is allowed:
+// What is allowed, according to the spec:
 //   - function and method calls
 //   - receive operation
-// ex:
-//   h(x+y)
-//   f.Close()
-//   <-ch
-//   (<-ch)
-// TODO: when we have chans and/or funcs, fix and enable this
-func (sb *StmtBuilder) ExprStmt(t Type) *ast.ExprStmt {
+//
+// Currently disabled because the code is a mess and it doesn't add
+// much to the generated programs anyway.
+func (sb *StmtBuilder) ExprStmt() *ast.ExprStmt {
+
+	panic("Should not be called")
+
 	es := new(ast.ExprStmt)
-	es.X = sb.eb.Expr(t)
+
+	for _, t := range sb.conf.SupportedTypes { // TODO(alb): add randomization(?)
+		if funcs := sb.scope.InScopeFuncsReal(t); len(funcs) > 0 {
+			// choose one of them at random
+			fun := funcs[sb.rs.Intn(len(funcs))]
+			name := fun.Name.Name
+			if strings.HasPrefix(name, "math.") {
+				es.X = sb.eb.MakeMathCall(fun)
+			} else if strings.HasPrefix(name, "rand.") {
+				es.X = sb.eb.MakeRandCall(fun)
+			}
+			return es
+		}
+	}
+
+	// channel receive
+	chs := sb.scope.InScopeChans()
+	if len(chs) == 0 {
+		// no channels in scope, we'll just make a new one
+		t := RandType(sb.conf.SupportedTypes)
+		es.X = &ast.UnaryExpr{
+			Op: token.ARROW,
+			X: &ast.CallExpr{
+				Fun: &ast.Ident{Name: "make"},
+				Args: []ast.Expr{
+					&ast.ChanType{Dir: 3, Value: TypeIdent(t.Name())},
+				},
+			},
+		}
+	} else {
+		randChan := chs[sb.rs.Int63n(int64(len(chs)))]
+		es.X = &ast.UnaryExpr{
+			Op: token.ARROW,
+			X:  randChan.Name,
+		}
+	}
+
 	return es
 }
 

@@ -12,9 +12,8 @@ func main() {
 package main
 
 func f() {
-  var c chan float64
-  make(chan int) <- 1
-
+  var c chan int
+  <-c
 }
 `
 	fset := token.NewFileSet()

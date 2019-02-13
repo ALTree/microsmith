@@ -54,8 +54,8 @@ func RandConf() ProgramConf {
 				float64(rand.Intn(5)), // for stms
 				float64(rand.Intn(5)), // if stms
 				float64(rand.Intn(5)), // switch stms
-				float64(rand.Intn(2)), // inc and dec stms
-				float64(rand.Intn(2)), // send stmts
+				float64(rand.Intn(1)), // inc and dec stms
+				float64(rand.Intn(1)), // send stmts
 			},
 
 			// since the Stmt builder already calls rand(1,Max) to

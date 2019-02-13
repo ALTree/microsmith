@@ -180,13 +180,13 @@ var LenFun FuncType = FuncType{
 
 var FloatConv FuncType = FuncType{
 	"float64",
-	[]Type{BasicType{"int"}}, // for now we only convert ints
+	[]Type{BasicType{"int"}},
 	[]Type{BasicType{"float64"}},
 }
 
 var IntConv FuncType = FuncType{
 	"int",
-	[]Type{BasicType{"float64"}}, // for now we only convert ints
+	[]Type{BasicType{"float64"}},
 	[]Type{BasicType{"int"}},
 }
 

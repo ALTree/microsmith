@@ -134,13 +134,31 @@ func (ls Scope) InScopeTypes() []Type {
 	return tArr
 }
 
-// returns a list of function that are in scope and have return type t
+// returns a list of function that are in scope and have return type t.
 func (ls Scope) InScopeFuncs(t Type) []Variable {
 	funcs := make([]Variable, 0)
 	for _, v := range ls {
 		switch v.Type.(type) {
 		case FuncType:
 			if v.Type.(FuncType).Ret[0] == t {
+				funcs = append(funcs, v)
+			}
+		default:
+			continue
+		}
+	}
+
+	return funcs
+}
+
+// Used by ExprStmt() (which is currently disabled).
+func (ls Scope) InScopeFuncsReal(t Type) []Variable {
+	funcs := make([]Variable, 0)
+	for _, v := range ls {
+		switch v.Type.(type) {
+		case FuncType:
+			if v.Type.(FuncType).Ret[0] == t &&
+				(v.Name.Name != "len" && v.Name.Name != "int" && v.Name.Name != "float64") {
 				funcs = append(funcs, v)
 			}
 		default:

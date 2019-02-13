@@ -404,7 +404,7 @@ func (eb *ExprBuilder) BinaryExpr(t Type) *ast.BinaryExpr {
 }
 
 // CallExpr returns a call expression with a function call that has
-// return value of type t. For now, we only call len
+// return value of type t.
 func (eb *ExprBuilder) CallExpr(t Type) *ast.CallExpr {
 
 	// functions that are in scope and have return type t
