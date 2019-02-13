@@ -164,8 +164,12 @@ func (ls Scope) InScopeChans() []Variable {
 	return chans
 }
 
-// return an expression made of an ident of the given type
-func (ls Scope) RandomIdentExpr(t Type, rs *rand.Rand) ast.Expr {
+// Returns an expression made of an ident of the given type.
+//
+// If addr is true, it's required that the returned Expr will be
+// addressable, i.e. it'll be allowed to &() it. In practise, this is
+// used to exclude chan expressions, since they're not addressable.
+func (ls Scope) RandomIdentHelper(t Type, rs *rand.Rand, addr bool) ast.Expr {
 
 	// we'll collect expressions of two types:
 	//   1. simple ast.Expr wrapping an ast.Ident
@@ -198,7 +202,11 @@ func (ls Scope) RandomIdentExpr(t Type, rs *rand.Rand) ast.Expr {
 			if v.Type == t {
 				cnt++
 			} else if v.Type.(ChanType).Base() == t {
-				cnt++
+				if !addr {
+					// not required to return an addressable Expr, so ok to
+					// return a <- expression
+					cnt++
+				}
 			}
 		default:
 			if v.Type == t {
@@ -255,7 +263,7 @@ func (ls Scope) RandomIdentExpr(t Type, rs *rand.Rand) ast.Expr {
 				if cnt == rand {
 					return v.Name
 				}
-			} else if v.Type.(ChanType).Base() == t {
+			} else if !addr && v.Type.(ChanType).Base() == t {
 				cnt++
 				if cnt == rand {
 					return &ast.UnaryExpr{
@@ -276,103 +284,14 @@ func (ls Scope) RandomIdentExpr(t Type, rs *rand.Rand) ast.Expr {
 
 	// should never happen
 	panic("something went wrong when counting idents")
-
 }
 
-// We need this e.g. when calling for &(Expr()) because the one above
-// could return a chan which is not addressable.
-// We also use this for AssignStmt since you can't assign to <-CH
-//
-// TODO(alb): merge with the one above
+func (ls Scope) RandomIdentExpr(t Type, rs *rand.Rand) ast.Expr {
+	return ls.RandomIdentHelper(t, rs, false)
+}
+
+// We need this e.g. when calling for &(Expr()); but we also use it
+// for AssignStmt, since you can't assign to <-CH
 func (ls Scope) RandomIdentExprAddressable(t Type, rs *rand.Rand) ast.Expr {
-	cnt := 0
-	for _, v := range ls {
-		switch v.Type.(type) {
-		case StructType:
-			for _, ft := range v.Type.(StructType).Ftypes {
-				if ft == t {
-					cnt++
-				}
-			}
-		case PointerType:
-			if v.Type == t {
-				cnt++
-			} else if v.Type.(PointerType).Base() == t {
-				cnt++
-			}
-		case ChanType:
-			if v.Type == t {
-				cnt++
-			} else if v.Type.(ChanType).Base() == t {
-				// won't be addressable
-			}
-		default:
-			if v.Type == t {
-				cnt++
-			}
-		}
-	}
-
-	// it's up the the caller to make sure the scope is not empty
-	if cnt == 0 {
-		panic("Empty scope")
-	}
-
-	rand := 1 + rs.Intn(cnt)
-	cnt = 0
-	for _, v := range ls {
-		switch v.Type.(type) {
-		case StructType:
-			for i, ft := range v.Type.(StructType).Ftypes {
-				if ft == t {
-					cnt++
-				}
-				if cnt == rand {
-					return &ast.SelectorExpr{
-						X:   v.Name,
-						Sel: &ast.Ident{Name: v.Type.(StructType).Fnames[i]},
-					}
-				}
-			}
-		case PointerType:
-			// pointers in scope are useful in two cases:
-			//   1. when the caller requested a pointer ident
-			//   2. when the caller requested a type that is the base
-			//   type of the pointer
-			// In the first case, we count the pointer ident itself, in
-			// the second case we'll return *p
-			if v.Type == t {
-				cnt++
-				if cnt == rand {
-					return v.Name
-				}
-			} else if v.Type.(PointerType).Base() == t {
-				cnt++
-				if cnt == rand {
-					return &ast.UnaryExpr{
-						Op: token.MUL,
-						X:  &ast.Ident{Name: v.Name.Name},
-					}
-				}
-			}
-		case ChanType:
-			if v.Type == t {
-				cnt++
-				if cnt == rand {
-					return v.Name
-				}
-			}
-		default:
-			if v.Type == t {
-				cnt++
-			}
-			if cnt == rand {
-				return v.Name
-			}
-		}
-	}
-
-	// should never happen
-	panic("something went wrong when counting idents")
-
+	return ls.RandomIdentHelper(t, rs, true)
 }
