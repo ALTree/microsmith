@@ -1,12 +1,12 @@
 
 ## Introduction
 
-Microsmith generates random (but valid) Go programs that can be used
-to stress-test Go compilers.
+Microsmith generates random Go programs that can be used to
+stress-test Go compilers.
 
 ### Bugs found
 
-#### gc
+#### gc compiler crashes
 
 - [#23504: internal compiler error: panic during layout](https://github.com/golang/go/issues/23504)
 - [#23889: panic: branch too far on arm64](https://github.com/golang/go/issues/23889)
@@ -20,3 +20,4 @@ to stress-test Go compilers.
 - [#28055: compiler crashes with "VARDEF is not a top level statement" error](https://github.com/golang/go/issues/28055)
 - [#29215: cmd/compile: internal compiler error: panic during lower](https://github.com/golang/go/issues/29215)
 - [#29218: cmd/compile: internal compiler error: bad live variable at entry](https://github.com/golang/go/issues/29218)
+- [#30257: cmd/compile: internal compiler error: panic during lower II](https://github.com/golang/go/issues/30257)
