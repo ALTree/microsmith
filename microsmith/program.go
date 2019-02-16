@@ -40,7 +40,7 @@ func NewGoProgram(seed int64, conf ProgramConf) (*GoProgram, error) {
 
 	db := NewDeclBuilder(seed, conf)
 	var buf bytes.Buffer
-	printer.Fprint(&buf, token.NewFileSet(), db.File("main", 4))
+	printer.Fprint(&buf, token.NewFileSet(), db.File("main", 8))
 
 	gp.Seed = seed
 	gp.source = buf.Bytes()

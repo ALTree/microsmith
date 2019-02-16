@@ -47,7 +47,7 @@ var DefaultConf = ProgramConf{
 func RandConf() ProgramConf {
 	pc := ProgramConf{
 		StmtConf{
-			MaxStmtDepth: 1 + rand.Intn(3),
+			MaxStmtDepth: 1 + rand.Intn(2),
 			StmtKindChance: []float64{
 				float64(rand.Intn(5)), // assign stms
 				float64(rand.Intn(3)), // block stms

@@ -119,7 +119,11 @@ func TestDefault(t *testing.T) {
 }
 
 func TestRandConf(t *testing.T) {
-	for i := 0; i < 100; i++ {
+	lim := 100
+	if testing.Short() {
+		lim = 10
+	}
+	for i := 0; i < lim; i++ {
 		conf := microsmith.RandConf()
 		// leave this (useful for debugging)
 		//fmt.Printf("%+v\n\n", conf)
