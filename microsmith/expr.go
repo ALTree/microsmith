@@ -183,9 +183,13 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 		expr = eb.CompositeLit(t)
 	case PointerType:
 		if !eb.scope.TypeInScope(t.Base()) {
-			//nothing is scope we could take the address of, just
-			//return a nil literal
-			expr = &ast.Ident{Name: "nil"}
+			if eb.scope.TypeInScope(t) {
+				expr = eb.scope.RandomIdentExpr(t, eb.rs)
+			} else {
+				// nothing is scope we could take the address of, just
+				// return a nil literal
+				expr = &ast.Ident{Name: "nil"}
+			}
 		} else {
 			expr = &ast.UnaryExpr{
 				Op: token.AND,

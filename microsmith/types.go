@@ -129,7 +129,7 @@ func (bt ArrayType) Sliceable() bool {
 //      struct      //
 // ---------------- //
 
-const MaxStructFields = 4
+const MaxStructFields = 6
 
 type StructType struct {
 	N      string
@@ -159,7 +159,7 @@ func RandStructType(EnabledTypes []Type) StructType {
 		[]string{},
 	}
 
-	nfields := 1 + rand.Intn(MaxStructFields)
+	nfields := 2 + rand.Intn(MaxStructFields-1)
 	for i := 0; i < nfields; i++ {
 		typ := RandType(EnabledTypes)
 		if t, ok := typ.(BasicType); !ok {

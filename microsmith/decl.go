@@ -61,7 +61,7 @@ func RandConf() ProgramConf {
 			// since the Stmt builder already calls rand(1,Max) to
 			// decide how many variables and statements actually use,
 			// there's no need to randomly vary the upper limits too.
-			MaxBlockVars:  8,
+			MaxBlockVars:  10,
 			MaxBlockStmts: 6,
 
 			UseArrays:   rand.Int63()%2 == 0,

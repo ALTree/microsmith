@@ -34,6 +34,7 @@ func (s Scope) RandomVar(addressable bool) Variable {
 	}
 
 	if len(vs) == 0 {
+		fmt.Println(s)
 		if addressable {
 			panic("RandomVar: no addressable variable in scope")
 		} else {
@@ -259,6 +260,8 @@ func (ls Scope) RandomIdentHelper(t Type, rs *rand.Rand, addr bool) ast.Expr {
 
 	// it's up the the caller to make sure the scope is not empty
 	if cnt == 0 {
+		fmt.Println(ls)
+		fmt.Println(t)
 		panic("Empty scope")
 	}
 

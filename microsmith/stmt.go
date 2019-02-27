@@ -51,10 +51,6 @@ func NewStmtBuilder(rs *rand.Rand, conf ProgramConf) *StmtBuilder {
 	sb.rs = rs
 	sb.conf = conf
 
-	if sb.conf.UseArrays {
-		sb.conf.MaxBlockVars *= 2
-	}
-
 	scope := make(Scope, 0)
 
 	// pre-declared function are always in scope
@@ -215,6 +211,52 @@ func (sb *StmtBuilder) AssignStmt() *ast.AssignStmt {
 	}
 }
 
+// return an arrays of n random Types. That can include basic types,
+// arrays, chans, and randomly generated struct types.
+func (sb *StmtBuilder) RandomTypes(n int) []Type {
+	types := make([]Type, 0, n)
+
+	// we always want at least one addressable type
+	types = append(types, RandType(
+		[]Type{BasicType{"int"}, BasicType{"float64"},
+			BasicType{"bool"}, BasicType{"string"}}))
+	n--
+
+	// if struct are enabled, .20 of the returned types will be
+	// structs
+	if sb.conf.UseStructs {
+		for i := 0; i < (1 + n/5); i++ {
+			types = append(types, RandStructType(sb.conf.SupportedTypes))
+		}
+		n -= (n/5 + 1)
+	}
+
+	st := sb.conf.SupportedTypes
+	for i := 0; i < n; i++ {
+		t := st[sb.rs.Intn(len(st))]
+
+		if sb.conf.UseArrays && sb.rs.Intn(2) == 0 {
+			t = ArrOf(t)
+			types = append(types, t)
+			continue
+		}
+
+		if sb.conf.UsePointers && sb.rs.Intn(2) == 0 {
+			t = PointerOf(t)
+			types = append(types, t)
+			continue
+		}
+
+		if sb.conf.UseChans && sb.rs.Intn(4) == 0 {
+			t = ChanOf(t)
+			types = append(types, t)
+			continue
+		}
+	}
+
+	return types
+}
+
 // BlockStmt returns a new Block Statement. The returned Stmt is
 // always a valid block. It up to BlockStmt's caller to make sure
 // BlockStmt is only called when we have not yet reached max depth.
@@ -229,84 +271,29 @@ func (sb *StmtBuilder) BlockStmt() *ast.BlockStmt {
 	//
 	// First, declare nVars variables that will be in scope in this
 	// block (together with the outer scopes ones).
-	nVars := 1 + sb.rs.Intn(sb.conf.MaxBlockVars)
-
-	var ns int = 0 // number of struct we'll declare
-
-	// If structs are enabled, 20% of our declaration will be of
-	// structs
-	if sb.conf.UseStructs {
-		ns = nVars / 5
-		nVars -= ns
+	var nVars int
+	if sb.conf.MaxBlockVars <= 4 {
+		nVars = sb.conf.MaxBlockVars
+	} else {
+		nVars = 4 + sb.rs.Intn(sb.conf.MaxBlockVars-4)
 	}
 
-	rs := RandSplit(nVars, len(sb.conf.SupportedTypes))
+	var types []Type
+	if nVars >= 5 {
+		types = sb.RandomTypes(5)
+	} else {
+		types = sb.RandomTypes(nVars)
+	}
 
-	// Declare the new variables mentioned above.  Save their names in
-	// newVars so that later we can generate a statement that uses
-	// them before exiting the block scope (to avoid 'unused' errors).
 	var newVars []*ast.Ident
-	for i, t := range sb.conf.SupportedTypes {
+	rs := RandSplit(nVars, len(types))
+
+	for i, t := range types {
 		if rs[i] > 0 {
-			typ := t
-
-			// respectively the number of plain, array, chan, and and
-			// pointer variables of type t we'll declare
-			n, na, nc, np := rs[i], 0, 0, 0
-
-			// If arrays are enabled, 25% of our declaration will be of arrays
-			if sb.conf.UseArrays {
-				na = n / 4
-			}
-
-			// If channles are enabled, 25% of our declaration will be
-			// of chan
-			if sb.conf.UseChans {
-				nc = n / 4
-			}
-
-			// If pointers are enabled, 25% of our declaration will be
-			// of pointer type
-			if sb.conf.UseArrays {
-				np = n / 4
-			}
-
-			n -= (na + np + nc)
-
-			if n > 0 {
-				newDecl, nv := sb.DeclStmt(n, typ)
-				stmts = append(stmts, newDecl)
-				newVars = append(newVars, nv...)
-			}
-
-			if na > 0 {
-				newDecl, nv := sb.DeclStmt(na, ArrOf(typ))
-				stmts = append(stmts, newDecl)
-				newVars = append(newVars, nv...)
-			}
-
-			if nc > 0 {
-				newDecl, nv := sb.DeclStmt(na, ChanOf(typ))
-				stmts = append(stmts, newDecl)
-				newVars = append(newVars, nv...)
-			}
-
-			if np > 0 {
-				newDecl, nv := sb.DeclStmt(np, PointerOf(typ))
-				stmts = append(stmts, newDecl)
-				newVars = append(newVars, nv...)
-			}
+			newDecl, nv := sb.DeclStmt(rs[i], t)
+			stmts = append(stmts, newDecl)
+			newVars = append(newVars, nv...)
 		}
-	}
-
-	for i := 0; i < ns; i++ {
-		newDecl, nv := sb.DeclStmt(1, RandStructType(sb.conf.SupportedTypes))
-		stmts = append(stmts, newDecl)
-		newVars = append(newVars, nv...)
-	}
-
-	if len(newVars) != ns+nVars {
-		panic("BlockStmt: variable count mismatch")
 	}
 
 	var nStmts int
@@ -500,6 +487,15 @@ func (sb *StmtBuilder) CaseClause(t Type, def bool) *ast.CaseClause {
 // dec. Otherwise, returns <t, true>; where t is a random type that
 // can be inc/dec and has a variable in scope.
 func (sb *StmtBuilder) CanIncDec() (Type, bool) {
+
+	// disabled for now, IncDecStmt is too annoying to make it
+	// work. The main issue is that the IncDecStmt is the only one we
+	// can't generate unconditionally, since it requires an int or
+	// float variable to be in scope.
+	//
+	// TODO(alb): re-enable
+	return nil, false
+
 	// collect in scope types as int to avoid contT2I allocating every
 	// time we put a Type in an interface Type array.
 	inScope := make([]int, 0, 4)
