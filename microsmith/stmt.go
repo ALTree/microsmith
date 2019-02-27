@@ -115,28 +115,16 @@ func NewStmtBuilder(rs *rand.Rand, conf ProgramConf) *StmtBuilder {
 // up and using all the variables it declares.
 
 func (sb *StmtBuilder) Stmt() ast.Stmt {
-
-	// types that have at least one variable currently in scope
-	typesInScope := sb.scope.InScopeTypes()
-
-	if len(typesInScope) == 0 {
-		panic("Stmt: no inscope variables")
-	}
-
 	// If the maximum allowed stmt depth has been reached, only
-	// generate stmt that do not nest (assignments and incdec).
+	// generate stmt that do not nest (assignments).
 	if sb.depth >= sb.conf.MaxStmtDepth {
-		if t, ok := sb.CanIncDec(); ok && sb.rs.Int63()%4 == 0 {
-			return sb.IncDecStmt(t)
-		} else {
-			return sb.AssignStmt(RandType(typesInScope))
-		}
+		return sb.AssignStmt()
 	}
 	// sb.depth < sb.conf.MaxStmtDepth
 
 	switch RandIndex(sb.conf.StmtKindChance, sb.rs.Float64()) {
 	case 0:
-		return sb.AssignStmt(RandType(typesInScope))
+		return sb.AssignStmt()
 	case 1:
 		sb.depth++
 		s := sb.BlockStmt()
@@ -158,11 +146,12 @@ func (sb *StmtBuilder) Stmt() ast.Stmt {
 		sb.depth--
 		return s
 	case 5:
-		if t, ok := sb.CanIncDec(); ok && sb.rs.Int63()%4 == 0 {
+		if t, ok := sb.CanIncDec(); ok {
 			s := sb.IncDecStmt(t)
 			return s
 		} else {
-			s := sb.AssignStmt(RandType(typesInScope))
+			// cannot incdec, fallback to an assignment
+			s := sb.AssignStmt()
 			return s
 		}
 	case 6:
@@ -173,29 +162,57 @@ func (sb *StmtBuilder) Stmt() ast.Stmt {
 	}
 }
 
-// Build an assign statement with a random variable of type t.
-func (sb *StmtBuilder) AssignStmt(t Type) *ast.AssignStmt {
-	var v ast.Expr
-	switch t := t.(type) {
-	case BasicType:
-		if sb.conf.UseArrays &&
-			sb.scope.TypeInScope(ArrOf(t)) &&
-			sb.rs.Float64() < sb.conf.IndexChance {
-			v = sb.eb.IndexExpr(ArrOf(t))
-		} else {
-			v = sb.scope.RandomIdentExprAddressable(t, sb.rs)
+// gets a random variable currently in scope (that we can assign to),
+// and builds an AssignStmt with a random Expr of its type on the RHS
+func (sb *StmtBuilder) AssignStmt() *ast.AssignStmt {
+	v := sb.scope.RandomVar(true)
+	switch t := v.Type.(type) {
+	case StructType:
+		// we don't build struct literals yet, so if we got a struct
+		// we'll assign to one of its fields.
+		//
+		// TODO(alb): implement support for struct literals in Expr,
+		// then enable assignments to structs
+		i := sb.rs.Intn(len(t.Fnames))
+		return &ast.AssignStmt{
+			// struct.field = <expr>
+			Lhs: []ast.Expr{
+				&ast.SelectorExpr{
+					X:   v.Name,
+					Sel: &ast.Ident{Name: t.Fnames[i]},
+				}},
+			Tok: token.ASSIGN,
+			Rhs: []ast.Expr{sb.eb.Expr(t.Ftypes[i])},
 		}
+	case ArrayType:
+		if !sb.conf.UseArrays {
+			panic("AssignStmt: got array var, but arrays not enabled")
+		}
+		// if we got an array, 50/50 between
+		//   1. AI = []int{ <exprs> }
+		//   2. AI[<expr>] = <expr>
+		if sb.rs.Intn(2) == 0 {
+			return &ast.AssignStmt{
+				Lhs: []ast.Expr{sb.eb.IndexExpr(t)},
+				Tok: token.ASSIGN,
+				Rhs: []ast.Expr{sb.eb.Expr(t.Base())},
+			}
+		} else {
+			return &ast.AssignStmt{
+				Lhs: []ast.Expr{v.Name},
+				Tok: token.ASSIGN,
+				Rhs: []ast.Expr{sb.eb.Expr(v.Type)},
+			}
+		}
+	case ChanType:
+		panic("AssignStmt: requested addressable, got chan")
 	default:
-		v = sb.scope.RandomIdentExpr(t, sb.rs)
+		return &ast.AssignStmt{
+			Lhs: []ast.Expr{v.Name},
+			Tok: token.ASSIGN,
+			Rhs: []ast.Expr{sb.eb.Expr(v.Type)},
+		}
 	}
-
-	as := &ast.AssignStmt{
-		Lhs: []ast.Expr{v},
-		Tok: token.ASSIGN,
-		Rhs: []ast.Expr{sb.eb.Expr(t)},
-	}
-
-	return as
 }
 
 // BlockStmt returns a new Block Statement. The returned Stmt is
@@ -407,13 +424,13 @@ func (sb *StmtBuilder) ForStmt() *ast.ForStmt {
 		fs.Cond = sb.eb.Expr(BasicType{"bool"})
 	}
 	if sb.rs.Int63()%2 == 0 {
-		fs.Init = sb.AssignStmt(RandType(sb.scope.InScopeTypes()))
+		fs.Init = sb.AssignStmt()
 	}
 	if sb.rs.Int63()%2 == 0 {
 		if t, ok := sb.CanIncDec(); ok && sb.rs.Int63()%2 == 0 {
 			fs.Post = sb.IncDecStmt(t)
 		} else {
-			fs.Post = sb.AssignStmt(RandType(sb.scope.InScopeTypes()))
+			fs.Post = sb.AssignStmt()
 		}
 	}
 	if sb.rs.Int63()%32 != 0 {

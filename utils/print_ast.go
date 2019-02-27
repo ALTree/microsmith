@@ -12,8 +12,8 @@ func main() {
 package main
 
 func f() {
-  var c chan int
-  <-c
+  var ar []int
+  ar[0] = 77
 }
 `
 	fset := token.NewFileSet()

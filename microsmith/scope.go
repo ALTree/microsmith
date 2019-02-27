@@ -20,6 +20,30 @@ func (v Variable) String() string {
 // given moment
 type Scope []Variable
 
+func (s Scope) RandomVar(addressable bool) Variable {
+
+	vs := make([]Variable, 0, 16)
+	for _, v := range s {
+		if addressable {
+			if Addressable(v.Type) {
+				vs = append(vs, v)
+			}
+		} else {
+			vs = append(vs, v)
+		}
+	}
+
+	if len(vs) == 0 {
+		if addressable {
+			panic("RandomVar: no addressable variable in scope")
+		} else {
+			panic("RandomVar: no variable in scope")
+		}
+	}
+
+	return vs[rand.Intn(len(vs))]
+}
+
 func (ls Scope) String() string {
 	if len(ls) == 0 {
 		return "{empty scope}"

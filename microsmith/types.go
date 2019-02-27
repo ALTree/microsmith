@@ -46,6 +46,25 @@ func Ident(t Type) string {
 	}
 }
 
+func Addressable(t Type) bool {
+	switch t := t.(type) {
+	case BasicType:
+		return true
+	case ArrayType:
+		return true
+	case FuncType:
+		return false
+	case StructType:
+		return true
+	case ChanType:
+		return false
+	case PointerType:
+		return true
+	default:
+		panic("Addressable: unknown type " + t.Name())
+	}
+}
+
 // ---------------- //
 //       basic      //
 // ---------------- //
