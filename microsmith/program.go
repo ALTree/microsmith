@@ -27,6 +27,8 @@ type GoProgram struct {
 	workDir  string
 }
 
+var Nfuncs int = 8
+
 // NewGoProgram uses a DeclBuilder to generate a new random Go program
 // with the passed seed.
 func NewGoProgram(seed int64, conf ProgramConf) (*GoProgram, error) {
@@ -40,7 +42,7 @@ func NewGoProgram(seed int64, conf ProgramConf) (*GoProgram, error) {
 
 	db := NewDeclBuilder(seed, conf)
 	var buf bytes.Buffer
-	printer.Fprint(&buf, token.NewFileSet(), db.File("main", 8))
+	printer.Fprint(&buf, token.NewFileSet(), db.File("main", Nfuncs))
 
 	gp.Seed = seed
 	gp.source = buf.Bytes()

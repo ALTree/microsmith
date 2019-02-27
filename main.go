@@ -38,6 +38,7 @@ func main() {
 	nWorkers := *pF
 	if nWorkers < 1 || *debugF {
 		nWorkers = 1
+		microsmith.Nfuncs = 1
 	}
 	fmt.Printf("Fuzzing GOARCH=%v with %v worker(s)\n", *archF, nWorkers)
 	for i := 0; i < nWorkers; i++ {
