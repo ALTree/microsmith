@@ -12,8 +12,8 @@ func main() {
 package main
 
 func f() {
-  var ar []int
-  ar[0] = 77
+  var MI map[string]int
+  MI[x] = 77
 }
 `
 	fset := token.NewFileSet()

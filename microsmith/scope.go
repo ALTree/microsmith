@@ -65,8 +65,9 @@ func (s *Scope) NewIdent(t Type) *ast.Ident {
 	case FuncType:
 		panic("NewIdent: not for building functions")
 	case StructType:
-		// we increment at every struct var, even if technically they
-		// are not the same type
+		// StructTypes, ChanTypes and MapType identifiers do not depend on
+		// the type contents (they are always named ST, CH, and M), so we
+		// increment the counter at each Struct or Chan Type.
 		for _, v := range *s {
 			if _, ok := v.Type.(StructType); ok {
 				tc++
@@ -75,6 +76,12 @@ func (s *Scope) NewIdent(t Type) *ast.Ident {
 	case ChanType:
 		for _, v := range *s {
 			if _, ok := v.Type.(ChanType); ok {
+				tc++
+			}
+		}
+	case MapType:
+		for _, v := range *s {
+			if _, ok := v.Type.(MapType); ok {
 				tc++
 			}
 		}

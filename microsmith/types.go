@@ -18,13 +18,6 @@ type Type interface {
 }
 
 // Returns an ArrayType which base type is the receiver.
-func ArrOf(t Type) ArrayType {
-	return ArrayType{t}
-}
-
-func ChanOf(t Type) ChanType {
-	return ChanType{t}
-}
 
 // String to use for variable names of this type.
 func Ident(t Type) string {
@@ -39,6 +32,8 @@ func Ident(t Type) string {
 		return "ST"
 	case ChanType:
 		return "CH"
+	case MapType:
+		return "M"
 	case PointerType:
 		return "P" + Ident(t.Btype)
 	default:
@@ -58,6 +53,8 @@ func Addressable(t Type) bool {
 		return true
 	case ChanType:
 		return false
+	case MapType:
+		return true
 	case PointerType:
 		return true
 	default:
@@ -123,6 +120,10 @@ func (at ArrayType) Base() Type {
 
 func (bt ArrayType) Sliceable() bool {
 	return true
+}
+
+func ArrOf(t Type) ArrayType {
+	return ArrayType{t}
 }
 
 // ---------------- //
@@ -250,6 +251,30 @@ func (ct ChanType) Base() Type {
 
 func (ct ChanType) Sliceable() bool {
 	return false
+}
+
+func ChanOf(t Type) ChanType {
+	return ChanType{t}
+}
+
+// --------------- //
+//       map       //
+// --------------- //
+
+type MapType struct {
+	KeyT, ValueT Type
+}
+
+func (mt MapType) Name() string {
+	return "map[" + mt.KeyT.Name() + "]" + mt.ValueT.Name()
+}
+
+func (mt MapType) Sliceable() bool {
+	return true
+}
+
+func MapOf(kt, vt Type) MapType {
+	return MapType{kt, vt}
 }
 
 // -------------------- //

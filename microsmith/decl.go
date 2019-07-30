@@ -22,10 +22,8 @@ var DefaultConf = ProgramConf{
 		},
 		MaxBlockVars:  8,
 		MaxBlockStmts: 6,
-		UseArrays:     true,
 		UseStructs:    true,
 		UseChans:      true,
-		UsePointers:   true,
 	},
 	ExprConf{
 		ExprKindChance: []float64{
@@ -64,9 +62,7 @@ func RandConf() ProgramConf {
 			MaxBlockVars:  10,
 			MaxBlockStmts: 6,
 
-			UseArrays:   rand.Int63()%2 == 0,
-			UseStructs:  rand.Int63()%2 == 0,
-			UsePointers: rand.Int63()%2 == 0,
+			UseStructs: rand.Int63()%2 == 0,
 		},
 		ExprConf{
 			ExprKindChance: []float64{
@@ -108,12 +104,12 @@ func (bce ConfError) Error() string {
 }
 
 func (pc *ProgramConf) Check(fix bool) error {
-	// IndexChance cannot be zero if we generate arrays
-	if pc.IndexChance == 0 && pc.UseArrays {
+	// IndexChance cannot be zero, since we always generate arrays
+	if pc.IndexChance == 0 {
 		if fix {
 			pc.IndexChance = 0.2
 		} else {
-			return errors.New("Bad Conf: Expr.IndexChance = 0, UseArrays is true")
+			return errors.New("Bad Conf: Expr.IndexChance = 0")
 		}
 	}
 
@@ -122,11 +118,11 @@ func (pc *ProgramConf) Check(fix bool) error {
 	// into an infinite sequence of nested []. If we don't have an int
 	// variable in scope and we don't allow literals, we'll get stuck
 	// in a infinite mutual recursion between VarOrLit and IndexExpr.
-	if pc.LiteralChance == 0 && pc.UseArrays {
+	if pc.LiteralChance == 0 {
 		if fix {
 			pc.LiteralChance = 0.2
 		} else {
-			return errors.New("Bad Conf: Expr.LiteralChance = 0, UseArrays is true")
+			return errors.New("Bad Conf: Expr.LiteralChance = 0")
 		}
 	}
 

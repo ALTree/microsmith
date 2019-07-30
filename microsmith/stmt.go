@@ -33,17 +33,11 @@ type StmtConf struct {
 	MaxBlockVars  int
 	MaxBlockStmts int
 
-	// whether to declare and use array variables
-	UseArrays bool
-
 	// whether to declare and use structs
 	UseStructs bool
 
 	// whether to declare and use channels
 	UseChans bool
-
-	// whether to declare and use pointer types
-	UsePointers bool
 }
 
 func NewStmtBuilder(rs *rand.Rand, conf ProgramConf) *StmtBuilder {
@@ -181,12 +175,14 @@ func (sb *StmtBuilder) AssignStmt() *ast.AssignStmt {
 			Rhs: []ast.Expr{sb.eb.Expr(t.Ftypes[i])},
 		}
 	case ArrayType:
-		if !sb.conf.UseArrays {
-			panic("AssignStmt: got array var, but arrays not enabled")
-		}
 		// if we got an array, 50/50 between
 		//   1. AI = []int{ <exprs> }
 		//   2. AI[<expr>] = <expr>
+		//
+		// TODO(alb): This looks wrong. We choose a random in scope
+		// variable above (v), and we're switching on its type, but here
+		// we don't necessarily assign to it, in the first case we're just
+		// selecting a random IndexExpr. Why???
 		if sb.rs.Intn(2) == 0 {
 			return &ast.AssignStmt{
 				Lhs: []ast.Expr{sb.eb.IndexExpr(t)},
@@ -202,6 +198,17 @@ func (sb *StmtBuilder) AssignStmt() *ast.AssignStmt {
 		}
 	case ChanType:
 		panic("AssignStmt: requested addressable, got chan")
+	case MapType:
+		return &ast.AssignStmt{
+			Lhs: []ast.Expr{
+				&ast.IndexExpr{
+					X:     v.Name,
+					Index: sb.eb.Expr(v.Type.(MapType).KeyT),
+				},
+			},
+			Tok: token.ASSIGN,
+			Rhs: []ast.Expr{sb.eb.Expr(v.Type.(MapType).ValueT)},
+		}
 	default:
 		return &ast.AssignStmt{
 			Lhs: []ast.Expr{v.Name},
@@ -235,13 +242,20 @@ func (sb *StmtBuilder) RandomTypes(n int) []Type {
 	for i := 0; i < n; i++ {
 		t := st[sb.rs.Intn(len(st))]
 
-		if sb.conf.UseArrays && sb.rs.Intn(2) == 0 {
+		if sb.rs.Intn(2) == 0 {
+			t2 := st[sb.rs.Intn(len(st))]
+			t = MapOf(t, t2)
+			types = append(types, t)
+			continue
+		}
+
+		if sb.rs.Intn(2) == 0 {
 			t = ArrOf(t)
 			types = append(types, t)
 			continue
 		}
 
-		if sb.conf.UsePointers && sb.rs.Intn(2) == 0 {
+		if sb.rs.Intn(2) == 0 {
 			t = PointerOf(t)
 			types = append(types, t)
 			continue
@@ -364,6 +378,11 @@ func (sb *StmtBuilder) DeclStmt(nVars int, t Type) (*ast.DeclStmt, []*ast.Ident)
 		typ = BuildStructAst(t)
 	case ChanType:
 		typ = &ast.ChanType{Dir: 3, Value: TypeIdent(t.Base().Name())}
+	case MapType:
+		typ = &ast.MapType{
+			Key:   TypeIdent(t.KeyT.Name()),
+			Value: TypeIdent(t.ValueT.Name()),
+		}
 	default:
 		panic("DeclStmt: bad type " + t.Name())
 	}
