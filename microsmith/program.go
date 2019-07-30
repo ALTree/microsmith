@@ -97,7 +97,18 @@ func (gp *GoProgram) Compile(toolchain, goarch string, noopt, race, ssacheck boo
 	}
 
 	var cmd *exec.Cmd
-	if !strings.Contains(toolchain, "gccgo") {
+	switch {
+	case strings.Contains(toolchain, "gccgo"):
+		binName := strings.TrimSuffix(gp.fileName, ".go")
+		oFlag := "-O2"
+		if noopt {
+			oFlag = "-Og"
+		}
+		cmd = exec.Command(toolchain, oFlag, "-o", binName, gp.fileName)
+	case strings.Contains(toolchain, "tinygo"):
+		binName := strings.TrimSuffix(gp.fileName, ".go")
+		cmd = exec.Command(toolchain, "build", "-o", binName+".o", gp.fileName)
+	default:
 		buildArgs := []string{"tool", "compile"}
 		if race {
 			buildArgs = append(buildArgs, "-race")
@@ -114,14 +125,6 @@ func (gp *GoProgram) Compile(toolchain, goarch string, noopt, race, ssacheck boo
 		if goarch == "wasm" {
 			cmd.Env = append(cmd.Env, "GOOS=js")
 		}
-	} else {
-		binName := strings.TrimSuffix(gp.fileName, ".go")
-		oFlag := "-O2"
-		if noopt {
-			oFlag = "-Og"
-		}
-		cmd = exec.Command(toolchain, oFlag, "-o", binName, gp.fileName)
-		// no support for custom GOARCH when using gccgo
 	}
 	cmd.Dir = gp.workDir
 	out, err := cmd.CombinedOutput()
