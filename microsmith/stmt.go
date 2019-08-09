@@ -4,7 +4,6 @@ import (
 	"go/ast"
 	"go/token"
 	"math/rand"
-	"strings"
 )
 
 type StmtBuilder struct {
@@ -32,12 +31,6 @@ type StmtConf struct {
 	// max amount of variables and statements inside new block
 	MaxBlockVars  int
 	MaxBlockStmts int
-
-	// whether to declare and use structs
-	UseStructs bool
-
-	// whether to declare and use channels
-	UseChans bool
 }
 
 func NewStmtBuilder(rs *rand.Rand, conf ProgramConf) *StmtBuilder {
@@ -163,29 +156,20 @@ func (sb *StmtBuilder) AssignStmt() *ast.AssignStmt {
 		//
 		// TODO(alb): implement support for struct literals in Expr,
 		// then enable assignments to structs
-		i := sb.rs.Intn(len(t.Fnames))
+		fieldType := t.Ftypes[sb.rs.Intn(len(t.Fnames))]
 		return &ast.AssignStmt{
 			// struct.field = <expr>
-			Lhs: []ast.Expr{
-				&ast.SelectorExpr{
-					X:   v.Name,
-					Sel: &ast.Ident{Name: t.Fnames[i]},
-				}},
+			Lhs: []ast.Expr{sb.eb.StructFieldExpr(v, fieldType)},
 			Tok: token.ASSIGN,
-			Rhs: []ast.Expr{sb.eb.Expr(t.Ftypes[i])},
+			Rhs: []ast.Expr{sb.eb.Expr(fieldType)},
 		}
 	case ArrayType:
 		// if we got an array, 50/50 between
 		//   1. AI = []int{ <exprs> }
 		//   2. AI[<expr>] = <expr>
-		//
-		// TODO(alb): This looks wrong. We choose a random in scope
-		// variable above (v), and we're switching on its type, but here
-		// we don't necessarily assign to it, in the first case we're just
-		// selecting a random IndexExpr. Why???
 		if sb.rs.Intn(2) == 0 {
 			return &ast.AssignStmt{
-				Lhs: []ast.Expr{sb.eb.IndexExpr(t)},
+				Lhs: []ast.Expr{sb.eb.ArrayIndexExpr(v)},
 				Tok: token.ASSIGN,
 				Rhs: []ast.Expr{sb.eb.Expr(t.Base())},
 			}
@@ -200,12 +184,7 @@ func (sb *StmtBuilder) AssignStmt() *ast.AssignStmt {
 		panic("AssignStmt: requested addressable, got chan")
 	case MapType:
 		return &ast.AssignStmt{
-			Lhs: []ast.Expr{
-				&ast.IndexExpr{
-					X:     v.Name,
-					Index: sb.eb.Expr(v.Type.(MapType).KeyT),
-				},
-			},
+			Lhs: []ast.Expr{sb.eb.MapIndexExpr(v)},
 			Tok: token.ASSIGN,
 			Rhs: []ast.Expr{sb.eb.Expr(v.Type.(MapType).ValueT)},
 		}
@@ -229,43 +208,29 @@ func (sb *StmtBuilder) RandomTypes(n int) []Type {
 			BasicType{"bool"}, BasicType{"string"}}))
 	n--
 
-	// if struct are enabled, .20 of the returned types will be
-	// structs
-	if sb.conf.UseStructs {
-		for i := 0; i < (1 + n/5); i++ {
-			types = append(types, RandStructType(sb.conf.SupportedTypes))
-		}
-		n -= (n/5 + 1)
+	// .2 of the returned types will be structs
+	for i := 0; i < (1 + n/5); i++ {
+		types = append(types, RandStructType(sb.conf.SupportedTypes))
 	}
+	n -= (n/5 + 1)
 
 	st := sb.conf.SupportedTypes
 	for i := 0; i < n; i++ {
 		t := st[sb.rs.Intn(len(st))]
-
-		if sb.rs.Intn(2) == 0 {
+		switch n := sb.rs.Intn(6); n {
+		case 0:
+			t = ArrOf(t)
+		case 1:
 			t2 := st[sb.rs.Intn(len(st))]
 			t = MapOf(t, t2)
-			types = append(types, t)
-			continue
-		}
-
-		if sb.rs.Intn(2) == 0 {
-			t = ArrOf(t)
-			types = append(types, t)
-			continue
-		}
-
-		if sb.rs.Intn(2) == 0 {
+		case 2:
 			t = PointerOf(t)
-			types = append(types, t)
-			continue
-		}
-
-		if sb.conf.UseChans && sb.rs.Intn(4) == 0 {
+		case 3:
 			t = ChanOf(t)
-			types = append(types, t)
-			continue
+		default: // 3 < n < 6
+			// 2/6 of keeping t as a plain variable
 		}
+		types = append(types, t)
 	}
 
 	return types
@@ -465,7 +430,7 @@ func (sb *StmtBuilder) IfStmt() *ast.IfStmt {
 
 func (sb *StmtBuilder) SwitchStmt() *ast.SwitchStmt {
 	t := RandType(sb.conf.SupportedTypes)
-	if sb.rs.Int63()%2 == 0 && sb.scope.TypeInScope(PointerOf(t)) {
+	if sb.rs.Int63()%2 == 0 && sb.scope.HasType(PointerOf(t)) {
 		// sometimes switch on a pointer value
 		t = PointerOf(t)
 	}
@@ -515,55 +480,11 @@ func (sb *StmtBuilder) CanIncDec() (Type, bool) {
 	// TODO(alb): re-enable
 	return nil, false
 
-	// collect in scope types as int to avoid contT2I allocating every
-	// time we put a Type in an interface Type array.
-	inScope := make([]int, 0, 4)
-	if sb.scope.TypeInScope(BasicType{"int"}) {
-		inScope = append(inScope, 1)
-	}
-	if sb.scope.TypeInScope(ArrOf(BasicType{"int"})) {
-		inScope = append(inScope, 2)
-	}
-	if sb.scope.TypeInScope(BasicType{"float64"}) {
-		inScope = append(inScope, 3)
-	}
-	if sb.scope.TypeInScope(ArrOf(BasicType{"float64"})) {
-		inScope = append(inScope, 4)
-	}
-
-	if len(inScope) == 0 {
-		return nil, false
-	}
-
-	switch inScope[sb.rs.Int63n(int64(len(inScope)))] {
-	case 1:
-		return BasicType{"int"}, true
-	case 2:
-		return ArrOf(BasicType{"int"}), true
-	case 3:
-		return BasicType{"float64"}, true
-	case 4:
-		return ArrOf(BasicType{"float64"}), true
-	default:
-		panic("CanIncDec: bad type")
-	}
 }
 
 func (sb *StmtBuilder) IncDecStmt(t Type) *ast.IncDecStmt {
-	is := new(ast.IncDecStmt)
-	if t.Name() == "int" || t.Name() == "float64" {
-		is.X = sb.scope.RandomIdentExprAddressable(t, sb.rs)
-	} else {
-		is.X = sb.eb.IndexExpr(t)
-	}
-
-	if sb.rs.Int63()%2 == 0 {
-		is.Tok = token.INC
-	} else {
-		is.Tok = token.DEC
-	}
-
-	return is
+	// currently disabled
+	return nil
 }
 
 func (sb *StmtBuilder) SendStmt() *ast.SendStmt {
@@ -571,8 +492,9 @@ func (sb *StmtBuilder) SendStmt() *ast.SendStmt {
 	// get the variable .Name
 	st := new(ast.SendStmt)
 
-	chs := sb.scope.InScopeChans()
-	if len(chs) == 0 {
+	ch, ok := sb.scope.GetRandomVarOfType(ChanType{nil}, sb.rs)
+
+	if !ok {
 		// no channels in scope, but we can send to a brand
 		// new one (e.g. make(chan int) <- 1)
 		t := RandType(sb.conf.SupportedTypes)
@@ -587,9 +509,8 @@ func (sb *StmtBuilder) SendStmt() *ast.SendStmt {
 		}
 		st.Value = sb.eb.Expr(t)
 	} else {
-		randChan := chs[sb.rs.Int63n(int64(len(chs)))]
-		st.Chan = randChan.Name
-		st.Value = sb.eb.Expr(randChan.Type.(ChanType).Base())
+		st.Chan = ch.Name
+		st.Value = sb.eb.Expr(ch.Type.(ChanType).Base())
 	}
 
 	return st
@@ -602,48 +523,8 @@ func (sb *StmtBuilder) SendStmt() *ast.SendStmt {
 // Currently disabled because the code is a mess and it doesn't add
 // much to the generated programs anyway.
 func (sb *StmtBuilder) ExprStmt() *ast.ExprStmt {
-
 	panic("Should not be called")
-
-	es := new(ast.ExprStmt)
-
-	for _, t := range sb.conf.SupportedTypes { // TODO(alb): add randomization(?)
-		if funcs := sb.scope.InScopeFuncsReal(t); len(funcs) > 0 {
-			// choose one of them at random
-			fun := funcs[sb.rs.Intn(len(funcs))]
-			name := fun.Name.Name
-			if strings.HasPrefix(name, "math.") {
-				es.X = sb.eb.MakeMathCall(fun)
-			} else if strings.HasPrefix(name, "rand.") {
-				es.X = sb.eb.MakeRandCall(fun)
-			}
-			return es
-		}
-	}
-
-	// channel receive
-	chs := sb.scope.InScopeChans()
-	if len(chs) == 0 {
-		// no channels in scope, we'll just make a new one
-		t := RandType(sb.conf.SupportedTypes)
-		es.X = &ast.UnaryExpr{
-			Op: token.ARROW,
-			X: &ast.CallExpr{
-				Fun: &ast.Ident{Name: "make"},
-				Args: []ast.Expr{
-					&ast.ChanType{Dir: 3, Value: TypeIdent(t.Name())},
-				},
-			},
-		}
-	} else {
-		randChan := chs[sb.rs.Int63n(int64(len(chs)))]
-		es.X = &ast.UnaryExpr{
-			Op: token.ARROW,
-			X:  randChan.Name,
-		}
-	}
-
-	return es
+	return nil
 }
 
 // ---------------- //

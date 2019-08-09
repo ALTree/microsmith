@@ -20,18 +20,16 @@ var DefaultConf = ProgramConf{
 		StmtKindChance: []float64{
 			1, 1, 1, 1, 1, 1, 1,
 		},
-		MaxBlockVars:  8,
+		MaxBlockVars:  10,
 		MaxBlockStmts: 6,
-		UseStructs:    true,
-		UseChans:      true,
 	},
 	ExprConf{
 		ExprKindChance: []float64{
-			1, 1, 1,
+			2, 4, 1,
 		},
-		LiteralChance:    0.2,
-		ComparisonChance: 0.2,
-		IndexChance:      0.2,
+		LiteralChance:    0.4,
+		ComparisonChance: 0.4,
+		IndexChance:      0.4,
 	},
 	[]Type{
 		BasicType{"int"},
@@ -61,14 +59,12 @@ func RandConf() ProgramConf {
 			// there's no need to randomly vary the upper limits too.
 			MaxBlockVars:  10,
 			MaxBlockStmts: 6,
-
-			UseStructs: rand.Int63()%2 == 0,
 		},
 		ExprConf{
 			ExprKindChance: []float64{
-				float64(rand.Intn(3)), // unary expr
-				float64(rand.Intn(6)), // binary expr
-				float64(rand.Intn(3)), // fun call
+				float64(rand.Intn(2)), // unary expr
+				float64(rand.Intn(4)), // binary expr
+				float64(rand.Intn(1)), // fun call
 			},
 			LiteralChance:    float64(rand.Intn(7)) * 0.125,
 			ComparisonChance: float64(rand.Intn(7)) * 0.125,

@@ -43,20 +43,10 @@ func Ident(t Type) string {
 
 func Addressable(t Type) bool {
 	switch t := t.(type) {
-	case BasicType:
+	case BasicType, ArrayType, StructType, MapType, PointerType:
 		return true
-	case ArrayType:
-		return true
-	case FuncType:
+	case FuncType, ChanType:
 		return false
-	case StructType:
-		return true
-	case ChanType:
-		return false
-	case MapType:
-		return true
-	case PointerType:
-		return true
 	default:
 		panic("Addressable: unknown type " + t.Name())
 	}

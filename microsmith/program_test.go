@@ -17,9 +17,8 @@ var TestConfigurations = map[string]microsmith.ProgramConf{
 			StmtKindChance: []float64{
 				1, 1, 1, 1, 1, 1,
 			},
-			MaxBlockVars:  1,
+			MaxBlockVars:  2,
 			MaxBlockStmts: 1,
-			UseStructs:    true,
 		},
 		microsmith.ExprConf{
 			ExprKindChance: []float64{
@@ -44,9 +43,8 @@ var TestConfigurations = map[string]microsmith.ProgramConf{
 			StmtKindChance: []float64{
 				1, 1, 1, 1, 1, 1,
 			},
-			MaxBlockVars:  3,
+			MaxBlockVars:  6,
 			MaxBlockStmts: 4,
-			UseStructs:    true,
 		},
 		microsmith.ExprConf{
 			ExprKindChance: []float64{
@@ -73,7 +71,6 @@ var TestConfigurations = map[string]microsmith.ProgramConf{
 			},
 			MaxBlockVars:  12,
 			MaxBlockStmts: 8,
-			UseStructs:    true,
 		},
 		microsmith.ExprConf{
 			ExprKindChance: []float64{
@@ -143,12 +140,6 @@ func TestMedium(t *testing.T) {
 
 func TestBig(t *testing.T) {
 	testProgramGoTypes(t, 20, TestConfigurations["big"])
-}
-
-func TestNoStructs(t *testing.T) {
-	tc := TestConfigurations["medium"]
-	tc.UseStructs = false
-	testProgramGoTypes(t, 500, tc)
 }
 
 func TestAllLiterals(t *testing.T) {
@@ -227,23 +218,15 @@ func TestProgramGc(t *testing.T) {
 var BenchConf = microsmith.ProgramConf{
 	microsmith.StmtConf{
 		MaxStmtDepth: 2,
-
-		// Assign
-		// Block
-		// For
-		// If
-		// Switch
-		// IncDec
 		StmtKindChance: []float64{
 			3, 1, 3, 3, 3, 1,
 		},
 		MaxBlockVars:  8,
-		MaxBlockStmts: 6,
-		UseStructs:    true,
+		MaxBlockStmts: 4,
 	},
 	microsmith.ExprConf{
 		ExprKindChance: []float64{
-			1, 2, 2,
+			1, 1, 1,
 		},
 		LiteralChance:    0.4,
 		ComparisonChance: 0.4,

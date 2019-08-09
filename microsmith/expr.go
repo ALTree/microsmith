@@ -151,6 +151,7 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 	}
 
 	switch t := t.(type) {
+
 	case BasicType:
 		switch RandIndex(eb.conf.ExprKindChance, eb.rs.Float64()) {
 		case 0: // unary
@@ -178,39 +179,80 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 		default:
 			panic("Expr: bad RandIndex value")
 		}
+
 	case ArrayType:
 		// no unary or binary operators for composite types
 		expr = eb.CompositeLit(t)
+
 	case PointerType:
-		if !eb.scope.TypeInScope(t.Base()) {
-			if eb.scope.TypeInScope(t) {
-				expr = eb.scope.RandomIdentExpr(t, eb.rs)
-			} else {
-				// nothing is scope we could take the address of, just
-				// return a nil literal
-				expr = &ast.Ident{Name: "nil"}
+		vt, typeInScope := eb.scope.GetRandomVarOfType(t, eb.rs)
+		vst, baseInScope := eb.scope.GetRandomVarOfType(t.Base(), eb.rs)
+
+		if typeInScope && baseInScope {
+			// if we can do both, choose at random
+			if eb.rs.Intn(2) == 0 {
+				expr = vt.Name
+			} else { // take address of t.Base
+				expr = &ast.UnaryExpr{
+					Op: token.AND,
+					X:  vst.Name, // TODO(alb): we could dereference much more complex Expr
+				}
 			}
-		} else {
+		} else if typeInScope {
+			expr = vt.Name
+		} else if baseInScope {
 			expr = &ast.UnaryExpr{
 				Op: token.AND,
-				X:  eb.scope.RandomIdentExprAddressable(t.Base(), eb.rs),
+				X:  vst.Name, // TODO(alb): we could dereference much more complex Expr
 			}
+		} else {
+			// nothing with type t or type t.Base is in scope, so we can't
+			// return a variable nor take the address or one. Return nil.
+			expr = &ast.Ident{Name: "nil"}
 		}
+
 	default:
 		panic("Expr: bad type " + t.Name())
 	}
+
 	eb.depth--
 
 	return expr
 }
 
-// Returns an in-scope variable or a literal of the given kind. If
-// there's no variable of the requested type in scope, returns a
-// literal.
+// VarOrLit returns either:
+//   - a literal of type t
+//   - an expression of type t
+//
+// If no expression of type t can be built, it always returns a
+// literal. Otherwise, it returns a literal or an Expr with chances
+// respectively (LiteralChance) and (1 - LiteralChance).
+//
+// When returning an expression, that can be either an ast.Ident (for
+// example when t is int it could just return a variable I0 of type
+// int), or a derived expression of type type. Expression are derived
+// from:
+//   - arrays and maps, by indexing into them
+//   - channels, by receiving
+//   - structs, by selecting a field
+//   - pointers, by dereferencing
+//
+// When returning an expression, simple one are always preferred. A
+// derived expression is only returned when there are not variables of
+// type t in scope.
+//
+// TODO(alb): make it return derived Expr more often
+//
+// TODO(alb): we never call SliceExpr, i.e. if the requested type is
+// []int we always return any []int in scope, but we should instead
+// sometimes return an expr that slices into one of the []ints
 func (eb *ExprBuilder) VarOrLit(t Type) interface{} {
-	// return a literal
-	if (!eb.scope.TypeInScope(t) && !eb.scope.TypeInScope(ArrOf(t))) ||
-		eb.rs.Float64() < eb.conf.LiteralChance {
+
+	vt, typeInScope := eb.scope.GetRandomVarOfType(t, eb.rs)
+	vst, typeCanDerive := eb.scope.GetRandomVarOfSubtype(t, eb.rs)
+
+	// Literal of type t
+	if eb.rs.Float64() < eb.conf.LiteralChance || (!typeInScope && !typeCanDerive) {
 		switch t := t.(type) {
 		case BasicType:
 			if n := t.Name(); n == "int" || n == "string" || n == "float64" || n == "complex128" {
@@ -227,84 +269,147 @@ func (eb *ExprBuilder) VarOrLit(t Type) interface{} {
 		case ArrayType:
 			return eb.CompositeLit(t)
 		default:
-			// do nothing
+			panic("VarOrLit: unsupported type")
 		}
 	}
 
-	// return a variable expression
+	// Expr of type t
+	if typeInScope {
+		// If it's sliceable, slice it with chance 0.5
+		if vt.Type.Sliceable() && eb.rs.Intn(2) == 0 {
+			return eb.SliceExpr(vt)
+		} else {
+			return vt.Name
+		}
+	}
+	// no variable of type t in scope, we have to derive.
 
-	// index into an array of type []t
-	if (eb.scope.TypeInScope(ArrOf(t)) && eb.rs.Float64() < eb.conf.IndexChance) ||
-		!eb.scope.TypeInScope(t) {
-		return eb.IndexExpr(ArrOf(t))
+	switch vst.Type.(type) {
+	case ArrayType:
+		return eb.ArrayIndexExpr(vst)
+	case MapType:
+		return eb.MapIndexExpr(vst)
+	case StructType:
+		return eb.StructFieldExpr(vst, t)
+	case ChanType:
+		return eb.ChanReceiveExpr(vst)
+	case PointerType:
+		return &ast.UnaryExpr{
+			Op: token.MUL,
+			X:  &ast.Ident{Name: vst.Name.Name},
+		}
+	default:
+		panic("argh")
 	}
 
-	// slice expression of type t
-	if t.Sliceable() && eb.rs.Float64() < eb.conf.IndexChance {
-		return eb.SliceExpr(t)
-	}
+	panic("unreachable")
 
-	return eb.scope.RandomIdentExpr(t, eb.rs)
 }
 
-// returns an IndexExpr of the given type. Panics if there's no
-// indexable variables of the requsted type in scope.
-// TODO: add max allowed index(?)
-func (eb *ExprBuilder) IndexExpr(t Type) *ast.IndexExpr {
-	if !t.Sliceable() {
-		panic("IndexExpr: un-indexable type " + t.Name())
+// Returns an ast.IndexExpr which index into v (of type Array) either
+// using an int literal or an int Expr.
+func (eb *ExprBuilder) ArrayIndexExpr(v Variable) *ast.IndexExpr {
+	_, ok := v.Type.(ArrayType)
+	if !ok {
+		panic("MakeArrayIndexExpr: not an array - " + v.String())
 	}
-	indexable := eb.scope.RandomIdentExpr(t, eb.rs)
-
-	var index ast.Expr
 
 	// We can't just generate an Expr for the index, because constant
-	// exprs that end up negative cause compilation errors. If there's
-	// at least one int variable in scope, generate 'I + Expr()',
-	// which is guaranteed not to be constant. If not, just to use a
-	// literal.
-	if eb.scope.TypeInScope(BasicType{"int"}) &&
-		eb.CanDeepen() {
+	// exprs that end up being negative will cause a compilation error.
+	//
+	// If there is at least one int variable in scope, we can generate
+	// 'I + Expr()' as index, which is guaranteed not to be constant. If
+	// not, we just to use a literal.
+	var index ast.Expr
+	vi, ok := eb.scope.GetRandomVarOfType(BasicType{"int"}, eb.rs)
+	if ok && eb.CanDeepen() {
 		index = &ast.BinaryExpr{
-			X:  eb.scope.RandomIdentExpr(BasicType{"int"}, eb.rs),
+			X:  vi.Name,
 			Op: token.ADD,
 			Y:  eb.Expr(BasicType{"int"}),
 		}
 	} else {
 		index = eb.VarOrLit(BasicType{"int"}).(ast.Expr)
 	}
-	ie := &ast.IndexExpr{
-		X:     indexable,
+
+	return &ast.IndexExpr{
+		X:     v.Name,
 		Index: index,
 	}
 
-	return ie
 }
 
-func (eb *ExprBuilder) SliceExpr(t Type) *ast.SliceExpr {
-	if !t.Sliceable() {
-		panic("SliceExpr: un-sliceable type " + t.Name())
+// Returns an ast.IndexExpr which index into v (of type Map) either
+// using a keyT literal or a KeyT Expr.
+func (eb *ExprBuilder) MapIndexExpr(v Variable) *ast.IndexExpr {
+	mv, ok := v.Type.(MapType)
+	if !ok {
+		panic("not an array - " + v.String())
 	}
 
-	sliceable := eb.scope.RandomIdentExpr(t, eb.rs)
-	var low, high ast.Expr
+	var index ast.Expr
+	if /*eb.scope.HasType(mv.KeyT) && */ eb.CanDeepen() {
+		index = eb.Expr(mv.KeyT)
+	} else {
+		index = eb.VarOrLit(mv.KeyT).(ast.Expr)
+	}
 
-	// We can't just generate an Expr for low and high, because
-	// constant exprs that end up being negative cause compilation
-	// errors. If there's at least one int variable in scope, generate
-	// 'I + Expr()', which is guaranteed not to be constant. If not,
-	// just to use literals.
-	if eb.scope.TypeInScope(BasicType{"int"}) &&
-		eb.CanDeepen() {
+	return &ast.IndexExpr{
+		X:     v.Name,
+		Index: index,
+	}
+}
+
+// Returns an ast.SelectorExpr which select into a field of type t in
+// v (of type Struct).
+func (eb *ExprBuilder) StructFieldExpr(v Variable, t Type) *ast.SelectorExpr {
+	sv, ok := v.Type.(StructType)
+	if !ok {
+		panic("not a struct - " + v.String())
+	}
+
+	for i, ft := range sv.Ftypes {
+		if ft == t {
+			return &ast.SelectorExpr{
+				X:   v.Name,
+				Sel: &ast.Ident{Name: sv.Fnames[i]},
+			}
+		}
+	}
+
+	panic("Could find a field of type " + t.Name() + " in struct " + v.String())
+}
+
+// Returns an ast.UnaryExpr which receive from the channel v.
+func (eb *ExprBuilder) ChanReceiveExpr(v Variable) *ast.UnaryExpr {
+	_, ok := v.Type.(ChanType)
+	if !ok {
+		panic("not a chan - " + v.String())
+	}
+
+	return &ast.UnaryExpr{
+		Op: token.ARROW,
+		X:  &ast.Ident{Name: v.Name.Name},
+	}
+}
+
+func (eb *ExprBuilder) SliceExpr(v Variable) *ast.SliceExpr {
+	if !v.Type.Sliceable() {
+		panic("SliceExpr: un-sliceable type " + v.Type.Name())
+	}
+
+	var low, high ast.Expr
+	indV, hasInt := eb.scope.GetRandomVarOfType(BasicType{"int"}, eb.rs)
+	if hasInt && eb.CanDeepen() {
 		low = &ast.BinaryExpr{
-			X:  eb.scope.RandomIdentExpr(BasicType{"int"}, eb.rs),
+			X:  indV.Name,
 			Op: token.ADD,
 			Y:  eb.Expr(BasicType{"int"}),
 		}
 		high = &ast.BinaryExpr{
-			X:  eb.scope.RandomIdentExpr(BasicType{"int"}, eb.rs),
+			X:  eb.Expr(BasicType{"int"}),
 			Op: token.ADD,
-			Y:  eb.Expr(BasicType{"int"}),
+			Y:  indV.Name,
 		}
 	} else {
 		low = &ast.BasicLit{
@@ -317,13 +422,11 @@ func (eb *ExprBuilder) SliceExpr(t Type) *ast.SliceExpr {
 		}
 	}
 
-	se := &ast.SliceExpr{
-		X:    sliceable,
+	return &ast.SliceExpr{
+		X:    v.Name,
 		Low:  low,
 		High: high,
 	}
-
-	return se
 }
 
 func (eb *ExprBuilder) UnaryExpr(t Type) *ast.UnaryExpr {
@@ -331,7 +434,7 @@ func (eb *ExprBuilder) UnaryExpr(t Type) *ast.UnaryExpr {
 
 	// if there are pointers to t in scope, generate a t by
 	// dereferencing it with chance 0.5
-	if eb.rs.Int63()%2 == 0 && eb.scope.TypeInScope(PointerOf(t)) {
+	if eb.rs.Int63()%2 == 0 && eb.scope.HasType(PointerOf(t)) {
 		ue.Op = token.MUL
 		ue.X = eb.Expr(PointerOf(t))
 		return ue

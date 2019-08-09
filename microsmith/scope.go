@@ -3,7 +3,6 @@ package microsmith
 import (
 	"fmt"
 	"go/ast"
-	"go/token"
 	"math/rand"
 )
 
@@ -114,25 +113,12 @@ func (s *Scope) DeleteIdentByName(name *ast.Ident) {
 	}
 }
 
-// TypeInScope returns true if at least one variable of Type t is
-// currently in scope.
-func (ls Scope) TypeInScope(t Type) bool {
+// HasType returns true if the current Scope ls has at least one
+// variable which type matches exactly t.
+func (ls Scope) HasType(t Type) bool {
 	for _, v := range ls {
-		switch v.Type.(type) {
-		case StructType:
-			for _, ft := range v.Type.(StructType).Ftypes {
-				if ft == t {
-					return true
-				}
-			}
-		case ChanType:
-			if v.Type.(ChanType).Base() == t {
-				return true
-			}
-		default:
-			if v.Type == t {
-				return true
-			}
+		if v.Type == t {
+			return true
 		}
 	}
 	return false
@@ -183,167 +169,128 @@ func (ls Scope) InScopeFuncs(t Type) []Variable {
 	return funcs
 }
 
-// Used by ExprStmt() (which is currently disabled).
-func (ls Scope) InScopeFuncsReal(t Type) []Variable {
-	funcs := make([]Variable, 0)
+// Return a random Ident of type t (exact match)
+func (ls Scope) GetRandomVarOfType(t Type, rs *rand.Rand) (Variable, bool) {
+	cnt := 0
 	for _, v := range ls {
-		switch v.Type.(type) {
-		case FuncType:
-			if v.Type.(FuncType).Ret[0] == t &&
-				(v.Name.Name != "len" && v.Name.Name != "int" && v.Name.Name != "float64") {
-				funcs = append(funcs, v)
-			}
-		default:
-			continue
+		if v.Type == t {
+			cnt++
 		}
 	}
 
-	return funcs
-}
+	if cnt == 0 {
+		return Variable{}, false
+	}
 
-// return a list of in-scope channel variables
-func (ls Scope) InScopeChans() []Variable {
-	chans := make([]Variable, 0)
+	rand := 1 + rs.Intn(cnt)
+	cnt = 0
 	for _, v := range ls {
-		switch v.Type.(type) {
-		case ChanType:
-			chans = append(chans, v)
+		if v.Type == t {
+			cnt++
+		}
+		if cnt == rand {
+			return v, true
 		}
 	}
 
-	return chans
+	panic("unreachable")
 }
 
-// Returns an expression made of an ident of the given type.
-//
-// If addr is true, it's required that the returned Expr will be
-// addressable, i.e. it'll be allowed to &() it. In practise, this is
-// used to exclude chan expressions, since they're not addressable.
-func (ls Scope) RandomIdentHelper(t Type, rs *rand.Rand, addr bool) ast.Expr {
-
-	// we'll collect expressions of two types:
-	//   1. simple ast.Expr wrapping an ast.Ident
-	//   2. ast.SelectorExpr wrapping a struct field access
-	//
-	// To reduce allocations, instead of looping over every suitable
-	// ident collecting ast.Expr and then choosing one at random, we
-	// make a first pass just counting the number of idents of the
-	// requested type, then we draw a random number, and finally we
-	// make a last pass over the idents, returning a new expression
-	// when we reach the one at the position selected by the random
-	// number.
+// Like GetExprOfType, but it's *required* to return a variable from
+// which we can derive an expression of type t (by indexing into
+// arrays and maps, selecting into structs, receiving from a chan and
+// dereferencing pointers).
+func (ls Scope) GetRandomVarOfSubtype(t Type, rs *rand.Rand) (Variable, bool) {
 
 	cnt := 0
 	for _, v := range ls {
 		switch v.Type.(type) {
+
+		// for structs in scope, we look for fields of type t
 		case StructType:
 			for _, ft := range v.Type.(StructType).Ftypes {
 				if ft == t {
 					cnt++
 				}
 			}
+
+		// for pointers, we look for the ones having base type t, since we
+		// can dereference them to get a t Expr
 		case PointerType:
-			if v.Type == t {
-				cnt++
-			} else if v.Type.(PointerType).Base() == t {
+			if v.Type.(PointerType).Base() == t {
 				cnt++
 			}
+
+		// for channels, we can receive
 		case ChanType:
-			if v.Type == t {
-				cnt++
-			} else if v.Type.(ChanType).Base() == t {
-				if !addr {
-					// not required to return an addressable Expr, so ok to
-					// return a <- expression
-					cnt++
-				}
-			}
-		default:
-			if v.Type == t {
+			if v.Type.(ChanType).Base() == t {
 				cnt++
 			}
+
+		// for arrays and maps, we can index
+		case ArrayType:
+			if v.Type.(ArrayType).Base() == t {
+				cnt++
+			}
+		case MapType:
+			if v.Type.(MapType).ValueT == t {
+				cnt++
+			}
+		case BasicType:
+			// Can't be used to derive, nothing to do
 		}
 	}
 
-	// it's up the the caller to make sure the scope is not empty
 	if cnt == 0 {
-		fmt.Println(ls)
-		fmt.Println(t)
-		panic("Empty scope")
+		return Variable{}, false
 	}
 
 	rand := 1 + rs.Intn(cnt)
 	cnt = 0
+
 	for _, v := range ls {
 		switch v.Type.(type) {
 		case StructType:
-			for i, ft := range v.Type.(StructType).Ftypes {
+			for _, ft := range v.Type.(StructType).Ftypes {
 				if ft == t {
 					cnt++
-				}
-				if cnt == rand {
-					return &ast.SelectorExpr{
-						X:   v.Name,
-						Sel: &ast.Ident{Name: v.Type.(StructType).Fnames[i]},
+					if rand == cnt {
+						return v, true
 					}
 				}
 			}
 		case PointerType:
-			// pointers in scope are useful in two cases:
-			//   1. when the caller requested a pointer ident
-			//   2. when the caller requested a type that is the base
-			//   type of the pointer
-			// In the first case, we count the pointer ident itself, in
-			// the second case we'll return *p
-			if v.Type == t {
+			if v.Type.(PointerType).Base() == t {
 				cnt++
 				if cnt == rand {
-					return v.Name
-				}
-			} else if v.Type.(PointerType).Base() == t {
-				cnt++
-				if cnt == rand {
-					return &ast.UnaryExpr{
-						Op: token.MUL,
-						X:  &ast.Ident{Name: v.Name.Name},
-					}
+					return v, true
 				}
 			}
 		case ChanType:
-			if v.Type == t {
+			if v.Type.(ChanType).Base() == t {
 				cnt++
 				if cnt == rand {
-					return v.Name
+					return v, true
 				}
-			} else if !addr && v.Type.(ChanType).Base() == t {
+			}
+		case ArrayType:
+			if v.Type.(ArrayType).Base() == t {
 				cnt++
 				if cnt == rand {
-					return &ast.UnaryExpr{
-						Op: token.ARROW,
-						X:  &ast.Ident{Name: v.Name.Name},
-					}
+					return v, true
 				}
 			}
-		default:
-			if v.Type == t {
+		case MapType:
+			if v.Type.(MapType).ValueT == t {
 				cnt++
+				if cnt == rand {
+					return v, true
+				}
 			}
-			if cnt == rand {
-				return v.Name
-			}
+		case BasicType:
+			// Can't be used to derive, nothing to do
 		}
 	}
 
-	// should never happen
-	panic("something went wrong when counting idents")
-}
-
-func (ls Scope) RandomIdentExpr(t Type, rs *rand.Rand) ast.Expr {
-	return ls.RandomIdentHelper(t, rs, false)
-}
-
-// We need this e.g. when calling for &(Expr()); but we also use it
-// for AssignStmt, since you can't assign to <-CH
-func (ls Scope) RandomIdentExprAddressable(t Type, rs *rand.Rand) ast.Expr {
-	return ls.RandomIdentHelper(t, rs, true)
+	panic("unreachable")
 }
