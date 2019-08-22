@@ -104,10 +104,15 @@ func (gp *GoProgram) Compile(toolchain, goarch string, noopt, race, ssacheck boo
 		if noopt {
 			oFlag = "-Og"
 		}
-		cmd = exec.Command(toolchain, oFlag, "-o", binName, gp.fileName)
+		cmd = exec.Command(toolchain, oFlag, "-o", binName+".o", gp.fileName)
 	case strings.Contains(toolchain, "tinygo"):
 		binName := strings.TrimSuffix(gp.fileName, ".go")
-		cmd = exec.Command(toolchain, "build", "-o", binName+".o", gp.fileName)
+		if noopt {
+			cmd = exec.Command(toolchain, "build", "-opt", "z", "-o", binName+".o", gp.fileName)
+		} else {
+			cmd = exec.Command(toolchain, "build", "-o", binName+".o", gp.fileName)
+		}
+
 	default:
 		buildArgs := []string{"tool", "compile"}
 		if race {
