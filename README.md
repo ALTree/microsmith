@@ -24,3 +24,4 @@ stress-test Go compilers.
 - [#30679: internal compiler error: panic during lower (unreachable)](https://github.com/golang/go/issues/30679)
 - [#31915: internal compiler error: val is in reg but not live](https://github.com/golang/go/issues/31915)
 - [#32454: internal compiler error: bad live variable at entry II](https://github.com/golang/go/issues/32454)
+- [#33903: internal compiler error: panic during short circuit](https://github.com/golang/go/issues/33903)
