@@ -45,9 +45,9 @@ func main() {
 		go Fuzz(rs.Int63())
 	}
 
-	ticker := time.Tick(10 * time.Second)
+	ticker := time.Tick(30 * time.Second)
 	for _ = range ticker {
-		log.Printf("Build: %4d  [crash: %v, known: %v]\n",
+		fmt.Printf("Build: %4d  [crash: %v, known: %v]\n",
 			atomic.LoadInt64(&BuildCount),
 			atomic.LoadInt64(&CrashCount),
 			atomic.LoadInt64(&KnownCount))
@@ -99,8 +99,8 @@ func Fuzz(seed int64) {
 		// Interrupt and crash Fuzzer if compilation takes more than
 		// 60 seconds
 		timeout := time.AfterFunc(
-			120*time.Second,
-			func() { log.Fatalf("> 120s compilation time for\n%s\n", gp) },
+			60*time.Second,
+			func() { log.Fatalf("> 60s compilation time for\n%s\n", gp) },
 		)
 
 		out, err := gp.Compile(*toolchainF, *archF, *nooptF, *raceF, *ssacheckF)
