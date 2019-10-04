@@ -106,11 +106,11 @@ func testProgramGoTypes(t *testing.T, n int, conf microsmith.ProgramConf) {
 }
 
 func TestDefault(t *testing.T) {
-	testProgramGoTypes(t, 100, microsmith.DefaultConf)
+	testProgramGoTypes(t, 50, microsmith.DefaultConf)
 }
 
 func TestRandConf(t *testing.T) {
-	lim := 100
+	lim := 50
 	if testing.Short() {
 		lim = 10
 	}
@@ -123,40 +123,39 @@ func TestRandConf(t *testing.T) {
 }
 
 func TestSmall(t *testing.T) {
-	lim := 1000
+	lim := 100
 	if testing.Short() {
-		lim = 100
+		lim = 10
 	}
 	testProgramGoTypes(t, lim, TestConfigurations["small"])
 }
 
 func TestMedium(t *testing.T) {
-	lim := 500
+	lim := 100
 	if testing.Short() {
-		lim = 50
+		lim = 10
 	}
 	testProgramGoTypes(t, lim, TestConfigurations["medium"])
 }
 
 func TestBig(t *testing.T) {
-	testProgramGoTypes(t, 20, TestConfigurations["big"])
+	testProgramGoTypes(t, 10, TestConfigurations["big"])
 }
 
 func TestAllLiterals(t *testing.T) {
 	tc := TestConfigurations["medium"]
 	tc.LiteralChance = 1.0
-	testProgramGoTypes(t, 200, tc)
+	testProgramGoTypes(t, 100, tc)
 }
 
 func TestAllUnary(t *testing.T) {
 	tc := TestConfigurations["medium"]
 	tc.ExprKindChance = []float64{1.0, 0, 0}
-	testProgramGoTypes(t, 200, tc)
+	testProgramGoTypes(t, 100, tc)
 }
 
 func TestOnlyOneType(t *testing.T) {
 	tc := TestConfigurations["medium"]
-
 	for _, typ := range []string{"bool", "int", "string", "float64", "complex128"} {
 		t.Run(typ, func(t *testing.T) {
 			tc.SupportedTypes = []microsmith.Type{microsmith.BasicType{typ}}
