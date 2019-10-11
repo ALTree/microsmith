@@ -12,8 +12,15 @@ func main() {
 package main
 
 func f() {
-  var MI map[string]int
-  MI[x] = 77
+  var c1 chan int
+  var c2 chan string
+  var x int
+  select {
+    case <-make(chan int):
+      x = 1
+    case <-c2:
+      x = 2
+  }
 }
 `
 	fset := token.NewFileSet()

@@ -26,6 +26,9 @@ type StmtConf struct {
 	//   4. Switch Stmt
 	//   5. IncDec Stmt
 	//   6. Send Stmt
+	//   7. Select Stmt
+	//
+	// TODO(alb): remove this and make this uniform(?)
 	StmtKindChance []float64
 
 	// max amount of variables and statements inside new block
@@ -140,6 +143,11 @@ func (sb *StmtBuilder) Stmt() ast.Stmt {
 	case 6:
 		return sb.SendStmt()
 		// return sb.ExprStmt()
+	case 7:
+		sb.depth++
+		s := sb.SelectStmt()
+		sb.depth--
+		return s
 	default:
 		panic("Stmt: bad RandIndex")
 	}
@@ -492,7 +500,7 @@ func (sb *StmtBuilder) SendStmt() *ast.SendStmt {
 	// get the variable .Name
 	st := new(ast.SendStmt)
 
-	ch, ok := sb.scope.GetRandomVarOfType(ChanType{nil}, sb.rs)
+	ch, ok := sb.scope.GetRandomVarChan(sb.rs)
 
 	if !ok {
 		// no channels in scope, but we can send to a brand
@@ -514,6 +522,68 @@ func (sb *StmtBuilder) SendStmt() *ast.SendStmt {
 	}
 
 	return st
+}
+
+func (sb *StmtBuilder) SelectStmt() *ast.SelectStmt {
+	st := &ast.SelectStmt{
+		Body: &ast.BlockStmt{List: []ast.Stmt{
+			sb.CommClause(false),
+			sb.CommClause(false),
+			sb.CommClause(true),
+		}},
+	}
+
+	return st
+}
+
+// CommClause is the Select clause. This function returns:
+//   case <- [channel]     if def is false
+//   default               if def is true
+func (sb *StmtBuilder) CommClause(def bool) *ast.CommClause {
+
+	// a couple of Stmt are enough for a select case body
+	stmtList := []ast.Stmt{
+		sb.Stmt(),
+		sb.Stmt(),
+	}
+
+	if def {
+		return &ast.CommClause{Body: stmtList}
+	}
+
+	ch, chanInScope := sb.scope.GetRandomVarChan(sb.rs)
+	if !chanInScope {
+		// when no chan is in scope, we select from a newly made channel,
+		// i.e. we build and return
+		//    select <-make(chan <random type>)
+		t := RandType(sb.conf.SupportedTypes)
+		return &ast.CommClause{
+			Comm: &ast.ExprStmt{
+				X: &ast.UnaryExpr{
+					Op: token.ARROW,
+					X: &ast.CallExpr{
+						Fun: &ast.Ident{Name: "make"},
+						Args: []ast.Expr{
+							&ast.ChanType{
+								Dir:   3,
+								Value: TypeIdent(t.Name()),
+							},
+						},
+					},
+				},
+			},
+			Body: stmtList,
+		}
+	}
+
+	// otherwise, we receive from one of the channels in scope
+	return &ast.CommClause{
+		Comm: &ast.ExprStmt{
+			X: sb.eb.ChanReceiveExpr(ch),
+		},
+		Body: stmtList,
+	}
+
 }
 
 // What is allowed, according to the spec:

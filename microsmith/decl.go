@@ -18,7 +18,7 @@ var DefaultConf = ProgramConf{
 	StmtConf{
 		MaxStmtDepth: 2,
 		StmtKindChance: []float64{
-			1, 1, 1, 1, 1, 1, 1,
+			1, 1, 1, 1, 1, 1, 1, 1,
 		},
 		MaxBlockVars:  10,
 		MaxBlockStmts: 6,
@@ -52,6 +52,7 @@ func RandConf() ProgramConf {
 				float64(rand.Intn(5)), // switch stms
 				float64(rand.Intn(1)), // inc and dec stms
 				float64(rand.Intn(1)), // send stmts
+				float64(rand.Intn(5)), // select stmts
 			},
 
 			// since the Stmt builder already calls rand(1,Max) to

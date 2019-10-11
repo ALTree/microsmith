@@ -294,3 +294,32 @@ func (ls Scope) GetRandomVarOfSubtype(t Type, rs *rand.Rand) (Variable, bool) {
 
 	panic("unreachable")
 }
+
+// return a chan (of any subtype). Useful as a replacement of
+// GetRandomVarOfType when we want a channel to receive on and the
+// underluing type doesn't matter.
+func (ls Scope) GetRandomVarChan(rs *rand.Rand) (Variable, bool) {
+	cnt := 0
+	for _, v := range ls {
+		if _, isChan := v.Type.(ChanType); isChan {
+			cnt++
+		}
+	}
+
+	if cnt == 0 {
+		return Variable{}, false
+	}
+
+	rand := 1 + rs.Intn(cnt)
+	cnt = 0
+	for _, v := range ls {
+		if _, isChan := v.Type.(ChanType); isChan {
+			cnt++
+		}
+		if cnt == rand {
+			return v, true
+		}
+	}
+
+	panic("unreachable")
+}
