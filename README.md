@@ -26,3 +26,4 @@ stress-test Go compilers.
 - [#32454: internal compiler error: bad live variable at entry II](https://github.com/golang/go/issues/32454)
 - [#33903: internal compiler error: panic during short circuit](https://github.com/golang/go/issues/33903)
 - [#34520: panic: First time we've seen filename](https://github.com/golang/go/issues/34520)
+- [#35157: internal compiler error: aliasing constant which is not registered](https://github.com/golang/go/issues/35157)
