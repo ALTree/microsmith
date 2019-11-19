@@ -12,14 +12,13 @@ func main() {
 package main
 
 func f() {
-  var c1 chan int
-  var c2 chan string
-  var x int
-  select {
-    case <-make(chan int):
-      x = 1
-    case <-c2:
-      x = 2
+  for i := 0; i < 10; i++ {
+    if i > 10 {
+      continue
+    }
+    if i >= 100 {
+      break
+    }
   }
 }
 `

@@ -7,11 +7,12 @@ import (
 )
 
 type StmtBuilder struct {
-	rs    *rand.Rand // randomness source
-	eb    *ExprBuilder
-	depth int // how deep the stmt hyerarchy is
-	conf  ProgramConf
-	scope *Scope
+	rs     *rand.Rand // randomness source
+	eb     *ExprBuilder
+	depth  int // how deep the stmt hyerarchy is
+	conf   ProgramConf
+	scope  *Scope
+	inloop bool // are we inside a loop?
 }
 
 type StmtConf struct {
@@ -108,9 +109,15 @@ func (sb *StmtBuilder) Stmt() ast.Stmt {
 	}
 	// sb.depth < sb.conf.MaxStmtDepth
 
+	// TODO(alb): remove configurability (except for the
+	// assignStmt/everything-else ration) to simplify things.
 	switch RandIndex(sb.conf.StmtKindChance, sb.rs.Float64()) {
 	case 0:
-		return sb.AssignStmt()
+		if !sb.inloop || sb.rs.Intn(4) > 0 {
+			return sb.AssignStmt()
+		} else {
+			return sb.BranchStmt()
+		}
 	case 1:
 		sb.depth++
 		s := sb.BlockStmt()
@@ -242,6 +249,19 @@ func (sb *StmtBuilder) RandomTypes(n int) []Type {
 	}
 
 	return types
+}
+
+// returns a continue/break statement
+func (sb *StmtBuilder) BranchStmt() *ast.BranchStmt {
+	if sb.rs.Intn(2) == 0 {
+		return &ast.BranchStmt{
+			Tok: token.CONTINUE,
+		}
+	} else {
+		return &ast.BranchStmt{
+			Tok: token.BREAK,
+		}
+	}
 }
 
 // BlockStmt returns a new Block Statement. The returned Stmt is
@@ -393,6 +413,9 @@ func BuildStructAst(t StructType) *ast.StructType {
 }
 
 func (sb *StmtBuilder) ForStmt() *ast.ForStmt {
+	sb.inloop = true
+	defer func() { sb.inloop = false }()
+
 	var fs ast.ForStmt
 
 	// Add
