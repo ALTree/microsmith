@@ -6,6 +6,7 @@ import (
 	"log"
 	"math/rand"
 	"os"
+	"os/exec"
 	"regexp"
 	"sync/atomic"
 	"time"
@@ -41,7 +42,11 @@ func main() {
 		microsmith.Nfuncs = 1
 	}
 
-	fmt.Printf("Fuzzing linux/%v \n", *archF)
+	if !*debugF {
+		installDeps()
+		fmt.Println("Start fuzzing")
+	}
+
 	for i := 0; i < nWorkers; i++ {
 		go Fuzz(rs.Int63())
 	}
@@ -63,12 +68,9 @@ var crashWhitelist = []*regexp.Regexp{
 
 func Fuzz(seed int64) {
 	rand := rand.New(rand.NewSource(seed))
-
-	// Start with the defaul configuration; when not in debug mode
-	// we'll change program configuration once in a while.
 	conf := microsmith.DefaultConf
-
 	counter := 0
+
 	for {
 		counter++
 		if counter == 32 {
@@ -129,5 +131,16 @@ func Fuzz(seed int64) {
 			gp.DeleteFile()
 		}
 
+	}
+}
+
+func installDeps() {
+	fmt.Printf("Installing dependencies for linux/%s\n", *archF)
+	cmd := exec.Command(*toolchainF, "install", "math", "math/rand")
+	cmd.Env = append(os.Environ(), "GOOS=linux", "GOARCH="+*archF)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Printf("Installing failed with message:\n  ----\n  %s\n  %s\n  ----\n", out, err)
+		os.Exit(2)
 	}
 }
