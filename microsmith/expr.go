@@ -345,7 +345,7 @@ func (eb *ExprBuilder) MapIndexExpr(v Variable) *ast.IndexExpr {
 	}
 
 	var index ast.Expr
-	if /*eb.scope.HasType(mv.KeyT) && */ eb.CanDeepen() {
+	if eb.CanDeepen() {
 		index = eb.Expr(mv.KeyT)
 	} else {
 		index = eb.VarOrLit(mv.KeyT).(ast.Expr)
