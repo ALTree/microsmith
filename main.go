@@ -76,7 +76,7 @@ func Fuzz(seed int64) {
 			counter = 0
 		}
 
-		gp, err := microsmith.NewGoProgram(rand.Int63(), conf)
+		gp, err := microsmith.NewProgram(rand.Int63(), conf)
 		if err != nil {
 			log.Fatalf("Bad Conf: %s", err)
 		}
@@ -87,6 +87,7 @@ func Fuzz(seed int64) {
 		}
 
 		if *debugF {
+			// TODO: print gp stats too(?)
 			fmt.Println(gp)
 			os.Exit(0)
 		}

@@ -16,10 +16,7 @@ type ProgramConf struct {
 
 var DefaultConf = ProgramConf{
 	StmtConf{
-		MaxStmtDepth: 2,
-		StmtKindChance: []float64{
-			1, 1, 1, 1, 1, 1, 1, 1,
-		},
+		MaxStmtDepth:  2,
 		MaxBlockVars:  10,
 		MaxBlockStmts: 6,
 	},
@@ -44,16 +41,6 @@ func RandConf() ProgramConf {
 	pc := ProgramConf{
 		StmtConf{
 			MaxStmtDepth: 1 + rand.Intn(2),
-			StmtKindChance: []float64{
-				float64(rand.Intn(5)), // assign stms
-				float64(rand.Intn(3)), // block stms
-				float64(rand.Intn(5)), // for stms
-				float64(rand.Intn(5)), // if stms
-				float64(rand.Intn(5)), // switch stms
-				float64(rand.Intn(1)), // inc and dec stms
-				float64(rand.Intn(1)), // send stmts
-				float64(rand.Intn(5)), // select stmts
-			},
 
 			// since the Stmt builder already calls rand(1,Max) to
 			// decide how many variables and statements actually use,
@@ -131,23 +118,8 @@ func (pc *ProgramConf) Check(fix bool) error {
 		}
 	}
 
-	// StmtKindChance cannot be all zeros
-	sum := 0.0
-	for _, v := range pc.StmtKindChance {
-		sum += v
-	}
-	if sum == 0 {
-		if fix {
-			for i := range pc.StmtKindChance {
-				pc.StmtKindChance[i] += 1.0
-			}
-		} else {
-			return errors.New("Bad Conf: StmtKindChance is all zeros")
-		}
-	}
-
 	// ExprKindChance cannot be all zeros
-	sum = 0.0
+	sum := 0.0
 	for _, v := range pc.ExprKindChance {
 		sum += v
 	}

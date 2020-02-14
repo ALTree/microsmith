@@ -13,24 +13,25 @@ type StmtBuilder struct {
 	conf   ProgramConf
 	scope  *Scope
 	inloop bool // are we inside a loop?
+
+	// TODO: comment
+	stats StmtStats
+}
+
+type StmtStats struct {
+	Assign int
+	Branch int
+	Block  int
+	For    int
+	If     int
+	Switch int
+	Send   int
+	Select int
 }
 
 type StmtConf struct {
 	// maximum allowed blocks depth
 	MaxStmtDepth int
-
-	// chances of generating each type of Stmt. In order
-	//   0. Assign Stmt
-	//   1. Block Stmt
-	//   2. For Stmt
-	//   3. If Stmt
-	//   4. Switch Stmt
-	//   5. IncDec Stmt
-	//   6. Send Stmt
-	//   7. Select Stmt
-	//
-	// TODO(alb): remove this and make this uniform(?)
-	StmtKindChance []float64
 
 	// max amount of variables and statements inside new block
 	MaxBlockVars  int
@@ -109,60 +110,49 @@ func (sb *StmtBuilder) Stmt() ast.Stmt {
 	}
 	// sb.depth < sb.conf.MaxStmtDepth
 
-	// TODO(alb): remove configurability (except for the
-	// assignStmt/everything-else ration) to simplify things.
-	switch RandIndex(sb.conf.StmtKindChance, sb.rs.Float64()) {
+	var s ast.Stmt
+	switch n := sb.rs.Intn(7); n {
 	case 0:
-		if !sb.inloop || sb.rs.Intn(4) > 0 {
-			return sb.AssignStmt()
+		// Generate a BranchStmt (break/continue) instead of an
+		// assignment, with chance 0.25, but only if inside a loop.
+		if sb.inloop && sb.rs.Intn(4) == 0 {
+			s = sb.BranchStmt()
 		} else {
-			return sb.BranchStmt()
+			s = sb.AssignStmt()
 		}
 	case 1:
 		sb.depth++
-		s := sb.BlockStmt()
+		s = sb.BlockStmt()
 		sb.depth--
-		return s
 	case 2:
 		sb.depth++
-		s := sb.ForStmt()
+		s = sb.ForStmt()
 		sb.depth--
-		return s
 	case 3:
 		sb.depth++
-		s := sb.IfStmt()
+		s = sb.IfStmt()
 		sb.depth--
-		return s
 	case 4:
 		sb.depth++
-		s := sb.SwitchStmt()
+		s = sb.SwitchStmt()
 		sb.depth--
-		return s
 	case 5:
-		if t, ok := sb.CanIncDec(); ok {
-			s := sb.IncDecStmt(t)
-			return s
-		} else {
-			// cannot incdec, fallback to an assignment
-			s := sb.AssignStmt()
-			return s
-		}
+		s = sb.SendStmt()
 	case 6:
-		return sb.SendStmt()
-		// return sb.ExprStmt()
-	case 7:
 		sb.depth++
-		s := sb.SelectStmt()
+		s = sb.SelectStmt()
 		sb.depth--
-		return s
 	default:
-		panic("Stmt: bad RandIndex")
+		panic("Stmt: bad index")
 	}
+
+	return s
 }
 
 // gets a random variable currently in scope (that we can assign to),
 // and builds an AssignStmt with a random Expr of its type on the RHS
 func (sb *StmtBuilder) AssignStmt() *ast.AssignStmt {
+	sb.stats.Assign++
 	v := sb.scope.RandomVar(true)
 	switch t := v.Type.(type) {
 	case StructType:
@@ -253,6 +243,7 @@ func (sb *StmtBuilder) RandomTypes(n int) []Type {
 
 // returns a continue/break statement
 func (sb *StmtBuilder) BranchStmt() *ast.BranchStmt {
+	sb.stats.Branch++
 	if sb.rs.Intn(2) == 0 {
 		return &ast.BranchStmt{
 			Tok: token.CONTINUE,
@@ -270,6 +261,8 @@ func (sb *StmtBuilder) BranchStmt() *ast.BranchStmt {
 //
 // TODO: move depth increment and decrement here(?)
 func (sb *StmtBuilder) BlockStmt() *ast.BlockStmt {
+
+	sb.stats.Block++
 
 	bs := new(ast.BlockStmt)
 	stmts := []ast.Stmt{}
@@ -413,6 +406,9 @@ func BuildStructAst(t StructType) *ast.StructType {
 }
 
 func (sb *StmtBuilder) ForStmt() *ast.ForStmt {
+
+	sb.stats.For++
+
 	sb.inloop = true
 	defer func() { sb.inloop = false }()
 
@@ -446,6 +442,9 @@ func (sb *StmtBuilder) ForStmt() *ast.ForStmt {
 }
 
 func (sb *StmtBuilder) IfStmt() *ast.IfStmt {
+
+	sb.stats.If++
+
 	is := &ast.IfStmt{
 		Cond: sb.eb.Expr(BasicType{"bool"}),
 		Body: sb.BlockStmt(),
@@ -460,6 +459,9 @@ func (sb *StmtBuilder) IfStmt() *ast.IfStmt {
 }
 
 func (sb *StmtBuilder) SwitchStmt() *ast.SwitchStmt {
+
+	sb.stats.Switch++
+
 	t := RandType(sb.conf.SupportedTypes)
 	if sb.rs.Int63()%2 == 0 && sb.scope.HasType(PointerOf(t)) {
 		// sometimes switch on a pointer value
@@ -513,12 +515,14 @@ func (sb *StmtBuilder) CanIncDec() (Type, bool) {
 
 }
 
+// currently disabled
 func (sb *StmtBuilder) IncDecStmt(t Type) *ast.IncDecStmt {
-	// currently disabled
 	return nil
 }
 
 func (sb *StmtBuilder) SendStmt() *ast.SendStmt {
+
+	sb.stats.Send++
 
 	// get the variable .Name
 	st := new(ast.SendStmt)
@@ -548,6 +552,9 @@ func (sb *StmtBuilder) SendStmt() *ast.SendStmt {
 }
 
 func (sb *StmtBuilder) SelectStmt() *ast.SelectStmt {
+
+	sb.stats.Select++
+
 	st := &ast.SelectStmt{
 		Body: &ast.BlockStmt{List: []ast.Stmt{
 			sb.CommClause(false),

@@ -13,10 +13,7 @@ const WorkDir = "../work/"
 var TestConfigurations = map[string]microsmith.ProgramConf{
 	"small": {
 		microsmith.StmtConf{
-			MaxStmtDepth: 1,
-			StmtKindChance: []float64{
-				1, 1, 1, 1, 1, 1,
-			},
+			MaxStmtDepth:  1,
 			MaxBlockVars:  2,
 			MaxBlockStmts: 1,
 		},
@@ -39,10 +36,7 @@ var TestConfigurations = map[string]microsmith.ProgramConf{
 
 	"medium": {
 		microsmith.StmtConf{
-			MaxStmtDepth: 2,
-			StmtKindChance: []float64{
-				1, 1, 1, 1, 1, 1,
-			},
+			MaxStmtDepth:  2,
 			MaxBlockVars:  6,
 			MaxBlockStmts: 4,
 		},
@@ -65,10 +59,7 @@ var TestConfigurations = map[string]microsmith.ProgramConf{
 
 	"big": {
 		microsmith.StmtConf{
-			MaxStmtDepth: 3,
-			StmtKindChance: []float64{
-				1, 1, 1, 1, 1, 1,
-			},
+			MaxStmtDepth:  3,
 			MaxBlockVars:  12,
 			MaxBlockStmts: 8,
 		},
@@ -94,7 +85,7 @@ var TestConfigurations = map[string]microsmith.ProgramConf{
 func testProgramGoTypes(t *testing.T, n int, conf microsmith.ProgramConf) {
 	rand := rand.New(rand.NewSource(42))
 	for i := 0; i < n; i++ {
-		gp, err := microsmith.NewGoProgram(rand.Int63(), conf)
+		gp, err := microsmith.NewProgram(rand.Int63(), conf)
 		if err != nil {
 			t.Fatalf("BadConf error: %s\n", err)
 		}
@@ -102,6 +93,8 @@ func testProgramGoTypes(t *testing.T, n int, conf microsmith.ProgramConf) {
 		if err != nil {
 			t.Fatalf("Program failed typechecking: %s\n%s", err, gp)
 		}
+
+		checkStats(t, gp)
 	}
 }
 
@@ -165,7 +158,7 @@ func TestOnlyOneType(t *testing.T) {
 }
 
 func testBadConf(t *testing.T, conf microsmith.ProgramConf) {
-	_, err := microsmith.NewGoProgram(rand.Int63(), conf)
+	_, err := microsmith.NewProgram(rand.Int63(), conf)
 	if err == nil {
 		t.Errorf("Expected bad conf error for\n%+v\n", conf)
 	}
@@ -178,13 +171,6 @@ func TestBadConfs(t *testing.T) {
 	tc.LiteralChance = 0
 	testBadConf(t, tc)
 
-	// all zero StmtKindChance
-	tc = TestConfigurations["medium"]
-	for i := range tc.StmtKindChance {
-		tc.StmtKindChance[i] = 0.0
-	}
-	testBadConf(t, tc)
-
 	// all zero ExprKindChance
 	tc = TestConfigurations["medium"]
 	for i := range tc.ExprKindChance {
@@ -193,15 +179,51 @@ func TestBadConfs(t *testing.T) {
 	testBadConf(t, tc)
 }
 
-// check generated programs with gc (from file)
-// Speed is ~10 program/second
+func TestStmtStats(t *testing.T) {
+	rand := rand.New(rand.NewSource(444))
+	for i := 0; i < 100; i++ {
+		gp, _ := microsmith.NewProgram(rand.Int63(), microsmith.DefaultConf)
+		checkStats(t, gp)
+	}
+}
+
+func checkStats(t *testing.T, p *microsmith.Program) {
+	ss := p.Stats.Stmt
+	sum := float64(ss.Branch +
+		ss.Block +
+		ss.For +
+		ss.If +
+		ss.Switch +
+		ss.Send +
+		ss.Select)
+
+	// not enough statements to do a statistical check
+	if sum < 100 {
+		return
+	}
+
+	c := 0.01
+	if (float64(ss.Assign)/sum < c) ||
+		(float64(ss.Block)/sum < c) ||
+		(float64(ss.For)/sum < c) ||
+		(float64(ss.If)/sum < c) ||
+		(float64(ss.Switch)/sum < c) ||
+		(float64(ss.Send)/sum < c) ||
+		(float64(ss.Select)/sum < c) {
+		t.Errorf("At least one Stmt has low count\n%+v\n", ss)
+	}
+
+}
+
+// Check generated programs with go tool compile (from file). This is
+// much slower than using go/types.
 func TestProgramGc(t *testing.T) {
 	if testing.Short() {
 		t.Skip()
 	}
 	rand := rand.New(rand.NewSource(42))
 	for i := 0; i < 100; i++ {
-		gp, _ := microsmith.NewGoProgram(rand.Int63(), microsmith.DefaultConf)
+		gp, _ := microsmith.NewProgram(rand.Int63(), microsmith.DefaultConf)
 		err := gp.WriteToFile(WorkDir)
 		if err != nil {
 			t.Fatalf("Could not write to file: %s", err)
@@ -216,10 +238,7 @@ func TestProgramGc(t *testing.T) {
 
 var BenchConf = microsmith.ProgramConf{
 	microsmith.StmtConf{
-		MaxStmtDepth: 2,
-		StmtKindChance: []float64{
-			3, 1, 3, 3, 3, 1,
-		},
+		MaxStmtDepth:  2,
 		MaxBlockVars:  8,
 		MaxBlockStmts: 4,
 	},
