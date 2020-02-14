@@ -126,7 +126,14 @@ func (sb *StmtBuilder) Stmt() ast.Stmt {
 		sb.depth--
 	case 2:
 		sb.depth++
-		s = sb.ForStmt()
+		// If at least one array is in scope, generate a for range
+		// loop with chance 0.5; otherwise generate a plain loop
+		arr, ok := sb.scope.GetRandomArray(sb.rs)
+		if ok && sb.rs.Intn(2) == 0 {
+			s = sb.RangeStmt(arr)
+		} else {
+			s = sb.ForStmt()
+		}
 		sb.depth--
 	case 3:
 		sb.depth++
@@ -404,9 +411,7 @@ func BuildStructAst(t StructType) *ast.StructType {
 }
 
 func (sb *StmtBuilder) ForStmt() *ast.ForStmt {
-
 	sb.stats.For++
-
 	sb.inloop = true
 	defer func() { sb.inloop = false }()
 
@@ -423,11 +428,7 @@ func (sb *StmtBuilder) ForStmt() *ast.ForStmt {
 		fs.Init = sb.AssignStmt()
 	}
 	if sb.rs.Int63()%2 == 0 {
-		if t, ok := sb.CanIncDec(); ok && sb.rs.Int63()%2 == 0 {
-			fs.Post = sb.IncDecStmt(t)
-		} else {
-			fs.Post = sb.AssignStmt()
-		}
+		fs.Post = sb.AssignStmt()
 	}
 	if sb.rs.Int63()%32 != 0 {
 		fs.Body = sb.BlockStmt()
@@ -437,6 +438,30 @@ func (sb *StmtBuilder) ForStmt() *ast.ForStmt {
 	}
 
 	return &fs
+}
+
+func (sb *StmtBuilder) RangeStmt(arr Variable) *ast.RangeStmt {
+
+	sb.stats.For++
+	sb.inloop = true
+	defer func() { sb.inloop = false }()
+
+	i := sb.scope.NewIdent(BasicType{"int"})
+	v := sb.scope.NewIdent(arr.Type.(ArrayType).Base())
+	rs := &ast.RangeStmt{
+		Key:   i,
+		Value: v,
+		Tok:   token.DEFINE,
+		X:     arr.Name,
+	}
+
+	rs.Body = sb.BlockStmt()
+	rs.Body.List = append(rs.Body.List, sb.UseVars([]*ast.Ident{i, v}))
+
+	sb.scope.DeleteIdentByName(i)
+	sb.scope.DeleteIdentByName(v)
+
+	return rs
 }
 
 func (sb *StmtBuilder) IfStmt() *ast.IfStmt {

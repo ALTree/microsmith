@@ -12,13 +12,10 @@ func main() {
 package main
 
 func f() {
-  for i := 0; i < 10; i++ {
-    if i > 10 {
-      continue
-    }
-    if i >= 100 {
-      break
-    }
+  var b []byte
+  for i, v := range b {
+
+    _ = i
   }
 }
 `

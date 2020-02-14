@@ -196,6 +196,32 @@ func (ls Scope) GetRandomVarOfType(t Type, rs *rand.Rand) (Variable, bool) {
 	panic("unreachable")
 }
 
+func (ls Scope) GetRandomArray(rs *rand.Rand) (Variable, bool) {
+	cnt := 0
+	for _, v := range ls {
+		if _, ok := v.Type.(ArrayType); ok {
+			cnt++
+		}
+	}
+
+	if cnt == 0 {
+		return Variable{}, false
+	}
+
+	rand := 1 + rs.Intn(cnt)
+	cnt = 0
+	for _, v := range ls {
+		if _, ok := v.Type.(ArrayType); ok {
+			cnt++
+		}
+		if cnt == rand {
+			return v, true
+		}
+	}
+
+	panic("unreachable")
+}
+
 // Like GetExprOfType, but it's *required* to return a variable from
 // which we can derive an expression of type t (by indexing into
 // arrays and maps, selecting into structs, receiving from a chan and
