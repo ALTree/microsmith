@@ -147,7 +147,7 @@ func TestAllUnary(t *testing.T) {
 	testProgramGoTypes(t, 100, tc)
 }
 
-func TestOnlyOneType(t *testing.T) {
+func TestSingleType(t *testing.T) {
 	tc := TestConfigurations["medium"]
 	for _, typ := range []string{"bool", "int", "string", "float64", "complex128"} {
 		t.Run(typ, func(t *testing.T) {

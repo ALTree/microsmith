@@ -103,8 +103,8 @@ func NewStmtBuilder(rs *rand.Rand, conf ProgramConf) *StmtBuilder {
 // up and using all the variables it declares.
 
 func (sb *StmtBuilder) Stmt() ast.Stmt {
-	// If the maximum allowed stmt depth has been reached, only
-	// generate stmt that do not nest (assignments).
+	// If the maximum allowed stmt depth has been reached, generate an
+	// assign statement, since they don't nest.
 	if sb.depth >= sb.conf.MaxStmtDepth {
 		return sb.AssignStmt()
 	}
@@ -258,8 +258,6 @@ func (sb *StmtBuilder) BranchStmt() *ast.BranchStmt {
 // BlockStmt returns a new Block Statement. The returned Stmt is
 // always a valid block. It up to BlockStmt's caller to make sure
 // BlockStmt is only called when we have not yet reached max depth.
-//
-// TODO: move depth increment and decrement here(?)
 func (sb *StmtBuilder) BlockStmt() *ast.BlockStmt {
 
 	sb.stats.Block++
@@ -434,7 +432,7 @@ func (sb *StmtBuilder) ForStmt() *ast.ForStmt {
 	if sb.rs.Int63()%32 != 0 {
 		fs.Body = sb.BlockStmt()
 	} else {
-		// empty loop body, still needs a BlockStmt
+		// empty loop body
 		fs.Body = &ast.BlockStmt{}
 	}
 
@@ -500,9 +498,6 @@ func (sb *StmtBuilder) CaseClause(t Type, def bool) *ast.CaseClause {
 	return cc
 }
 
-// returns <nil, false> if there's no variable in scope we can inc or
-// dec. Otherwise, returns <t, true>; where t is a random type that
-// can be inc/dec and has a variable in scope.
 func (sb *StmtBuilder) CanIncDec() (Type, bool) {
 
 	// disabled for now, IncDecStmt is too annoying to make it
@@ -530,8 +525,9 @@ func (sb *StmtBuilder) SendStmt() *ast.SendStmt {
 	ch, ok := sb.scope.GetRandomVarChan(sb.rs)
 
 	if !ok {
-		// no channels in scope, but we can send to a brand
-		// new one (e.g. make(chan int) <- 1)
+		// no channels in scope, but we can send to a brand new one,
+		// i.e. generate
+		//   make(chan int) <- 1
 		t := RandType(sb.conf.SupportedTypes)
 		st.Chan = &ast.CallExpr{
 			Fun: &ast.Ident{Name: "make"},
@@ -552,9 +548,7 @@ func (sb *StmtBuilder) SendStmt() *ast.SendStmt {
 }
 
 func (sb *StmtBuilder) SelectStmt() *ast.SelectStmt {
-
 	sb.stats.Select++
-
 	st := &ast.SelectStmt{
 		Body: &ast.BlockStmt{List: []ast.Stmt{
 			sb.CommClause(false),

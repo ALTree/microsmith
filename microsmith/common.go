@@ -4,8 +4,14 @@ import (
 	"math/rand"
 )
 
-func RandString(strings []string) string {
-	return strings[rand.Intn(len(strings))]
+// Returns a random ASCII string
+func RandString() string {
+	str := make([]byte, rand.Intn(20))
+	for i := range str {
+		str[i] = byte('0' + rand.Intn('Z'-'0'))
+	}
+
+	return `"` + string(str) + `"`
 }
 
 func RandType(ts []Type) Type {

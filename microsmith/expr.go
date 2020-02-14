@@ -98,10 +98,7 @@ func (eb *ExprBuilder) BasicLit(t Type) *ast.BasicLit {
 		panic("BasicLit: bool is not a BasicLit")
 	case "string":
 		bl.Kind = token.STRING
-		bl.Value = RandString([]string{
-			`"a"`, `"bb"`, `"ccc"`,
-			`"dddd"`, `"eeeee"`, `"ffffff"`,
-		})
+		bl.Value = RandString()
 	default:
 		panic("BasicLit: unimplemented type " + t.Name())
 	}

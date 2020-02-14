@@ -36,11 +36,12 @@ func main() {
 	rs := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	nWorkers := *pF
-	if nWorkers < 1 || *debugF {
+	if *debugF {
 		nWorkers = 1
 		microsmith.Nfuncs = 1
 	}
-	fmt.Printf("Fuzzing GOARCH=%v with %v worker(s)\n", *archF, nWorkers)
+
+	fmt.Printf("Fuzzing linux/%v \n", *archF)
 	for i := 0; i < nWorkers; i++ {
 		go Fuzz(rs.Int63())
 	}
@@ -57,10 +58,9 @@ func main() {
 }
 
 var crashWhitelist = []*regexp.Regexp{
-	regexp.MustCompile("bvbulkalloc too big"),
+	// regexp.MustCompile("bvbulkalloc too big"),
 }
 
-// Fuzz with one worker
 func Fuzz(seed int64) {
 	rand := rand.New(rand.NewSource(seed))
 
@@ -69,9 +69,9 @@ func Fuzz(seed int64) {
 	conf := microsmith.DefaultConf
 
 	counter := 0
-	for true {
+	for {
 		counter++
-		if counter == 32 { // will never be > 1 in debug mode
+		if counter == 32 {
 			conf = microsmith.RandConf()
 			counter = 0
 		}
@@ -106,6 +106,7 @@ func Fuzz(seed int64) {
 
 		out, err := gp.Compile(*toolchainF, *archF, *nooptF, *raceF, *ssacheckF)
 		timeout.Stop()
+
 		var known bool
 		if err != nil {
 			for _, crash := range crashWhitelist {
@@ -127,8 +128,6 @@ func Fuzz(seed int64) {
 		if err == nil || known {
 			gp.DeleteFile()
 		}
-		if *debugF {
-			os.Exit(0)
-		}
+
 	}
 }
