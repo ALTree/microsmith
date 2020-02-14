@@ -56,6 +56,14 @@ func NewProgram(seed int64, conf ProgramConf) (*Program, error) {
 	gp.source = buf.Bytes()
 	gp.Stats.Stmt = db.sb.stats
 
+	// Put a newline between each function to make the generate source
+	// file easier to navigate.
+	gp.source = bytes.ReplaceAll(
+		gp.source,
+		[]byte("func "),
+		[]byte("\nfunc "),
+	)
+
 	return gp, nil
 }
 
