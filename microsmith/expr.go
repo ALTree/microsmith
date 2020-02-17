@@ -22,12 +22,6 @@ type ExprConf struct {
 	//  1. Binary Expression
 	//  2. Function call
 	ExprKindChance []float64
-
-	// How likely it is to choose a literal (instead of a variable
-	// among the ones in scope) when building an expression; expressed
-	// as a value in [0,1]. If 0, only variables are chosen; if 1,
-	// only literal are chosen.
-	LiteralChance float64
 }
 
 func NewExprBuilder(rs *rand.Rand, conf ProgramConf, s *Scope) *ExprBuilder {
@@ -193,7 +187,7 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 //
 // If no expression of type t can be built, it always returns a
 // literal. Otherwise, it returns a literal or an Expr with chances
-// respectively (LiteralChance) and (1 - LiteralChance).
+// 0.5 - 0.5.
 //
 // When returning an expression, that can be either an ast.Ident (for
 // example when t is int it could just return a variable I0 of type
@@ -219,7 +213,7 @@ func (eb *ExprBuilder) VarOrLit(t Type) interface{} {
 	vst, typeCanDerive := eb.scope.GetRandomVarOfSubtype(t, eb.rs)
 
 	// Literal of type t
-	if eb.rs.Float64() < eb.conf.LiteralChance || (!typeInScope && !typeCanDerive) {
+	if eb.rs.Intn(2) == 0 || (!typeInScope && !typeCanDerive) {
 		switch t := t.(type) {
 		case BasicType:
 			if n := t.Name(); n == "int" || n == "string" || n == "float64" || n == "complex128" || n == "rune" {

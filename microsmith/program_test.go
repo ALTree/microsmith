@@ -21,7 +21,6 @@ var TestConfigurations = map[string]microsmith.ProgramConf{
 			ExprKindChance: []float64{
 				1, 1, 1,
 			},
-			LiteralChance: 0.2,
 		},
 		[]microsmith.Type{
 			microsmith.BasicType{"int"},
@@ -42,7 +41,6 @@ var TestConfigurations = map[string]microsmith.ProgramConf{
 			ExprKindChance: []float64{
 				1, 1, 1,
 			},
-			LiteralChance: 0.2,
 		},
 		[]microsmith.Type{
 			microsmith.BasicType{"int"},
@@ -63,7 +61,6 @@ var TestConfigurations = map[string]microsmith.ProgramConf{
 			ExprKindChance: []float64{
 				1, 1, 1,
 			},
-			LiteralChance: 0.2,
 		},
 		[]microsmith.Type{
 			microsmith.BasicType{"int"},
@@ -129,12 +126,6 @@ func TestBig(t *testing.T) {
 	testProgramGoTypes(t, 10, TestConfigurations["big"])
 }
 
-func TestAllLiterals(t *testing.T) {
-	tc := TestConfigurations["medium"]
-	tc.LiteralChance = 1.0
-	testProgramGoTypes(t, 100, tc)
-}
-
 func TestAllUnary(t *testing.T) {
 	tc := TestConfigurations["medium"]
 	tc.ExprKindChance = []float64{1.0, 0, 0}
@@ -143,7 +134,10 @@ func TestAllUnary(t *testing.T) {
 
 func TestSingleType(t *testing.T) {
 	tc := TestConfigurations["medium"]
-	for _, typ := range []string{"bool", "int", "string", "float64", "complex128"} {
+	for _, typ := range []string{
+		"bool", "int", "rune", "string",
+		"float64", "complex128",
+	} {
 		t.Run(typ, func(t *testing.T) {
 			tc.SupportedTypes = []microsmith.Type{microsmith.BasicType{typ}}
 			testProgramGoTypes(t, 100, tc)
@@ -234,7 +228,6 @@ var BenchConf = microsmith.ProgramConf{
 		ExprKindChance: []float64{
 			1, 1, 1,
 		},
-		LiteralChance: 0.4,
 	},
 	[]microsmith.Type{
 		microsmith.BasicType{"int"},

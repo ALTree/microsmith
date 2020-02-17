@@ -24,7 +24,6 @@ var DefaultConf = ProgramConf{
 		ExprKindChance: []float64{
 			2, 4, 1,
 		},
-		LiteralChance: 0.4,
 	},
 	[]Type{
 		BasicType{"int"},
@@ -53,7 +52,6 @@ func RandConf() ProgramConf {
 				float64(rand.Intn(4)), // binary expr
 				float64(rand.Intn(1)), // fun call
 			},
-			LiteralChance: float64(rand.Intn(7)) * 0.125,
 		},
 		nil,
 	}
@@ -86,20 +84,6 @@ func (bce ConfError) Error() string {
 }
 
 func (pc *ProgramConf) Check(fix bool) error {
-
-	// LiteralChance cannot be 0 if we generate arrays, because when
-	// we need a literal or a variable of type int to stop descending
-	// into an infinite sequence of nested []. If we don't have an int
-	// variable in scope and we don't allow literals, we'll get stuck
-	// in a infinite mutual recursion between VarOrLit and IndexExpr.
-	if pc.LiteralChance == 0 {
-		if fix {
-			pc.LiteralChance = 0.2
-		} else {
-			return errors.New("Bad Conf: Expr.LiteralChance = 0")
-		}
-	}
-
 	// ExprKindChance cannot be all zeros
 	sum := 0.0
 	for _, v := range pc.ExprKindChance {
