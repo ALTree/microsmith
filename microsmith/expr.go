@@ -33,12 +33,6 @@ type ExprConf struct {
 	// (instead of a plain variables). If 0, we never index from
 	// arrays.
 	IndexChance float64
-
-	// How likely is to build a boolean binary expression by using a
-	// comparison operator on non-boolean types instead of a logical
-	// operator on booleans. If 0, comparison operators are never
-	// used.
-	ComparisonChance float64
 }
 
 func NewExprBuilder(rs *rand.Rand, conf ProgramConf, s *Scope) *ExprBuilder {
@@ -49,31 +43,10 @@ func NewExprBuilder(rs *rand.Rand, conf ProgramConf, s *Scope) *ExprBuilder {
 	}
 }
 
-// returns true if the expression tree currently being built is
+// Returns true if the expression tree currently being built is
 // allowed to become deeper.
-func (eb *ExprBuilder) CanDeepen() bool {
-	if eb.depth > 9 {
-		return false
-	}
-
-	// We want the chance of getting deeper to decrease exponentially.
-	//
-	// Threesholds are computed as
-	//   t = (⅘)ⁿ - 0.10
-	// for n in [0, 9]
-	var ExprDepthChance = [10]float64{
-		0.9,
-		0.7,
-		0.54,
-		0.412,
-		0.3096,
-		0.22768,
-		0.162144,
-		0.1097152,
-		0.06777216,
-		0.034217728,
-	}
-	return eb.rs.Float64() < ExprDepthChance[eb.depth]
+func (eb *ExprBuilder) Deepen() bool {
+	return (eb.depth <= 6) && (eb.rs.Float64() < 0.6)
 }
 
 func (eb *ExprBuilder) chooseToken(tokens []token.Token) token.Token {
@@ -82,7 +55,6 @@ func (eb *ExprBuilder) chooseToken(tokens []token.Token) token.Token {
 
 func (eb *ExprBuilder) BasicLit(t Type) *ast.BasicLit {
 	bl := new(ast.BasicLit)
-
 	switch t.Name() {
 	case "int":
 		bl.Kind = token.INT
@@ -121,7 +93,7 @@ func (eb *ExprBuilder) CompositeLit(t Type) *ast.CompositeLit {
 		}
 		clElems := []ast.Expr{}
 		for i := 0; i < eb.rs.Intn(5); i++ {
-			if eb.CanDeepen() {
+			if eb.Deepen() {
 				clElems = append(clElems, eb.Expr(t.Base()))
 			} else {
 				clElems = append(clElems, eb.VarOrLit(t.Base()).(ast.Expr))
@@ -322,7 +294,7 @@ func (eb *ExprBuilder) ArrayIndexExpr(v Variable) *ast.IndexExpr {
 	// not, we just to use a literal.
 	var index ast.Expr
 	vi, ok := eb.scope.GetRandomVarOfType(BasicType{"int"}, eb.rs)
-	if ok && eb.CanDeepen() {
+	if ok && eb.Deepen() {
 		index = &ast.BinaryExpr{
 			X:  vi.Name,
 			Op: token.ADD,
@@ -348,7 +320,7 @@ func (eb *ExprBuilder) MapIndexExpr(v Variable) *ast.IndexExpr {
 	}
 
 	var index ast.Expr
-	if eb.CanDeepen() {
+	if eb.Deepen() {
 		index = eb.Expr(mv.KeyT)
 	} else {
 		index = eb.VarOrLit(mv.KeyT).(ast.Expr)
@@ -400,7 +372,7 @@ func (eb *ExprBuilder) SliceExpr(v Variable) *ast.SliceExpr {
 
 	var low, high ast.Expr
 	indV, hasInt := eb.scope.GetRandomVarOfType(BasicType{"int"}, eb.rs)
-	if hasInt && eb.CanDeepen() {
+	if hasInt && eb.Deepen() {
 		low = &ast.BinaryExpr{
 			X:  indV.Name,
 			Op: token.ADD,
@@ -451,7 +423,7 @@ func (eb *ExprBuilder) UnaryExpr(t Type) *ast.UnaryExpr {
 		panic("UnaryExpr: unimplemented type " + t.Name())
 	}
 
-	if eb.CanDeepen() {
+	if eb.Deepen() {
 		ue.X = eb.Expr(t)
 	} else {
 		ue.X = eb.VarOrLit(t).(ast.Expr)
@@ -470,16 +442,12 @@ func (eb *ExprBuilder) BinaryExpr(t Type) *ast.BinaryExpr {
 	case "float64", "complex128":
 		ue.Op = eb.chooseToken([]token.Token{token.ADD, token.SUB, token.MUL})
 	case "bool":
-		if eb.rs.Float64() < eb.conf.ComparisonChance {
-			// When requested a bool, we can generate a comparison
-			// between any two other types (among the enabled ones).
+		if eb.rs.Intn(2) == 0 {
 			// If ints and/or strings are enabled, we can generate
 			// '<' & co., otherwise we're restricted to eq/neq.
 
-			// first, choose a random type
+			// Select a random type, and then find a suitable op
 			t = RandType(eb.conf.SupportedTypes)
-
-			// now find a suitable op
 			ops := []token.Token{token.EQL, token.NEQ}
 			if name := t.Name(); name != "bool" && name != "complex128" {
 				ops = append(ops, []token.Token{
@@ -499,7 +467,7 @@ func (eb *ExprBuilder) BinaryExpr(t Type) *ast.BinaryExpr {
 
 	// ...then build the two branches.
 
-	if eb.CanDeepen() {
+	if eb.Deepen() {
 		ue.X = eb.Expr(t)
 		ue.Y = eb.Expr(t)
 	} else {
@@ -531,7 +499,7 @@ func (eb *ExprBuilder) CallExpr(t Type) *ast.CallExpr {
 		ce := &ast.CallExpr{
 			Fun: FloatIdent,
 		}
-		if eb.CanDeepen() {
+		if eb.Deepen() {
 			ce.Args = []ast.Expr{eb.Expr(BasicType{"int"})}
 		} else {
 			ce.Args = []ast.Expr{eb.VarOrLit(BasicType{"int"}).(ast.Expr)}
@@ -567,7 +535,7 @@ func (eb *ExprBuilder) MakeLenCall() *ast.CallExpr {
 		Fun: LenIdent,
 	}
 
-	if eb.CanDeepen() {
+	if eb.Deepen() {
 		ce.Args = []ast.Expr{eb.Expr(typ)}
 	} else {
 		ce.Args = []ast.Expr{eb.VarOrLit(typ).(ast.Expr)}
@@ -584,7 +552,7 @@ func (eb *ExprBuilder) MakeMathCall(fun Variable) *ast.CallExpr {
 		},
 	}
 
-	cd := eb.CanDeepen()
+	cd := eb.Deepen()
 	args := []ast.Expr{}
 	for _, arg := range fun.Type.(FuncType).Args {
 		if cd {
@@ -607,7 +575,7 @@ func (eb *ExprBuilder) MakeRandCall(fun Variable) *ast.CallExpr {
 		},
 	}
 
-	cd := eb.CanDeepen()
+	cd := eb.Deepen()
 	args := []ast.Expr{}
 	for _, arg := range fun.Type.(FuncType).Args {
 		if cd {

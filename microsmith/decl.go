@@ -24,9 +24,8 @@ var DefaultConf = ProgramConf{
 		ExprKindChance: []float64{
 			2, 4, 1,
 		},
-		LiteralChance:    0.4,
-		ComparisonChance: 0.4,
-		IndexChance:      0.4,
+		LiteralChance: 0.4,
+		IndexChance:   0.4,
 	},
 	[]Type{
 		BasicType{"int"},
@@ -55,9 +54,8 @@ func RandConf() ProgramConf {
 				float64(rand.Intn(4)), // binary expr
 				float64(rand.Intn(1)), // fun call
 			},
-			LiteralChance:    float64(rand.Intn(7)) * 0.125,
-			ComparisonChance: float64(rand.Intn(7)) * 0.125,
-			IndexChance:      float64(rand.Intn(5)) * 0.125,
+			LiteralChance: float64(rand.Intn(7)) * 0.125,
+			IndexChance:   float64(rand.Intn(5)) * 0.125,
 		},
 		nil,
 	}
@@ -69,6 +67,7 @@ func RandConf() ProgramConf {
 		BasicType{"complex128"},
 		BasicType{"bool"},
 		BasicType{"string"},
+		BasicType{"rune"},
 	}
 	var enabledTypes []Type
 	for _, t := range types {
@@ -179,7 +178,7 @@ func (db *DeclBuilder) FuncDecl() *ast.FuncDecl {
 func (db *DeclBuilder) FuncIdent() *ast.Ident {
 	id := new(ast.Ident)
 
-	name := fmt.Sprintf("fun%v", len(db.funNames))
+	name := fmt.Sprintf("f%v", len(db.funNames))
 	db.funNames = append(db.funNames, name)
 
 	id.Obj = &ast.Object{

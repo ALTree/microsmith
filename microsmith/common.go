@@ -7,7 +7,7 @@ import (
 
 // Returns a random ASCII string
 func RandString() string {
-	str := make([]byte, rand.Intn(20))
+	str := make([]byte, rand.Intn(10))
 	for i := range str {
 		str[i] = byte('0' + rand.Intn('Z'-'0'))
 	}

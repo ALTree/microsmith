@@ -21,9 +21,8 @@ var TestConfigurations = map[string]microsmith.ProgramConf{
 			ExprKindChance: []float64{
 				1, 1, 1,
 			},
-			LiteralChance:    0.2,
-			ComparisonChance: 0.1,
-			IndexChance:      0.1,
+			LiteralChance: 0.2,
+			IndexChance:   0.1,
 		},
 		[]microsmith.Type{
 			microsmith.BasicType{"int"},
@@ -44,9 +43,8 @@ var TestConfigurations = map[string]microsmith.ProgramConf{
 			ExprKindChance: []float64{
 				1, 1, 1,
 			},
-			LiteralChance:    0.2,
-			ComparisonChance: 0.1,
-			IndexChance:      0.1,
+			LiteralChance: 0.2,
+			IndexChance:   0.1,
 		},
 		[]microsmith.Type{
 			microsmith.BasicType{"int"},
@@ -67,9 +65,8 @@ var TestConfigurations = map[string]microsmith.ProgramConf{
 			ExprKindChance: []float64{
 				1, 1, 1,
 			},
-			LiteralChance:    0.2,
-			ComparisonChance: 0.1,
-			IndexChance:      0.1,
+			LiteralChance: 0.2,
+			IndexChance:   0.1,
 		},
 		[]microsmith.Type{
 			microsmith.BasicType{"int"},
@@ -246,9 +243,8 @@ var BenchConf = microsmith.ProgramConf{
 		ExprKindChance: []float64{
 			1, 1, 1,
 		},
-		LiteralChance:    0.4,
-		ComparisonChance: 0.4,
-		IndexChance:      0.25,
+		LiteralChance: 0.4,
+		IndexChance:   0.25,
 	},
 	[]microsmith.Type{
 		microsmith.BasicType{"int"},
@@ -256,6 +252,7 @@ var BenchConf = microsmith.ProgramConf{
 		microsmith.BasicType{"complex128"},
 		microsmith.BasicType{"bool"},
 		microsmith.BasicType{"string"},
+		microsmith.BasicType{"rune"},
 	},
 }
 
