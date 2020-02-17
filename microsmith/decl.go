@@ -34,6 +34,7 @@ var DefaultConf = ProgramConf{
 		BasicType{"complex128"},
 		BasicType{"bool"},
 		BasicType{"string"},
+		BasicType{"rune"},
 	},
 }
 

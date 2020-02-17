@@ -126,9 +126,9 @@ func (sb *StmtBuilder) Stmt() ast.Stmt {
 		sb.depth--
 	case 2:
 		sb.depth++
-		// If at least one array is in scope, generate a for range
-		// loop with chance 0.5; otherwise generate a plain loop
-		arr, ok := sb.scope.GetRandomArray(sb.rs)
+		// If at least one array or string is in scope, generate a for
+		// range loop with chance 0.5; otherwise generate a plain loop
+		arr, ok := sb.scope.GetRandomRangeable(sb.rs)
 		if ok && sb.rs.Intn(2) == 0 {
 			s = sb.RangeStmt(arr)
 		} else {
@@ -449,7 +449,21 @@ func (sb *StmtBuilder) RangeStmt(arr Variable) *ast.RangeStmt {
 	// TODO: range over strings too
 
 	i := sb.scope.NewIdent(BasicType{"int"})
-	v := sb.scope.NewIdent(arr.Type.(ArrayType).Base())
+
+	var v *ast.Ident
+	switch arr.Type.(type) {
+	case ArrayType:
+		v = sb.scope.NewIdent(arr.Type.(ArrayType).Base())
+	case BasicType:
+		if arr.Type.(BasicType).N == "string" {
+			v = sb.scope.NewIdent(BasicType{"rune"})
+		} else {
+			panic("cannot range on non-string BasicType")
+		}
+	default:
+		panic("Bad range type")
+	}
+
 	rs := &ast.RangeStmt{
 		Key:   i,
 		Value: v,

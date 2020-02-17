@@ -87,6 +87,9 @@ func (eb *ExprBuilder) BasicLit(t Type) *ast.BasicLit {
 	case "int":
 		bl.Kind = token.INT
 		bl.Value = strconv.Itoa(eb.rs.Intn(100))
+	case "rune":
+		bl.Kind = token.CHAR
+		bl.Value = RandRune()
 	case "float64":
 		bl.Kind = token.FLOAT
 		bl.Value = strconv.FormatFloat(100*(eb.rs.Float64()), 'f', 3, 64)
@@ -252,7 +255,7 @@ func (eb *ExprBuilder) VarOrLit(t Type) interface{} {
 	if eb.rs.Float64() < eb.conf.LiteralChance || (!typeInScope && !typeCanDerive) {
 		switch t := t.(type) {
 		case BasicType:
-			if n := t.Name(); n == "int" || n == "string" || n == "float64" || n == "complex128" {
+			if n := t.Name(); n == "int" || n == "string" || n == "float64" || n == "complex128" || n == "rune" {
 				return eb.BasicLit(t)
 			} else if n == "bool" {
 				if eb.rs.Int63()%2 == 0 {
@@ -438,7 +441,7 @@ func (eb *ExprBuilder) UnaryExpr(t Type) *ast.UnaryExpr {
 	}
 
 	switch t.Name() {
-	case "int", "float64", "complex128":
+	case "int", "rune", "float64", "complex128":
 		ue.Op = eb.chooseToken([]token.Token{token.ADD, token.SUB})
 	case "bool":
 		ue.Op = eb.chooseToken([]token.Token{token.NOT})
@@ -462,7 +465,7 @@ func (eb *ExprBuilder) BinaryExpr(t Type) *ast.BinaryExpr {
 
 	// First choose the operator...
 	switch t.Name() {
-	case "int":
+	case "int", "rune":
 		ue.Op = eb.chooseToken([]token.Token{token.ADD, token.SUB})
 	case "float64", "complex128":
 		ue.Op = eb.chooseToken([]token.Token{token.ADD, token.SUB, token.MUL})

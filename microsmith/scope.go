@@ -196,10 +196,12 @@ func (ls Scope) GetRandomVarOfType(t Type, rs *rand.Rand) (Variable, bool) {
 	panic("unreachable")
 }
 
-func (ls Scope) GetRandomArray(rs *rand.Rand) (Variable, bool) {
+func (ls Scope) GetRandomRangeable(rs *rand.Rand) (Variable, bool) {
 	cnt := 0
 	for _, v := range ls {
 		if _, ok := v.Type.(ArrayType); ok {
+			cnt++
+		} else if t, ok := v.Type.(BasicType); ok && t.N == "string" {
 			cnt++
 		}
 	}
@@ -212,6 +214,8 @@ func (ls Scope) GetRandomArray(rs *rand.Rand) (Variable, bool) {
 	cnt = 0
 	for _, v := range ls {
 		if _, ok := v.Type.(ArrayType); ok {
+			cnt++
+		} else if t, ok := v.Type.(BasicType); ok && t.N == "string" {
 			cnt++
 		}
 		if cnt == rand {

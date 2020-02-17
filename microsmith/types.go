@@ -276,6 +276,7 @@ var IntIdent = &ast.Ident{Name: "int"}
 var FloatIdent = &ast.Ident{Name: "float64"}
 var ComplexIdent = &ast.Ident{Name: "complex128"}
 var StringIdent = &ast.Ident{Name: "string"}
+var RuneIdent = &ast.Ident{Name: "rune"}
 
 func TypeIdent(t string) *ast.Ident {
 	switch t {
@@ -289,6 +290,8 @@ func TypeIdent(t string) *ast.Ident {
 		return ComplexIdent
 	case "string":
 		return StringIdent
+	case "rune":
+		return RuneIdent
 	default:
 		panic("TypeIdent: cannot handle type " + t)
 	}

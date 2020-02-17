@@ -12,11 +12,7 @@ func main() {
 package main
 
 func f() {
-  var b []byte
-  for i, v := range b {
-
-    _ = i
-  }
+  var r rune = 'a'
 }
 `
 	fset := token.NewFileSet()
