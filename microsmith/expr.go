@@ -258,7 +258,7 @@ func (eb *ExprBuilder) VarOrLit(t Type) interface{} {
 			if n := t.Name(); n == "int" || n == "string" || n == "float64" || n == "complex128" || n == "rune" {
 				return eb.BasicLit(t)
 			} else if n == "bool" {
-				if eb.rs.Int63()%2 == 0 {
+				if eb.rs.Intn(2) == 0 {
 					return TrueIdent
 				} else {
 					return FalseIdent
@@ -434,7 +434,7 @@ func (eb *ExprBuilder) UnaryExpr(t Type) *ast.UnaryExpr {
 
 	// if there are pointers to t in scope, generate a t by
 	// dereferencing it with chance 0.5
-	if eb.rs.Int63()%2 == 0 && eb.scope.HasType(PointerOf(t)) {
+	if eb.rs.Intn(2) == 0 && eb.scope.HasType(PointerOf(t)) {
 		ue.Op = token.MUL
 		ue.X = eb.Expr(PointerOf(t))
 		return ue

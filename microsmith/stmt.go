@@ -446,10 +446,7 @@ func (sb *StmtBuilder) RangeStmt(arr Variable) *ast.RangeStmt {
 	sb.inloop = true
 	defer func() { sb.inloop = false }()
 
-	// TODO: range over strings too
-
 	i := sb.scope.NewIdent(BasicType{"int"})
-
 	var v *ast.Ident
 	switch arr.Type.(type) {
 	case ArrayType:
