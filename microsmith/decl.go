@@ -25,7 +25,6 @@ var DefaultConf = ProgramConf{
 			2, 4, 1,
 		},
 		LiteralChance: 0.4,
-		IndexChance:   0.4,
 	},
 	[]Type{
 		BasicType{"int"},
@@ -55,7 +54,6 @@ func RandConf() ProgramConf {
 				float64(rand.Intn(1)), // fun call
 			},
 			LiteralChance: float64(rand.Intn(7)) * 0.125,
-			IndexChance:   float64(rand.Intn(5)) * 0.125,
 		},
 		nil,
 	}
@@ -88,14 +86,6 @@ func (bce ConfError) Error() string {
 }
 
 func (pc *ProgramConf) Check(fix bool) error {
-	// IndexChance cannot be zero, since we always generate arrays
-	if pc.IndexChance == 0 {
-		if fix {
-			pc.IndexChance = 0.2
-		} else {
-			return errors.New("Bad Conf: Expr.IndexChance = 0")
-		}
-	}
 
 	// LiteralChance cannot be 0 if we generate arrays, because when
 	// we need a literal or a variable of type int to stop descending
@@ -107,14 +97,6 @@ func (pc *ProgramConf) Check(fix bool) error {
 			pc.LiteralChance = 0.2
 		} else {
 			return errors.New("Bad Conf: Expr.LiteralChance = 0")
-		}
-	}
-
-	if pc.IndexChance == 1 && pc.LiteralChance == 0 {
-		if fix {
-			pc.LiteralChance = 0.2
-		} else {
-			return errors.New("Bad Conf: Expr.IndexChance = 1, Expr.LiteralChance = 0")
 		}
 	}
 

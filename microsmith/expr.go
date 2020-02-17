@@ -28,11 +28,6 @@ type ExprConf struct {
 	// as a value in [0,1]. If 0, only variables are chosen; if 1,
 	// only literal are chosen.
 	LiteralChance float64
-
-	// How likely it is to pick a variable by indexing an array type
-	// (instead of a plain variables). If 0, we never index from
-	// arrays.
-	IndexChance float64
 }
 
 func NewExprBuilder(rs *rand.Rand, conf ProgramConf, s *Scope) *ExprBuilder {

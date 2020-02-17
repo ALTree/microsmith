@@ -22,7 +22,6 @@ var TestConfigurations = map[string]microsmith.ProgramConf{
 				1, 1, 1,
 			},
 			LiteralChance: 0.2,
-			IndexChance:   0.1,
 		},
 		[]microsmith.Type{
 			microsmith.BasicType{"int"},
@@ -44,7 +43,6 @@ var TestConfigurations = map[string]microsmith.ProgramConf{
 				1, 1, 1,
 			},
 			LiteralChance: 0.2,
-			IndexChance:   0.1,
 		},
 		[]microsmith.Type{
 			microsmith.BasicType{"int"},
@@ -66,7 +64,6 @@ var TestConfigurations = map[string]microsmith.ProgramConf{
 				1, 1, 1,
 			},
 			LiteralChance: 0.2,
-			IndexChance:   0.1,
 		},
 		[]microsmith.Type{
 			microsmith.BasicType{"int"},
@@ -162,14 +159,8 @@ func testBadConf(t *testing.T, conf microsmith.ProgramConf) {
 }
 
 func TestBadConfs(t *testing.T) {
-	// IndexChance = 1 and LiteralChance = 0
-	tc := TestConfigurations["medium"]
-	tc.IndexChance = 1
-	tc.LiteralChance = 0
-	testBadConf(t, tc)
-
 	// all zero ExprKindChance
-	tc = TestConfigurations["medium"]
+	tc := TestConfigurations["medium"]
 	for i := range tc.ExprKindChance {
 		tc.ExprKindChance[i] = 0.0
 	}
@@ -244,7 +235,6 @@ var BenchConf = microsmith.ProgramConf{
 			1, 1, 1,
 		},
 		LiteralChance: 0.4,
-		IndexChance:   0.25,
 	},
 	[]microsmith.Type{
 		microsmith.BasicType{"int"},
