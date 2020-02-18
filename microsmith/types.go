@@ -206,6 +206,33 @@ func (ft FuncType) Sliceable() bool {
 	return false
 }
 
+// Build two ast.FieldList object (one for params, the other for
+// resultss) from a FuncType, to use in function declarations and
+// function literals.
+func (ft FuncType) MakeFieldLists() (*ast.FieldList, *ast.FieldList) {
+	params := &ast.FieldList{
+		List: make([]*ast.Field, 0, len(ft.Args)),
+	}
+	for _, arg := range ft.Args {
+		params.List = append(
+			params.List,
+			&ast.Field{Type: &ast.Ident{Name: arg.Name()}},
+		)
+	}
+
+	results := &ast.FieldList{
+		List: make([]*ast.Field, 0, len(ft.Ret)),
+	}
+	for _, arg := range ft.Ret {
+		results.List = append(
+			results.List,
+			&ast.Field{Type: &ast.Ident{Name: arg.Name()}},
+		)
+	}
+
+	return params, results
+}
+
 func RandFuncType(EnabledTypes []Type) FuncType {
 	args := make([]Type, 0, rand.Intn(6))
 	for range args {

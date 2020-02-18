@@ -42,7 +42,7 @@ func (eb *ExprBuilder) chooseToken(tokens []token.Token) token.Token {
 	return tokens[eb.rs.Intn(len(tokens))]
 }
 
-func (eb *ExprBuilder) BasicLit(t Type) *ast.BasicLit {
+func (eb *ExprBuilder) BasicLit(t BasicType) *ast.BasicLit {
 	bl := new(ast.BasicLit)
 	switch t.Name() {
 	case "int":
@@ -96,15 +96,9 @@ func (eb *ExprBuilder) CompositeLit(t Type) *ast.CompositeLit {
 	}
 }
 
-func (eb *ExprBuilder) FuncLit(t Type) *ast.FuncLit {
-	t, ok := t.(FuncType)
-	if !ok {
-		panic("FuncLit: not a FuncType")
-	}
-
-	p, r := eb.MakeFieldLists(t)
-
-	fl := &ast.FuncLit{
+func (eb *ExprBuilder) FuncLit(t FuncType) *ast.FuncLit {
+	p, r := t.MakeFieldLists()
+	return &ast.FuncLit{
 		Type: &ast.FuncType{Params: p, Results: r},
 
 		// Body is a Stmt, but ExprBuilder doesn't know about Stmts,
@@ -112,43 +106,14 @@ func (eb *ExprBuilder) FuncLit(t Type) *ast.FuncLit {
 		// will provide the function body.
 		Body: &ast.BlockStmt{},
 	}
-
-	return fl
-}
-
-// Build two ast.FieldList object (one for params, the other for
-// resultss) from a FuncType, to use in function declarations and
-// function literals.
-func (eb *ExprBuilder) MakeFieldLists(t Type) (*ast.FieldList, *ast.FieldList) {
-	params := &ast.FieldList{
-		List: make([]*ast.Field, 0),
-	}
-	for _, arg := range t.(FuncType).Args {
-		params.List = append(
-			params.List,
-			&ast.Field{Type: &ast.Ident{Name: arg.Name()}},
-		)
-	}
-
-	results := &ast.FieldList{
-		List: make([]*ast.Field, 0),
-	}
-	for _, arg := range t.(FuncType).Ret {
-		results.List = append(
-			results.List,
-			&ast.Field{Type: &ast.Ident{Name: arg.Name()}},
-		)
-	}
-
-	return params, results
 }
 
 func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 	eb.depth++
-	if eb.depth > 128 {
-		panic("eb.depth > 128")
-	}
 	defer func() { eb.depth-- }()
+	if eb.depth > 32 {
+		panic("eb.depth > 32")
+	}
 
 	var expr ast.Expr
 	switch t := t.(type) {
@@ -473,10 +438,9 @@ func (eb *ExprBuilder) BinaryExpr(t Type) *ast.BinaryExpr {
 		ue.Op = eb.chooseToken([]token.Token{token.ADD, token.SUB, token.MUL})
 	case "bool":
 		if eb.rs.Intn(2) == 0 {
-			// If ints and/or strings are enabled, we can generate
-			// '<' & co., otherwise we're restricted to eq/neq.
-
-			// Select a random type, and then find a suitable op
+			// If ints and/or strings are enabled, we can generate '<'
+			// too, otherwise we're restricted to eq/neq. Select a
+			// random type, and then find a suitable op
 			t = RandType(eb.conf.SupportedTypes)
 			ops := []token.Token{token.EQL, token.NEQ}
 			if name := t.Name(); name != "bool" && name != "complex128" {
@@ -496,7 +460,6 @@ func (eb *ExprBuilder) BinaryExpr(t Type) *ast.BinaryExpr {
 	}
 
 	// ...then build the two branches.
-
 	if eb.Deepen() {
 		ue.X = eb.Expr(t)
 		ue.Y = eb.Expr(t)
@@ -539,14 +502,14 @@ func (eb *ExprBuilder) CallExpr(t Type) *ast.CallExpr {
 	case strings.HasPrefix(name, "math."):
 		return eb.MakeMathCall(fun)
 	default:
-		ce := &ast.CallExpr{
-			Fun:  &ast.Ident{Name: name},
-			Args: []ast.Expr{},
-		}
+		args := make([]ast.Expr, 0, len(fun.Type.(FuncType).Args))
 		for _, arg := range fun.Type.(FuncType).Args {
-			ce.Args = append(ce.Args, eb.VarOrLit(arg).(ast.Expr))
+			args = append(args, eb.VarOrLit(arg).(ast.Expr))
 		}
-		return ce
+		return &ast.CallExpr{
+			Fun:  &ast.Ident{Name: name},
+			Args: args,
+		}
 	}
 
 	panic("unreachable")

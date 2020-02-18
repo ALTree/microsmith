@@ -347,7 +347,7 @@ func (sb *StmtBuilder) DeclStmt(nVars int, t Type) (*ast.DeclStmt, []*ast.Ident)
 
 		// First, build the type specifier for the given FuncType,
 		// i.e. the lhs
-		p, r := sb.eb.MakeFieldLists(t)
+		p, r := t2.MakeFieldLists()
 		typ = &ast.FuncType{Params: p, Results: r}
 
 		// Now build the rhs, starting from a FuncLit...
@@ -383,7 +383,7 @@ func (sb *StmtBuilder) DeclStmt(nVars int, t Type) (*ast.DeclStmt, []*ast.Ident)
 		panic("DeclStmt: bad type " + t.Name())
 	}
 
-	// Generate nVars ast.Idents. We need to do this after because...
+	// generate nVars ast.Idents
 	idents := make([]*ast.Ident, 0, nVars)
 	for i := 0; i < nVars; i++ {
 		idents = append(idents, sb.scope.NewIdent(t))
@@ -407,7 +407,6 @@ func (sb *StmtBuilder) ForStmt() *ast.ForStmt {
 
 	sb.depth++
 	defer func() { sb.depth-- }()
-
 	sb.stats.For++
 
 	var fs ast.ForStmt
@@ -441,7 +440,6 @@ func (sb *StmtBuilder) RangeStmt(arr Variable) *ast.RangeStmt {
 	defer func() { sb.depth-- }()
 	sb.inloop = true
 	defer func() { sb.inloop = false }()
-
 	sb.stats.For++
 
 	i := sb.scope.NewIdent(BasicType{"int"})
@@ -591,15 +589,14 @@ func (sb *StmtBuilder) SelectStmt() *ast.SelectStmt {
 	sb.depth++
 	defer func() { sb.depth-- }()
 	sb.stats.Select++
-	st := &ast.SelectStmt{
+
+	return &ast.SelectStmt{
 		Body: &ast.BlockStmt{List: []ast.Stmt{
 			sb.CommClause(false),
 			sb.CommClause(false),
 			sb.CommClause(true),
 		}},
 	}
-
-	return st
 }
 
 // CommClause is the Select clause. This function returns:
@@ -608,10 +605,7 @@ func (sb *StmtBuilder) SelectStmt() *ast.SelectStmt {
 func (sb *StmtBuilder) CommClause(def bool) *ast.CommClause {
 
 	// a couple of Stmt are enough for a select case body
-	stmtList := []ast.Stmt{
-		sb.Stmt(),
-		sb.Stmt(),
-	}
+	stmtList := []ast.Stmt{sb.Stmt(), sb.Stmt()}
 
 	if def {
 		return &ast.CommClause{Body: stmtList}
@@ -662,10 +656,6 @@ func (sb *StmtBuilder) ExprStmt() *ast.ExprStmt {
 	panic("Should not be called")
 	return nil
 }
-
-// ---------------- //
-//       misc       //
-// ---------------- //
 
 var noName = ast.Ident{Name: "_"}
 
