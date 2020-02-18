@@ -12,8 +12,7 @@ func main() {
 package main
 
 func main() {
-	var f func(int) int
-	f = func(n int) int {
+	var f func(int) int = func(int) int {
 		x := 1 + 7
 		_ = x
 		return 7

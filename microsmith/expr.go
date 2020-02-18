@@ -107,10 +107,10 @@ func (eb *ExprBuilder) FuncLit(t Type) *ast.FuncLit {
 	fl := &ast.FuncLit{
 		Type: &ast.FuncType{Params: p, Results: r},
 
-		// Body is a Stmt, but ExprBuilder does not know about Stmts,
+		// Body is a Stmt, but ExprBuilder doesn't know about Stmts,
 		// so we always return an empty body. The AssignStmt caller
 		// will provide the function body.
-		Body: &ast.BlockStmt{List: []ast.Stmt{}},
+		Body: &ast.BlockStmt{},
 	}
 
 	return fl

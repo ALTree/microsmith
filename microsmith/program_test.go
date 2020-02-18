@@ -14,7 +14,6 @@ var TestConfigurations = map[string]microsmith.ProgramConf{
 	"small": {
 		microsmith.StmtConf{
 			MaxStmtDepth:  1,
-			MaxBlockVars:  2,
 			MaxBlockStmts: 1,
 		},
 		microsmith.ExprConf{
@@ -34,7 +33,6 @@ var TestConfigurations = map[string]microsmith.ProgramConf{
 	"medium": {
 		microsmith.StmtConf{
 			MaxStmtDepth:  2,
-			MaxBlockVars:  6,
 			MaxBlockStmts: 4,
 		},
 		microsmith.ExprConf{
@@ -54,7 +52,6 @@ var TestConfigurations = map[string]microsmith.ProgramConf{
 	"big": {
 		microsmith.StmtConf{
 			MaxStmtDepth:  3,
-			MaxBlockVars:  12,
 			MaxBlockStmts: 8,
 		},
 		microsmith.ExprConf{
@@ -221,7 +218,6 @@ func TestProgramGc(t *testing.T) {
 var BenchConf = microsmith.ProgramConf{
 	microsmith.StmtConf{
 		MaxStmtDepth:  2,
-		MaxBlockVars:  8,
 		MaxBlockStmts: 4,
 	},
 	microsmith.ExprConf{

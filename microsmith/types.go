@@ -46,8 +46,8 @@ func Addressable(t Type) bool {
 	case BasicType, ArrayType, StructType, MapType, PointerType:
 		return true
 	case FuncType:
-		// pre-declared or external function cannot be assigned to,
-		// local user-defined functions can
+		// Pre-declared or external function cannot be assigned to,
+		// local user-defined functions can.
 		if t.Local {
 			return true
 		} else {

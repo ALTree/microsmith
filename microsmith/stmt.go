@@ -30,12 +30,8 @@ type StmtStats struct {
 }
 
 type StmtConf struct {
-	// maximum allowed blocks depth
-	MaxStmtDepth int
-
-	// max amount of variables and statements inside new block
-	MaxBlockVars  int
-	MaxBlockStmts int
+	MaxStmtDepth  int // max depth of block nesting
+	MaxBlockStmts int // max number of Stmt per block
 }
 
 func NewStmtBuilder(rs *rand.Rand, conf ProgramConf) *StmtBuilder {
@@ -144,6 +140,7 @@ func (sb *StmtBuilder) AssignStmt() *ast.AssignStmt {
 	sb.stats.Assign++
 
 	v := sb.scope.RandomVar(true)
+
 	switch t := v.Type.(type) {
 
 	case StructType:
@@ -189,36 +186,11 @@ func (sb *StmtBuilder) AssignStmt() *ast.AssignStmt {
 		}
 
 	case FuncType:
-		// TODO(alb): give the parameters names, add then to the
-		// current scope, so they can be used in the body.
-
-		// Generate a Block for the body, but only if we are not at
-		// max depth.
-		rhs := []ast.Expr{sb.eb.Expr(v.Type)}
-		fl := rhs[0].(*ast.FuncLit)
-		if sb.depth < sb.conf.MaxStmtDepth {
-			oldInloop := sb.inloop
-			sb.inloop = false
-
-			sb.depth++
-			fl.Body = sb.BlockStmt()
-			sb.depth--
-
-			sb.inloop = oldInloop
-		}
-
-		// Generate a return line (unconditionally).
-		retStmt := &ast.ReturnStmt{Results: []ast.Expr{}}
-		for _, ret := range t.Ret {
-			retStmt.Results = append(retStmt.Results, sb.eb.Expr(ret))
-		}
-		fl.Body.List = append(fl.Body.List, retStmt)
-
-		return &ast.AssignStmt{
-			Lhs: []ast.Expr{v.Name},
-			Tok: token.ASSIGN,
-			Rhs: rhs,
-		}
+		// TODO(alb): re-enable assigning to FuncType variables? We
+		// don't do that now since we already give them a body in
+		// their DeclStmt, but it could be interesting to re-assign
+		// then a new body in the program.
+		panic("AssignStmt: not for functions")
 
 	default:
 		return &ast.AssignStmt{
@@ -227,49 +199,6 @@ func (sb *StmtBuilder) AssignStmt() *ast.AssignStmt {
 			Rhs: []ast.Expr{sb.eb.Expr(v.Type)},
 		}
 	}
-}
-
-// return an arrays of n random Types. That can include basic types,
-// arrays, chans, and randomly generated struct types.
-func (sb *StmtBuilder) RandomTypes(n int) []Type {
-	types := make([]Type, 0, n)
-
-	// TODO(alb): better distribution of types. .2 are struct and .2
-	// are function but it's always only one random type of each. Why
-	// can't we have multiple different FuncTypes?
-
-	// .2 of the returned types will be structs
-	for i := 0; i < (1 + n/5); i++ {
-		types = append(types, RandStructType(sb.conf.SupportedTypes))
-	}
-	n -= (n/5 + 1)
-
-	// .2 of the returned types will be functions
-	for i := 0; i < (1 + n/5); i++ {
-		types = append(types, RandFuncType(sb.conf.SupportedTypes))
-	}
-	n -= (n/5 + 1)
-
-	st := sb.conf.SupportedTypes
-	for i := 0; i < n; i++ {
-		t := st[sb.rs.Intn(len(st))]
-		switch n := sb.rs.Intn(6); n {
-		case 0:
-			t = ArrOf(t)
-		case 1:
-			t2 := st[sb.rs.Intn(len(st))]
-			t = MapOf(t, t2)
-		case 2:
-			t = PointerOf(t)
-		case 3:
-			t = ChanOf(t)
-		default: // 3 < n < 6
-			// 2/6 of keeping t as a plain variable
-		}
-		types = append(types, t)
-	}
-
-	return types
 }
 
 // returns a continue/break statement
@@ -298,47 +227,23 @@ func (sb *StmtBuilder) BlockStmt() *ast.BlockStmt {
 
 	// A new block means opening a new scope.
 	//
-	// First, declare nVars variables that will be in scope in this
-	// block (together with the outer scopes ones).
-	var nVars int
-	if sb.conf.MaxBlockVars <= 5 {
-		nVars = sb.conf.MaxBlockVars
-	} else {
-		nVars = 5 + sb.rs.Intn(sb.conf.MaxBlockVars-5)
-	}
-
-	var types []Type
-	if nVars >= 8 {
-		types = sb.RandomTypes(8)
-	} else {
-		types = sb.RandomTypes(nVars)
-	}
-
-	rs := RandSplit(nVars, len(types))
-
+	// Start with nDecls line of variables declarations, each of a
+	// different random type.
+	nDecls := 3 + sb.rs.Intn(6)
 	var newVars []*ast.Ident
-	for i, t := range types {
-		if rs[i] > 0 {
-			newDecl, nv := sb.DeclStmt(rs[i], t)
-			stmts = append(stmts, newDecl)
-			newVars = append(newVars, nv...)
-		}
+	for _, t := range sb.RandomTypes(nDecls) {
+		newDecl, nv := sb.DeclStmt(1+sb.rs.Intn(3), t)
+		stmts = append(stmts, newDecl)
+		newVars = append(newVars, nv...)
 	}
-
-	// We always want at least one addressable type in scope, put an
-	// int which is generally more useful.
-	newDecl, nv := sb.DeclStmt(1, BasicType{"int"})
-	stmts = append(stmts, newDecl)
-	newVars = append(newVars, nv...)
 
 	var nStmts int
 	if sb.depth == sb.conf.MaxStmtDepth {
-		// at maxdepth, only assignments and incdec are allowed.
-		// Guarantee 8 of them, to be sure not to generate
-		// almost-empty blocks.
+		// At maxdepth, only assignments are allowed. Guarantee 8 of
+		// them, to be sure not to generate almost-empty blocks.
 		nStmts = 8
 	} else {
-		// othewise, generate at least min(4, MaxBlockStmt) and at
+		// Othewise, generate at least min(4, MaxBlockStmt) and at
 		// most MaxBlockStmts.
 		if sb.conf.MaxBlockStmts < 4 {
 			nStmts = sb.conf.MaxBlockStmts
@@ -347,25 +252,69 @@ func (sb *StmtBuilder) BlockStmt() *ast.BlockStmt {
 		}
 	}
 
-	// Fill the block's body with statements (but *no* new declaration:
-	// we only use the variables we just declared, plus the ones in
-	// scope when we enter the block).
+	// Fill the block's body with statements.
 	for i := 0; i < nStmts; i++ {
 		stmts = append(stmts, sb.Stmt())
 	}
 
-	// Use all the newly declared variables...
 	if len(newVars) > 0 {
 		stmts = append(stmts, sb.UseVars(newVars))
 	}
 
-	// ... and then remove them from scope.
+	// ...and then remove them from scope.
 	for _, v := range newVars {
 		sb.scope.DeleteIdentByName(v)
 	}
 
 	bs.List = stmts
 	return bs
+}
+
+// Returns an arrays of n random Types. That can include basic types,
+// arrays, chans, and randomly generated struct types. It's guaranteed
+// to have at least one addressable/assignable type.
+func (sb *StmtBuilder) RandomTypes(n int) []Type {
+	if n < 1 {
+		panic("RandomTypes: n is 0")
+	}
+
+	types := make([]Type, 0, n)
+
+	// first, our mandatory assignable type; use an Int
+	types = append(types, BasicType{"int"})
+	n--
+
+	st := sb.conf.SupportedTypes
+	stl := len(sb.conf.SupportedTypes)
+
+	for ; n > 0; n-- {
+		// Choose at random between a struct, a function, or a basic
+		// type with chances 1, 1, 2
+		switch sb.rs.Intn(4) {
+		case 0:
+			types = append(types, RandStructType(st))
+		case 1:
+			types = append(types, RandFuncType(st))
+		default:
+			t := st[sb.rs.Intn(stl)]
+			switch sb.rs.Intn(6) {
+			case 0:
+				t = ArrOf(t)
+			case 1:
+				t2 := st[sb.rs.Intn(stl)]
+				t = MapOf(t, t2)
+			case 2:
+				t = PointerOf(t)
+			case 3:
+				t = ChanOf(t)
+			default: // 3 < n < 6
+				// 1/3 of keeping t as a plain variable
+			}
+			types = append(types, t)
+		}
+	}
+
+	return types
 }
 
 // DeclStmt returns a DeclStmt where nVars new variables of type kind
@@ -376,17 +325,16 @@ func (sb *StmtBuilder) DeclStmt(nVars int, t Type) (*ast.DeclStmt, []*ast.Ident)
 		panic("DeclStmt: nVars < 1")
 	}
 
+	if _, ok := t.(FuncType); ok {
+		nVars = 1
+	}
+
 	gd := new(ast.GenDecl)
 	gd.Tok = token.VAR
 
-	// generate nVars ast.Idents
-	idents := make([]*ast.Ident, 0, nVars)
-	for i := 0; i < nVars; i++ {
-		idents = append(idents, sb.scope.NewIdent(t))
-	}
-
 	// generate the type specifier
 	var typ ast.Expr
+	var rhs []ast.Expr
 
 	switch t2 := t.(type) {
 	case BasicType:
@@ -405,16 +353,74 @@ func (sb *StmtBuilder) DeclStmt(nVars int, t Type) (*ast.DeclStmt, []*ast.Ident)
 			Value: TypeIdent(t2.ValueT.Name()),
 		}
 	case FuncType:
+		// For function we don't just declare the variable, we also
+		// assign to it (so we can give the function a body); since
+		// declaring a bunch of
+		//
+		//   var FNC0 func(int) int
+		//
+		// is not very useful. Instead, we add a Value to the DeclStmt
+		// with a function literal, so we'll get:
+		//
+		//  var FNC0 func(int) int = func(int) int {
+		//                             Stmt
+		//                             Stmt
+		//                             return <int expr>
+		//                           }
+		// Which is more interesting.
+
+		// TODO(alb): give the parameters names, add then to the
+		// current scope, so they can be used in the body.
+
+		// First, build the type specifier for the given FuncType,
+		// i.e. the lhs
 		p, r := sb.eb.MakeFieldLists(t)
 		typ = &ast.FuncType{Params: p, Results: r}
+
+		// Now build the rhs, starting from a FuncLit...
+		fl := sb.eb.FuncLit(t2)
+
+		// ... and then adding a body.
+		sb.depth++
+		if sb.depth < sb.conf.MaxStmtDepth {
+			oldInloop := sb.inloop
+			sb.inloop = false
+			fl.Body = sb.BlockStmt()
+			sb.inloop = oldInloop
+		} else {
+			fl.Body = &ast.BlockStmt{
+				List: []ast.Stmt{
+					sb.AssignStmt(),
+					sb.AssignStmt(),
+				},
+			}
+		}
+		sb.depth--
+
+		// Finally, append a closing return statement.
+		retStmt := &ast.ReturnStmt{Results: []ast.Expr{}}
+		for _, ret := range t2.Ret {
+			retStmt.Results = append(retStmt.Results, sb.eb.Expr(ret))
+		}
+		fl.Body.List = append(fl.Body.List, retStmt)
+
+		rhs = append(rhs, fl)
+
 	default:
 		panic("DeclStmt: bad type " + t.Name())
 	}
 
+	// Generate nVars ast.Idents. We need to do this after because...
+	idents := make([]*ast.Ident, 0, nVars)
+	for i := 0; i < nVars; i++ {
+		idents = append(idents, sb.scope.NewIdent(t))
+	}
+
 	gd.Specs = []ast.Spec{
 		&ast.ValueSpec{
-			Names: idents,
-			Type:  typ.(ast.Expr),
+			Names:  idents,
+			Type:   typ.(ast.Expr),
+			Values: rhs,
 		},
 	}
 

@@ -19,26 +19,27 @@ func (v Variable) String() string {
 // given moment
 type Scope []Variable
 
-func (s Scope) RandomVar(addressable bool) Variable {
+// Returns a random Addressable variable in scope, that can be used in
+// the LHS of an AssignStmt. If nofunc is TRUE, it ignored FuncType
+// variables.
+func (s Scope) RandomVar(nofunc bool) Variable {
 
 	vs := make([]Variable, 0, 16)
 	for _, v := range s {
-		if addressable {
-			if Addressable(v.Type) {
+		if Addressable(v.Type) {
+			if nofunc {
+				if _, ok := v.Type.(FuncType); !ok {
+					vs = append(vs, v)
+				}
+			} else {
 				vs = append(vs, v)
 			}
-		} else {
-			vs = append(vs, v)
 		}
 	}
 
 	if len(vs) == 0 {
 		fmt.Println(s)
-		if addressable {
-			panic("RandomVar: no addressable variable in scope")
-		} else {
-			panic("RandomVar: no variable in scope")
-		}
+		panic("RandomVar: no addressable variable in scope")
 	}
 
 	return vs[rand.Intn(len(vs))]
