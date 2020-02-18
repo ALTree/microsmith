@@ -11,8 +11,14 @@ func main() {
 	src := `
 package main
 
-func f() {
-  var r rune = 'a'
+func main() {
+	var f func(int) int
+	f = func(n int) int {
+		x := 1 + 7
+		_ = x
+		return 7
+	}
+    _ = f
 }
 `
 	fset := token.NewFileSet()

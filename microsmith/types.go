@@ -45,7 +45,15 @@ func Addressable(t Type) bool {
 	switch t := t.(type) {
 	case BasicType, ArrayType, StructType, MapType, PointerType:
 		return true
-	case FuncType, ChanType:
+	case FuncType:
+		// pre-declared or external function cannot be assigned to,
+		// local user-defined functions can
+		if t.Local {
+			return true
+		} else {
+			return false
+		}
+	case ChanType:
 		return false
 	default:
 		panic("Addressable: unknown type " + t.Name())
@@ -169,57 +177,83 @@ func RandStructType(EnabledTypes []Type) StructType {
 // ---------------- //
 
 type FuncType struct {
-	N    string
-	Args []Type
-	Ret  []Type
+	N     string
+	Args  []Type
+	Ret   []Type
+	Local bool
 }
 
 func (ft FuncType) Name() string {
 	return ft.N
 }
 
+// func (ft FuncType) DeclName() string {
+// 	name := ft.N + "("
+
+// 	for i := range ft.Args {
+// 		if i < len(ft.Args)-1 {
+// 			name += ft.Args[i].Name() + ", "
+// 		} else {
+// 			name += ft.Args[i].Name() + ") "
+// 		}
+// 	}
+
+// 	for i := range ft.Ret {
+// 		name += ft.Ret[i].Name()
+// 	}
+
+// 	return name
+// }
+
 func (ft FuncType) Sliceable() bool {
 	return false
 }
 
-var LenFun FuncType = FuncType{
-	"len",
-	nil, // len args are handled separately
-	[]Type{BasicType{"int"}},
+func RandFuncType(EnabledTypes []Type) FuncType {
+	// possibly many args, one return type
+	ft := FuncType{
+		"FU",
+		[]Type{},
+		[]Type{RandType(EnabledTypes)},
+		true,
+	}
+
+	for i := 0; i < rand.Intn(6); i++ {
+		typ := RandType(EnabledTypes)
+		if t, ok := typ.(BasicType); !ok {
+			panic("RandFuncType: non basic type " + typ.Name())
+		} else {
+			ft.Args = append(ft.Args, t)
+		}
+	}
+
+	return ft
 }
 
+var LenFun FuncType = FuncType{
+	"len",
+	// custom handling, since it works both on arrays and strings.
+	nil,
+	[]Type{BasicType{"int"}},
+	false,
+}
 var FloatConv FuncType = FuncType{
 	"float64",
 	[]Type{BasicType{"int"}},
 	[]Type{BasicType{"float64"}},
+	false,
 }
-
-var IntConv FuncType = FuncType{
-	"int",
-	[]Type{BasicType{"float64"}},
-	[]Type{BasicType{"int"}},
-}
-
 var MathSqrt FuncType = FuncType{
 	"math.Sqrt",
 	[]Type{BasicType{"float64"}},
 	[]Type{BasicType{"float64"}},
+	false,
 }
 var MathMax FuncType = FuncType{
 	"math.Max",
 	[]Type{BasicType{"float64"}, BasicType{"float64"}},
 	[]Type{BasicType{"float64"}},
-}
-var MathMod FuncType = FuncType{
-	"math.Mod",
-	[]Type{BasicType{"float64"}, BasicType{"float64"}},
-	[]Type{BasicType{"float64"}},
-}
-
-var RandIntn FuncType = FuncType{
-	"rand.Intn",
-	[]Type{BasicType{"int"}},
-	[]Type{BasicType{"int"}},
+	false,
 }
 
 // ---------------- //

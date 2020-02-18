@@ -96,21 +96,61 @@ func (eb *ExprBuilder) CompositeLit(t Type) *ast.CompositeLit {
 	}
 }
 
-func (eb *ExprBuilder) Expr(t Type) ast.Expr {
-	// Currently:
-	//   - Unary
-	//   - Binary
-	//   - CompositeLit
-	//   - Call
-	// TODO:
-	//   - SimpleLit
-	var expr ast.Expr
+func (eb *ExprBuilder) FuncLit(t Type) *ast.FuncLit {
+	t, ok := t.(FuncType)
+	if !ok {
+		panic("FuncLit: not a FuncType")
+	}
 
+	p, r := eb.MakeFieldLists(t)
+
+	fl := &ast.FuncLit{
+		Type: &ast.FuncType{Params: p, Results: r},
+
+		// Body is a Stmt, but ExprBuilder does not know about Stmts,
+		// so we always return an empty body. The AssignStmt caller
+		// will provide the function body.
+		Body: &ast.BlockStmt{List: []ast.Stmt{}},
+	}
+
+	return fl
+}
+
+// Build two ast.FieldList object (one for params, the other for
+// resultss) from a FuncType, to use in function declarations and
+// function literals.
+func (eb *ExprBuilder) MakeFieldLists(t Type) (*ast.FieldList, *ast.FieldList) {
+	params := &ast.FieldList{
+		List: make([]*ast.Field, 0),
+	}
+	for _, arg := range t.(FuncType).Args {
+		params.List = append(
+			params.List,
+			&ast.Field{Type: &ast.Ident{Name: arg.Name()}},
+		)
+	}
+
+	results := &ast.FieldList{
+		List: make([]*ast.Field, 0),
+	}
+	for _, arg := range t.(FuncType).Ret {
+		results.List = append(
+			results.List,
+			&ast.Field{Type: &ast.Ident{Name: arg.Name()}},
+		)
+	}
+
+	return params, results
+}
+
+func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 	eb.depth++
 	if eb.depth > 128 {
 		panic("eb.depth > 128")
 	}
+	defer func() { eb.depth-- }()
 
+	var expr ast.Expr
 	switch t := t.(type) {
 
 	case BasicType:
@@ -172,11 +212,12 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 			expr = &ast.Ident{Name: "nil"}
 		}
 
+	case FuncType:
+		expr = eb.FuncLit(t)
+
 	default:
 		panic("Expr: bad type " + t.Name())
 	}
-
-	eb.depth--
 
 	return expr
 }
@@ -475,16 +516,17 @@ func (eb *ExprBuilder) CallExpr(t Type) *ast.CallExpr {
 	funcs := eb.scope.InScopeFuncs(t)
 
 	if len(funcs) == 0 {
-		// this should be handled by the caller
+		// handled by the caller
 		panic("CallExpr: no function in scope")
 	}
 
 	// choose one of them at random
 	fun := funcs[eb.rs.Intn(len(funcs))]
-	switch name := fun.Name.Name; name {
-	case "len":
+	name := fun.Name.Name
+	switch {
+	case name == "len":
 		return eb.MakeLenCall()
-	case "float64":
+	case name == "float64":
 		ce := &ast.CallExpr{
 			Fun: FloatIdent,
 		}
@@ -494,16 +536,17 @@ func (eb *ExprBuilder) CallExpr(t Type) *ast.CallExpr {
 			ce.Args = []ast.Expr{eb.VarOrLit(BasicType{"int"}).(ast.Expr)}
 		}
 		return ce
-	case "int":
-		// not enabled at the moment; see comment in NewStmtBuilder().
-		panic("CallExpr: int() calls should not be generated")
+	case strings.HasPrefix(name, "math."):
+		return eb.MakeMathCall(fun)
 	default:
-		// TODO(alb): merge MakeMathCall and MakeRandCall
-		if strings.HasPrefix(name, "math.") {
-			return eb.MakeMathCall(fun)
-		} else if strings.HasPrefix(name, "rand.") {
-			return eb.MakeRandCall(fun)
+		ce := &ast.CallExpr{
+			Fun:  &ast.Ident{Name: name},
+			Args: []ast.Expr{},
 		}
+		for _, arg := range fun.Type.(FuncType).Args {
+			ce.Args = append(ce.Args, eb.VarOrLit(arg).(ast.Expr))
+		}
+		return ce
 	}
 
 	panic("unreachable")
@@ -512,7 +555,7 @@ func (eb *ExprBuilder) CallExpr(t Type) *ast.CallExpr {
 func (eb *ExprBuilder) MakeLenCall() *ast.CallExpr {
 	// for a len call, we want a string or an array
 	var typ Type
-	if !IsEnabled("string", eb.conf) || eb.rs.Float64() < 0.5 {
+	if !IsEnabled("string", eb.conf) || eb.rs.Intn(2) == 0 {
 		// choose an array of random type
 		typ = ArrayType{RandType(eb.conf.SupportedTypes)}
 	} else {
@@ -541,33 +584,9 @@ func (eb *ExprBuilder) MakeMathCall(fun Variable) *ast.CallExpr {
 		},
 	}
 
-	cd := eb.Deepen()
 	args := []ast.Expr{}
 	for _, arg := range fun.Type.(FuncType).Args {
-		if cd {
-			args = append(args, eb.Expr(arg))
-		} else {
-			args = append(args, eb.VarOrLit(arg).(ast.Expr))
-		}
-
-	}
-	ce.Args = args
-
-	return ce
-}
-
-func (eb *ExprBuilder) MakeRandCall(fun Variable) *ast.CallExpr {
-	ce := &ast.CallExpr{
-		Fun: &ast.SelectorExpr{
-			X:   &ast.Ident{Name: "rand"},
-			Sel: &ast.Ident{Name: fun.Name.Name[len("rand."):]},
-		},
-	}
-
-	cd := eb.Deepen()
-	args := []ast.Expr{}
-	for _, arg := range fun.Type.(FuncType).Args {
-		if cd {
+		if eb.Deepen() {
 			args = append(args, eb.Expr(arg))
 		} else {
 			args = append(args, eb.VarOrLit(arg).(ast.Expr))

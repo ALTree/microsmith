@@ -62,7 +62,11 @@ func (s *Scope) NewIdent(t Type) *ast.Ident {
 	tc := 0
 	switch t.(type) {
 	case FuncType:
-		panic("NewIdent: not for building functions")
+		for _, v := range *s {
+			if ft, ok := v.Type.(FuncType); ok && ft.Local {
+				tc++
+			}
+		}
 	case StructType:
 		// StructTypes, ChanTypes and MapType identifiers do not depend on
 		// the type contents (they are always named ST, CH, and M), so we

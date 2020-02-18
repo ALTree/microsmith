@@ -53,33 +53,15 @@ func NewStmtBuilder(rs *rand.Rand, conf ProgramConf) *StmtBuilder {
 		FloatConv,
 		&ast.Ident{Name: FloatConv.Name()}})
 
-	// a few functions from the math package
+	// a couple int and float64 functions from the math package
 	scope = append(scope, Variable{
 		MathSqrt,
 		&ast.Ident{Name: MathSqrt.Name()}})
 	scope = append(scope, Variable{
 		MathMax,
 		&ast.Ident{Name: MathMax.Name()}})
-	scope = append(scope, Variable{
-		MathMod,
-		&ast.Ident{Name: MathMod.Name()}})
-
-	scope = append(scope, Variable{
-		RandIntn,
-		&ast.Ident{Name: RandIntn.Name()}})
-
-	// int() conversion are not enabled because int(Expr()) will fail
-	// at compile-time if Expr() is a float64 expression made up of
-	// only literals.
-	//
-	// scope = append(scope,
-	// 	Variable{
-	// 		IntConv,
-	// 		&ast.Ident{Name: IntConv.Name()},
-	// 	})
 
 	sb.scope = &scope
-
 	sb.eb = NewExprBuilder(rs, conf, sb.scope)
 
 	return sb
@@ -160,8 +142,10 @@ func (sb *StmtBuilder) Stmt() ast.Stmt {
 // and builds an AssignStmt with a random Expr of its type on the RHS
 func (sb *StmtBuilder) AssignStmt() *ast.AssignStmt {
 	sb.stats.Assign++
+
 	v := sb.scope.RandomVar(true)
 	switch t := v.Type.(type) {
+
 	case StructType:
 		// we don't build struct literals yet, so if we got a struct
 		// we'll assign to one of its fields.
@@ -175,6 +159,7 @@ func (sb *StmtBuilder) AssignStmt() *ast.AssignStmt {
 			Tok: token.ASSIGN,
 			Rhs: []ast.Expr{sb.eb.Expr(fieldType)},
 		}
+
 	case ArrayType:
 		// if we got an array, 50/50 between
 		//   1. AI = []int{ <exprs> }
@@ -192,14 +177,49 @@ func (sb *StmtBuilder) AssignStmt() *ast.AssignStmt {
 				Rhs: []ast.Expr{sb.eb.Expr(v.Type)},
 			}
 		}
+
 	case ChanType:
 		panic("AssignStmt: requested addressable, got chan")
+
 	case MapType:
 		return &ast.AssignStmt{
 			Lhs: []ast.Expr{sb.eb.MapIndexExpr(v)},
 			Tok: token.ASSIGN,
 			Rhs: []ast.Expr{sb.eb.Expr(v.Type.(MapType).ValueT)},
 		}
+
+	case FuncType:
+		// TODO(alb): give the parameters names, add then to the
+		// current scope, so they can be used in the body.
+
+		// Generate a Block for the body, but only if we are not at
+		// max depth.
+		rhs := []ast.Expr{sb.eb.Expr(v.Type)}
+		fl := rhs[0].(*ast.FuncLit)
+		if sb.depth < sb.conf.MaxStmtDepth {
+			oldInloop := sb.inloop
+			sb.inloop = false
+
+			sb.depth++
+			fl.Body = sb.BlockStmt()
+			sb.depth--
+
+			sb.inloop = oldInloop
+		}
+
+		// Generate a return line (unconditionally).
+		retStmt := &ast.ReturnStmt{Results: []ast.Expr{}}
+		for _, ret := range t.Ret {
+			retStmt.Results = append(retStmt.Results, sb.eb.Expr(ret))
+		}
+		fl.Body.List = append(fl.Body.List, retStmt)
+
+		return &ast.AssignStmt{
+			Lhs: []ast.Expr{v.Name},
+			Tok: token.ASSIGN,
+			Rhs: rhs,
+		}
+
 	default:
 		return &ast.AssignStmt{
 			Lhs: []ast.Expr{v.Name},
@@ -214,15 +234,19 @@ func (sb *StmtBuilder) AssignStmt() *ast.AssignStmt {
 func (sb *StmtBuilder) RandomTypes(n int) []Type {
 	types := make([]Type, 0, n)
 
-	// we always want at least one addressable type
-	types = append(types, RandType(
-		[]Type{BasicType{"int"}, BasicType{"float64"},
-			BasicType{"bool"}, BasicType{"string"}}))
-	n--
+	// TODO(alb): better distribution of types. .2 are struct and .2
+	// are function but it's always only one random type of each. Why
+	// can't we have multiple different FuncTypes?
 
 	// .2 of the returned types will be structs
 	for i := 0; i < (1 + n/5); i++ {
 		types = append(types, RandStructType(sb.conf.SupportedTypes))
+	}
+	n -= (n/5 + 1)
+
+	// .2 of the returned types will be functions
+	for i := 0; i < (1 + n/5); i++ {
+		types = append(types, RandFuncType(sb.conf.SupportedTypes))
 	}
 	n -= (n/5 + 1)
 
@@ -277,22 +301,22 @@ func (sb *StmtBuilder) BlockStmt() *ast.BlockStmt {
 	// First, declare nVars variables that will be in scope in this
 	// block (together with the outer scopes ones).
 	var nVars int
-	if sb.conf.MaxBlockVars <= 4 {
+	if sb.conf.MaxBlockVars <= 5 {
 		nVars = sb.conf.MaxBlockVars
 	} else {
-		nVars = 4 + sb.rs.Intn(sb.conf.MaxBlockVars-4)
+		nVars = 5 + sb.rs.Intn(sb.conf.MaxBlockVars-5)
 	}
 
 	var types []Type
-	if nVars >= 5 {
-		types = sb.RandomTypes(5)
+	if nVars >= 8 {
+		types = sb.RandomTypes(8)
 	} else {
 		types = sb.RandomTypes(nVars)
 	}
 
-	var newVars []*ast.Ident
 	rs := RandSplit(nVars, len(types))
 
+	var newVars []*ast.Ident
 	for i, t := range types {
 		if rs[i] > 0 {
 			newDecl, nv := sb.DeclStmt(rs[i], t)
@@ -300,6 +324,12 @@ func (sb *StmtBuilder) BlockStmt() *ast.BlockStmt {
 			newVars = append(newVars, nv...)
 		}
 	}
+
+	// We always want at least one addressable type in scope, put an
+	// int which is generally more useful.
+	newDecl, nv := sb.DeclStmt(1, BasicType{"int"})
+	stmts = append(stmts, newDecl)
+	newVars = append(newVars, nv...)
 
 	var nStmts int
 	if sb.depth == sb.conf.MaxStmtDepth {
@@ -358,22 +388,25 @@ func (sb *StmtBuilder) DeclStmt(nVars int, t Type) (*ast.DeclStmt, []*ast.Ident)
 	// generate the type specifier
 	var typ ast.Expr
 
-	switch t := t.(type) {
+	switch t2 := t.(type) {
 	case BasicType:
-		typ = TypeIdent(t.Name())
+		typ = TypeIdent(t2.Name())
 	case ArrayType:
-		typ = &ast.ArrayType{Elt: TypeIdent(t.Base().Name())}
+		typ = &ast.ArrayType{Elt: TypeIdent(t2.Base().Name())}
 	case PointerType:
-		typ = &ast.StarExpr{X: TypeIdent(t.Base().Name())}
+		typ = &ast.StarExpr{X: TypeIdent(t2.Base().Name())}
 	case StructType:
-		typ = BuildStructAst(t)
+		typ = BuildStructAst(t2)
 	case ChanType:
-		typ = &ast.ChanType{Dir: 3, Value: TypeIdent(t.Base().Name())}
+		typ = &ast.ChanType{Dir: 3, Value: TypeIdent(t2.Base().Name())}
 	case MapType:
 		typ = &ast.MapType{
-			Key:   TypeIdent(t.KeyT.Name()),
-			Value: TypeIdent(t.ValueT.Name()),
+			Key:   TypeIdent(t2.KeyT.Name()),
+			Value: TypeIdent(t2.ValueT.Name()),
 		}
+	case FuncType:
+		p, r := sb.eb.MakeFieldLists(t)
+		typ = &ast.FuncType{Params: p, Results: r}
 	default:
 		panic("DeclStmt: bad type " + t.Name())
 	}
@@ -412,15 +445,11 @@ func BuildStructAst(t StructType) *ast.StructType {
 
 func (sb *StmtBuilder) ForStmt() *ast.ForStmt {
 	sb.stats.For++
-	sb.inloop = true
-	defer func() { sb.inloop = false }()
 
 	var fs ast.ForStmt
-
-	// Add
-	//   - a Cond stmt with chance 0.94 (1-1/16)
-	//   - Init and Post statements with chance 0.5
-	//   - A body with chance 0.97 (1-1/32)
+	// - Cond stmt with chance 0.94 (1-1/16)
+	// - Init and Post statements with chance 0.5
+	// - A body with chance 0.97 (1-1/32)
 	if sb.rs.Int63()%16 != 0 {
 		fs.Cond = sb.eb.Expr(BasicType{"bool"})
 	}
@@ -431,7 +460,9 @@ func (sb *StmtBuilder) ForStmt() *ast.ForStmt {
 		fs.Post = sb.AssignStmt()
 	}
 	if sb.rs.Int63()%32 != 0 {
+		sb.inloop = true
 		fs.Body = sb.BlockStmt()
+		sb.inloop = false
 	} else {
 		// empty loop body
 		fs.Body = &ast.BlockStmt{}

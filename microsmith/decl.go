@@ -17,7 +17,7 @@ type ProgramConf struct {
 var DefaultConf = ProgramConf{
 	StmtConf{
 		MaxStmtDepth:  2,
-		MaxBlockVars:  10,
+		MaxBlockVars:  12,
 		MaxBlockStmts: 6,
 	},
 	ExprConf{
@@ -43,7 +43,7 @@ func RandConf() ProgramConf {
 			// since the Stmt builder already calls rand(1,Max) to
 			// decide how many variables and statements actually use,
 			// there's no need to randomly vary the upper limits too.
-			MaxBlockVars:  10,
+			MaxBlockVars:  12,
 			MaxBlockStmts: 6,
 		},
 		ExprConf{
