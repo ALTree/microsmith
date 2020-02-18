@@ -16,7 +16,7 @@ type ProgramConf struct {
 
 var DefaultConf = ProgramConf{
 	StmtConf{
-		MaxStmtDepth:  2,
+		MaxStmtDepth:  3,
 		MaxBlockStmts: 6,
 	},
 	ExprConf{
@@ -37,7 +37,7 @@ var DefaultConf = ProgramConf{
 func RandConf() ProgramConf {
 	pc := ProgramConf{
 		StmtConf{
-			MaxStmtDepth:  1 + rand.Intn(2),
+			MaxStmtDepth:  1 + rand.Intn(3),
 			MaxBlockStmts: 6,
 		},
 		ExprConf{

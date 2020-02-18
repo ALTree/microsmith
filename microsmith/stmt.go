@@ -63,75 +63,45 @@ func NewStmtBuilder(rs *rand.Rand, conf ProgramConf) *StmtBuilder {
 	return sb
 }
 
-// ---------------- //
-//       Stmt       //
-// ---------------- //
-
-// Currently we generate:
-//   - AssignStmt
-//   - BlockStmt
-//   - ForStmt
-//   - IfStmt
-//   - SwitchStmt
-//   - IncDecStmt
-//   - SendStmt
-//
-// DeclStmt is implemented and used, but is not used directly here (by
-// Stmt. It's only used inside BlockStmt, which takes care of setting
-// up and using all the variables it declares.
-
 func (sb *StmtBuilder) Stmt() ast.Stmt {
 	// If the maximum allowed stmt depth has been reached, generate an
 	// assign statement, since they don't nest.
-	if sb.depth >= sb.conf.MaxStmtDepth {
+	if sb.depth > sb.conf.MaxStmtDepth {
 		return sb.AssignStmt()
 	}
 	// sb.depth < sb.conf.MaxStmtDepth
 
-	var s ast.Stmt
-	switch n := sb.rs.Intn(7); n {
+	switch sb.rs.Intn(7) {
 	case 0:
 		// Generate a BranchStmt (break/continue) instead of an
 		// assignment, with chance 0.25, but only if inside a loop.
 		if sb.inloop && sb.rs.Intn(4) == 0 {
-			s = sb.BranchStmt()
+			return sb.BranchStmt()
 		} else {
-			s = sb.AssignStmt()
+			return sb.AssignStmt()
 		}
 	case 1:
-		sb.depth++
-		s = sb.BlockStmt()
-		sb.depth--
+		return sb.BlockStmt()
 	case 2:
-		sb.depth++
 		// If at least one array or string is in scope, generate a for
 		// range loop with chance 0.5; otherwise generate a plain loop
 		arr, ok := sb.scope.GetRandomRangeable(sb.rs)
 		if ok && sb.rs.Intn(2) == 0 {
-			s = sb.RangeStmt(arr)
+			return sb.RangeStmt(arr)
 		} else {
-			s = sb.ForStmt()
+			return sb.ForStmt()
 		}
-		sb.depth--
 	case 3:
-		sb.depth++
-		s = sb.IfStmt()
-		sb.depth--
+		return sb.IfStmt()
 	case 4:
-		sb.depth++
-		s = sb.SwitchStmt()
-		sb.depth--
+		return sb.SwitchStmt()
 	case 5:
-		s = sb.SendStmt()
+		return sb.SendStmt()
 	case 6:
-		sb.depth++
-		s = sb.SelectStmt()
-		sb.depth--
+		return sb.SelectStmt()
 	default:
 		panic("Stmt: bad index")
 	}
-
-	return s
 }
 
 // gets a random variable currently in scope (that we can assign to),
@@ -219,6 +189,9 @@ func (sb *StmtBuilder) BranchStmt() *ast.BranchStmt {
 // always a valid block. It up to BlockStmt's caller to make sure
 // BlockStmt is only called when we have not yet reached max depth.
 func (sb *StmtBuilder) BlockStmt() *ast.BlockStmt {
+
+	sb.depth++
+	defer func() { sb.depth-- }()
 
 	sb.stats.Block++
 
@@ -344,7 +317,7 @@ func (sb *StmtBuilder) DeclStmt(nVars int, t Type) (*ast.DeclStmt, []*ast.Ident)
 	case PointerType:
 		typ = &ast.StarExpr{X: TypeIdent(t2.Base().Name())}
 	case StructType:
-		typ = BuildStructAst(t2)
+		typ = t2.BuildAst()
 	case ChanType:
 		typ = &ast.ChanType{Dir: 3, Value: TypeIdent(t2.Base().Name())}
 	case MapType:
@@ -430,26 +403,11 @@ func (sb *StmtBuilder) DeclStmt(nVars int, t Type) (*ast.DeclStmt, []*ast.Ident)
 	return ds, idents
 }
 
-func BuildStructAst(t StructType) *ast.StructType {
-
-	fields := make([]*ast.Field, 0, len(t.Fnames))
-
-	for i := range t.Fnames {
-		field := &ast.Field{
-			Names: []*ast.Ident{&ast.Ident{Name: t.Fnames[i]}},
-			Type:  TypeIdent(t.Ftypes[i].Name()),
-		}
-		fields = append(fields, field)
-	}
-
-	return &ast.StructType{
-		Fields: &ast.FieldList{
-			List: fields,
-		},
-	}
-}
-
 func (sb *StmtBuilder) ForStmt() *ast.ForStmt {
+
+	sb.depth++
+	defer func() { sb.depth-- }()
+
 	sb.stats.For++
 
 	var fs ast.ForStmt
@@ -479,9 +437,12 @@ func (sb *StmtBuilder) ForStmt() *ast.ForStmt {
 
 func (sb *StmtBuilder) RangeStmt(arr Variable) *ast.RangeStmt {
 
-	sb.stats.For++
+	sb.depth++
+	defer func() { sb.depth-- }()
 	sb.inloop = true
 	defer func() { sb.inloop = false }()
+
+	sb.stats.For++
 
 	i := sb.scope.NewIdent(BasicType{"int"})
 	var v *ast.Ident
@@ -516,6 +477,8 @@ func (sb *StmtBuilder) RangeStmt(arr Variable) *ast.RangeStmt {
 
 func (sb *StmtBuilder) IfStmt() *ast.IfStmt {
 
+	sb.depth++
+	defer func() { sb.depth-- }()
 	sb.stats.If++
 
 	is := &ast.IfStmt{
@@ -533,6 +496,8 @@ func (sb *StmtBuilder) IfStmt() *ast.IfStmt {
 
 func (sb *StmtBuilder) SwitchStmt() *ast.SwitchStmt {
 
+	sb.depth++
+	defer func() { sb.depth-- }()
 	sb.stats.Switch++
 
 	t := RandType(sb.conf.SupportedTypes)
@@ -623,6 +588,8 @@ func (sb *StmtBuilder) SendStmt() *ast.SendStmt {
 }
 
 func (sb *StmtBuilder) SelectStmt() *ast.SelectStmt {
+	sb.depth++
+	defer func() { sb.depth-- }()
 	sb.stats.Select++
 	st := &ast.SelectStmt{
 		Body: &ast.BlockStmt{List: []ast.Stmt{

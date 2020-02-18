@@ -11,13 +11,8 @@ type Type interface {
 	// The type name. This is what is used to actually differentiate
 	// types.
 	Name() string
-
-	// Ident() string
-
 	Sliceable() bool
 }
-
-// Returns an ArrayType which base type is the receiver.
 
 // String to use for variable names of this type.
 func Ident(t Type) string {
@@ -60,9 +55,9 @@ func Addressable(t Type) bool {
 	}
 }
 
-// ---------------- //
-//       basic      //
-// ---------------- //
+// -------------------------------- //
+//   basic                          //
+// -------------------------------- //
 
 type BasicType struct {
 	N string
@@ -76,9 +71,10 @@ func (bt BasicType) Sliceable() bool {
 	return bt.N == "string"
 }
 
-// ---------------- //
-//      pointer     //
-// ---------------- //
+// -------------------------------- //
+//   pointer                        //
+// -------------------------------- //
+
 type PointerType struct {
 	Btype Type
 }
@@ -99,9 +95,9 @@ func PointerOf(t Type) PointerType {
 	return PointerType{t}
 }
 
-// ---------------- //
-//       array      //
-// ---------------- //
+// -------------------------------- //
+//   array                          //
+// -------------------------------- //
 
 type ArrayType struct {
 	Etype Type
@@ -124,9 +120,9 @@ func ArrOf(t Type) ArrayType {
 	return ArrayType{t}
 }
 
-// ---------------- //
-//      struct      //
-// ---------------- //
+// -------------------------------- //
+//   struct                         //
+// -------------------------------- //
 
 const MaxStructFields = 6
 
@@ -151,6 +147,25 @@ func (st StructType) String() string {
 	return s
 }
 
+func (st StructType) BuildAst() *ast.StructType {
+
+	fields := make([]*ast.Field, 0, len(st.Fnames))
+
+	for i := range st.Fnames {
+		field := &ast.Field{
+			Names: []*ast.Ident{&ast.Ident{Name: st.Fnames[i]}},
+			Type:  TypeIdent(st.Ftypes[i].Name()),
+		}
+		fields = append(fields, field)
+	}
+
+	return &ast.StructType{
+		Fields: &ast.FieldList{
+			List: fields,
+		},
+	}
+}
+
 func RandStructType(EnabledTypes []Type) StructType {
 	st := StructType{
 		"ST",
@@ -172,9 +187,9 @@ func RandStructType(EnabledTypes []Type) StructType {
 	return st
 }
 
-// ---------------- //
-//       func       //
-// ---------------- //
+// -------------------------------- //
+//   func                           //
+// -------------------------------- //
 
 type FuncType struct {
 	N     string
@@ -187,53 +202,27 @@ func (ft FuncType) Name() string {
 	return ft.N
 }
 
-// func (ft FuncType) DeclName() string {
-// 	name := ft.N + "("
-
-// 	for i := range ft.Args {
-// 		if i < len(ft.Args)-1 {
-// 			name += ft.Args[i].Name() + ", "
-// 		} else {
-// 			name += ft.Args[i].Name() + ") "
-// 		}
-// 	}
-
-// 	for i := range ft.Ret {
-// 		name += ft.Ret[i].Name()
-// 	}
-
-// 	return name
-// }
-
 func (ft FuncType) Sliceable() bool {
 	return false
 }
 
 func RandFuncType(EnabledTypes []Type) FuncType {
-	// possibly many args, one return type
-	ft := FuncType{
-		"FU",
-		[]Type{},
-		[]Type{RandType(EnabledTypes)},
-		true,
-	}
-
-	for i := 0; i < rand.Intn(6); i++ {
+	args := make([]Type, 0, rand.Intn(6))
+	for range args {
 		typ := RandType(EnabledTypes)
 		if t, ok := typ.(BasicType); !ok {
 			panic("RandFuncType: non basic type " + typ.Name())
 		} else {
-			ft.Args = append(ft.Args, t)
+			args = append(args, t)
 		}
 	}
-
-	return ft
+	ret := []Type{RandType(EnabledTypes)}
+	return FuncType{"FU", args, ret, true}
 }
 
 var LenFun FuncType = FuncType{
 	"len",
-	// custom handling, since it works both on arrays and strings.
-	nil,
+	nil, // custom handling
 	[]Type{BasicType{"int"}},
 	false,
 }
@@ -256,9 +245,9 @@ var MathMax FuncType = FuncType{
 	false,
 }
 
-// ---------------- //
-//       chan       //
-// ---------------- //
+// -------------------------------- //
+//   chan                           //
+// -------------------------------- //
 
 type ChanType struct {
 	T Type
@@ -281,9 +270,9 @@ func ChanOf(t Type) ChanType {
 	return ChanType{t}
 }
 
-// --------------- //
-//       map       //
-// --------------- //
+// -------------------------------- //
+//   map                            //
+// -------------------------------- //
 
 type MapType struct {
 	KeyT, ValueT Type
@@ -301,9 +290,9 @@ func MapOf(kt, vt Type) MapType {
 	return MapType{kt, vt}
 }
 
-// -------------------- //
-//       prealloc       //
-// -------------------- //
+// ------------------------------------ //
+//   preallocated                       //
+// ------------------------------------ //
 
 var BoolIdent = &ast.Ident{Name: "bool"}
 var IntIdent = &ast.Ident{Name: "int"}
