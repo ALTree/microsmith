@@ -164,13 +164,11 @@ func (db *DeclBuilder) File(pName string, fCount int) *ast.File {
 	af.Decls = []ast.Decl{}
 
 	af.Decls = append(af.Decls, MakeImport(`"math"`))
-	af.Decls = append(af.Decls, MakeImport(`"math/rand"`))
 
 	// eg:
 	//   var _ = math.Sqrt
 	// (to avoid "unused package" errors)
 	af.Decls = append(af.Decls, MakeUsePakage(`"math"`))
-	af.Decls = append(af.Decls, MakeUsePakage(`"math/rand"`))
 
 	// now, a few functions
 	for i := 0; i < fCount; i++ {
@@ -210,9 +208,6 @@ func MakeUsePakage(p string) *ast.GenDecl {
 	case `"math"`:
 		se.X = &ast.Ident{Name: "math"}
 		se.Sel = &ast.Ident{Name: "Sqrt"}
-	case `"math/rand"`:
-		se.X = &ast.Ident{Name: "rand"}
-		se.Sel = &ast.Ident{Name: "Int"}
 	default:
 		panic("MakeUsePackage: bad package " + p)
 	}
