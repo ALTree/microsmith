@@ -253,8 +253,8 @@ func (sb *StmtBuilder) RandomTypes(n int) []Type {
 	st := sb.conf.SupportedTypes
 	for ; n > 0; n-- {
 		// Choose at random between a struct, a function, or a basic
-		// type with chances 1, 1, 3
-		switch sb.rs.Intn(5) {
+		// type with chances 1, 1, 4
+		switch sb.rs.Intn(6) {
 		case 0:
 			types = append(types, RandStructType(st))
 		case 1:
@@ -513,17 +513,11 @@ func (sb *StmtBuilder) SwitchStmt() *ast.SwitchStmt {
 // builds and returns a single CaseClause switching on type kind. If
 // def is true, returns a 'default' switch case.
 func (sb *StmtBuilder) CaseClause(t Type, def bool) *ast.CaseClause {
-	stmtList := []ast.Stmt{}
-	for i := 0; i < 1+sb.rs.Intn(4); i++ {
-		stmtList = append(stmtList, sb.Stmt())
-	}
-
 	cc := new(ast.CaseClause)
 	if !def {
 		cc.List = []ast.Expr{sb.eb.Expr(t)}
 	}
-	cc.Body = stmtList
-
+	cc.Body = sb.BlockStmt().List
 	return cc
 }
 

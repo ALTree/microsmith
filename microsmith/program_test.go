@@ -170,7 +170,6 @@ func checkStats(t *testing.T, p *microsmith.Program) {
 		ss.For +
 		ss.If +
 		ss.Switch +
-		ss.Send +
 		ss.Select)
 
 	// not enough statements to do a statistical check
@@ -184,7 +183,6 @@ func checkStats(t *testing.T, p *microsmith.Program) {
 		(float64(ss.For)/sum < c) ||
 		(float64(ss.If)/sum < c) ||
 		(float64(ss.Switch)/sum < c) ||
-		(float64(ss.Send)/sum < c) ||
 		(float64(ss.Select)/sum < c) {
 		t.Errorf("At least one Stmt has low count\n%+v\n", ss)
 	}
@@ -198,7 +196,7 @@ func TestProgramGc(t *testing.T) {
 		t.Skip()
 	}
 	rand := rand.New(rand.NewSource(42))
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 50; i++ {
 		gp, _ := microsmith.NewProgram(rand.Int63(), microsmith.DefaultConf)
 		err := gp.WriteToFile(WorkDir)
 		if err != nil {
