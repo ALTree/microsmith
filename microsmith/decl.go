@@ -15,10 +15,7 @@ type ProgramConf struct {
 }
 
 var DefaultConf = ProgramConf{
-	StmtConf{
-		MaxStmtDepth:  3,
-		MaxBlockStmts: 6,
-	},
+	StmtConf{MaxStmtDepth: 3},
 	ExprConf{
 		ExprKindChance: []float64{
 			2, 4, 1,
@@ -36,10 +33,7 @@ var DefaultConf = ProgramConf{
 
 func RandConf() ProgramConf {
 	pc := ProgramConf{
-		StmtConf{
-			MaxStmtDepth:  1 + rand.Intn(3),
-			MaxBlockStmts: 6,
-		},
+		StmtConf{MaxStmtDepth: 1 + rand.Intn(3)},
 		ExprConf{
 			ExprKindChance: []float64{
 				float64(rand.Intn(2)), // unary expr

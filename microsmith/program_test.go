@@ -13,8 +13,7 @@ const WorkDir = "../work/"
 var TestConfigurations = map[string]microsmith.ProgramConf{
 	"small": {
 		microsmith.StmtConf{
-			MaxStmtDepth:  1,
-			MaxBlockStmts: 1,
+			MaxStmtDepth: 1,
 		},
 		microsmith.ExprConf{
 			ExprKindChance: []float64{
@@ -32,8 +31,7 @@ var TestConfigurations = map[string]microsmith.ProgramConf{
 
 	"medium": {
 		microsmith.StmtConf{
-			MaxStmtDepth:  2,
-			MaxBlockStmts: 4,
+			MaxStmtDepth: 2,
 		},
 		microsmith.ExprConf{
 			ExprKindChance: []float64{
@@ -51,8 +49,7 @@ var TestConfigurations = map[string]microsmith.ProgramConf{
 
 	"big": {
 		microsmith.StmtConf{
-			MaxStmtDepth:  3,
-			MaxBlockStmts: 8,
+			MaxStmtDepth: 3,
 		},
 		microsmith.ExprConf{
 			ExprKindChance: []float64{
@@ -217,8 +214,7 @@ func TestProgramGc(t *testing.T) {
 
 var BenchConf = microsmith.ProgramConf{
 	microsmith.StmtConf{
-		MaxStmtDepth:  2,
-		MaxBlockStmts: 4,
+		MaxStmtDepth: 2,
 	},
 	microsmith.ExprConf{
 		ExprKindChance: []float64{
@@ -237,7 +233,7 @@ var BenchConf = microsmith.ProgramConf{
 
 var gp *ast.File
 
-func BenchmarkProgramGeneration(b *testing.B) {
+func BenchmarkProgram(b *testing.B) {
 	b.ReportAllocs()
 	rand := rand.New(rand.NewSource(19))
 	for i := 0; i < b.N; i++ {

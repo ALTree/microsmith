@@ -30,8 +30,7 @@ type StmtStats struct {
 }
 
 type StmtConf struct {
-	MaxStmtDepth  int // max depth of block nesting
-	MaxBlockStmts int // max number of Stmt per block
+	MaxStmtDepth int // max depth of block nesting
 }
 
 func NewStmtBuilder(rs *rand.Rand, conf ProgramConf) *StmtBuilder {
@@ -216,16 +215,10 @@ func (sb *StmtBuilder) BlockStmt() *ast.BlockStmt {
 		// them, to be sure not to generate almost-empty blocks.
 		nStmts = 8
 	} else {
-		// Othewise, generate at least min(4, MaxBlockStmt) and at
-		// most MaxBlockStmts.
-		if sb.conf.MaxBlockStmts < 4 {
-			nStmts = sb.conf.MaxBlockStmts
-		} else {
-			nStmts = 4 + sb.rs.Intn(sb.conf.MaxBlockStmts-3)
-		}
+		nStmts = 4 + sb.rs.Intn(5)
 	}
 
-	// Fill the block's body with statements.
+	// Fill the block's body.
 	for i := 0; i < nStmts; i++ {
 		stmts = append(stmts, sb.Stmt())
 	}
@@ -258,8 +251,6 @@ func (sb *StmtBuilder) RandomTypes(n int) []Type {
 	n--
 
 	st := sb.conf.SupportedTypes
-	stl := len(sb.conf.SupportedTypes)
-
 	for ; n > 0; n-- {
 		// Choose at random between a struct, a function, or a basic
 		// type with chances 1, 1, 2
@@ -269,12 +260,12 @@ func (sb *StmtBuilder) RandomTypes(n int) []Type {
 		case 1:
 			types = append(types, RandFuncType(st))
 		default:
-			t := st[sb.rs.Intn(stl)]
+			t := RandType(st)
 			switch sb.rs.Intn(6) {
 			case 0:
 				t = ArrOf(t)
 			case 1:
-				t2 := st[sb.rs.Intn(stl)]
+				t2 := RandType(st)
 				t = MapOf(t, t2)
 			case 2:
 				t = PointerOf(t)
@@ -523,7 +514,7 @@ func (sb *StmtBuilder) SwitchStmt() *ast.SwitchStmt {
 // def is true, returns a 'default' switch case.
 func (sb *StmtBuilder) CaseClause(t Type, def bool) *ast.CaseClause {
 	stmtList := []ast.Stmt{}
-	for i := 0; i < 1+sb.rs.Intn(sb.conf.MaxBlockStmts); i++ {
+	for i := 0; i < 1+sb.rs.Intn(4); i++ {
 		stmtList = append(stmtList, sb.Stmt())
 	}
 
