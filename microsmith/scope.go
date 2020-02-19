@@ -157,9 +157,9 @@ func (ls Scope) InScopeTypes() []Type {
 	return tArr
 }
 
-// returns a list of function that are in scope and have return type t.
-func (ls Scope) InScopeFuncs(t Type) []Variable {
-	funcs := make([]Variable, 0)
+// Returns a function with return type t
+func (ls Scope) GetRandomFunc(t Type) (Variable, bool) {
+	funcs := make([]Variable, 0, 32)
 	for _, v := range ls {
 		switch v.Type.(type) {
 		case FuncType:
@@ -171,7 +171,11 @@ func (ls Scope) InScopeFuncs(t Type) []Variable {
 		}
 	}
 
-	return funcs
+	if len(funcs) == 0 {
+		return Variable{}, false
+	}
+
+	return funcs[rand.Intn(len(funcs))], true
 }
 
 // Return a random Ident of type t (exact match)

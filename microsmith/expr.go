@@ -130,8 +130,8 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 		case 1: // binary
 			expr = eb.BinaryExpr(t)
 		case 2: // function call
-			if len(eb.scope.InScopeFuncs(t)) > 0 {
-				expr = eb.CallExpr(t)
+			if v, ok := eb.scope.GetRandomFunc(t); ok {
+				expr = eb.CallExpr(v)
 			} else {
 				// no function in scope with return type t, fallback
 				// to generating an Expr.
@@ -473,18 +473,7 @@ func (eb *ExprBuilder) BinaryExpr(t Type) *ast.BinaryExpr {
 
 // CallExpr returns a call expression with a function call that has
 // return value of type t.
-func (eb *ExprBuilder) CallExpr(t Type) *ast.CallExpr {
-
-	// functions that are in scope and have return type t
-	funcs := eb.scope.InScopeFuncs(t)
-
-	if len(funcs) == 0 {
-		// handled by the caller
-		panic("CallExpr: no function in scope")
-	}
-
-	// choose one of them at random
-	fun := funcs[eb.rs.Intn(len(funcs))]
+func (eb *ExprBuilder) CallExpr(fun Variable) *ast.CallExpr {
 	name := fun.Name.Name
 	switch {
 	case name == "len":
