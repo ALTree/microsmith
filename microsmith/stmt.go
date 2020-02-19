@@ -253,8 +253,8 @@ func (sb *StmtBuilder) RandomTypes(n int) []Type {
 	st := sb.conf.SupportedTypes
 	for ; n > 0; n-- {
 		// Choose at random between a struct, a function, or a basic
-		// type with chances 1, 1, 2
-		switch sb.rs.Intn(4) {
+		// type with chances 1, 1, 3
+		switch sb.rs.Intn(5) {
 		case 0:
 			types = append(types, RandStructType(st))
 		case 1:
