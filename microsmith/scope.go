@@ -237,7 +237,8 @@ func (ls Scope) GetRandomRangeable(rs *rand.Rand) (Variable, bool) {
 // dereferencing pointers).
 func (ls Scope) GetRandomVarOfSubtype(t Type, rs *rand.Rand) (Variable, bool) {
 
-	cnt := 0
+	vars := make([]Variable, 0, 32)
+
 	for _, v := range ls {
 		switch v.Type.(type) {
 
@@ -245,7 +246,7 @@ func (ls Scope) GetRandomVarOfSubtype(t Type, rs *rand.Rand) (Variable, bool) {
 		case StructType:
 			for _, ft := range v.Type.(StructType).Ftypes {
 				if ft == t {
-					cnt++
+					vars = append(vars, v)
 				}
 			}
 
@@ -253,81 +254,34 @@ func (ls Scope) GetRandomVarOfSubtype(t Type, rs *rand.Rand) (Variable, bool) {
 		// can dereference them to get a t Expr
 		case PointerType:
 			if v.Type.(PointerType).Base() == t {
-				cnt++
+				vars = append(vars, v)
 			}
 
 		// for channels, we can receive
 		case ChanType:
 			if v.Type.(ChanType).Base() == t {
-				cnt++
+				vars = append(vars, v)
 			}
 
 		// for arrays and maps, we can index
 		case ArrayType:
 			if v.Type.(ArrayType).Base() == t {
-				cnt++
+				vars = append(vars, v)
 			}
 		case MapType:
 			if v.Type.(MapType).ValueT == t {
-				cnt++
+				vars = append(vars, v)
 			}
 		case BasicType:
 			// Can't be used to derive, nothing to do
 		}
 	}
 
-	if cnt == 0 {
+	if len(vars) == 0 {
 		return Variable{}, false
 	}
 
-	rand := 1 + rs.Intn(cnt)
-	cnt = 0
-
-	for _, v := range ls {
-		switch v.Type.(type) {
-		case StructType:
-			for _, ft := range v.Type.(StructType).Ftypes {
-				if ft == t {
-					cnt++
-					if rand == cnt {
-						return v, true
-					}
-				}
-			}
-		case PointerType:
-			if v.Type.(PointerType).Base() == t {
-				cnt++
-				if cnt == rand {
-					return v, true
-				}
-			}
-		case ChanType:
-			if v.Type.(ChanType).Base() == t {
-				cnt++
-				if cnt == rand {
-					return v, true
-				}
-			}
-		case ArrayType:
-			if v.Type.(ArrayType).Base() == t {
-				cnt++
-				if cnt == rand {
-					return v, true
-				}
-			}
-		case MapType:
-			if v.Type.(MapType).ValueT == t {
-				cnt++
-				if cnt == rand {
-					return v, true
-				}
-			}
-		case BasicType:
-			// Can't be used to derive, nothing to do
-		}
-	}
-
-	panic("unreachable")
+	return vars[rs.Intn(len(vars))], true
 }
 
 // return a chan (of any subtype). Useful as a replacement of
