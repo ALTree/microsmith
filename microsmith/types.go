@@ -235,7 +235,7 @@ func (ft FuncType) MakeFieldLists() (*ast.FieldList, *ast.FieldList) {
 
 func RandFuncType(EnabledTypes []Type) FuncType {
 	args := make([]Type, 0, rand.Intn(6))
-	for range args {
+	for i := 0; i < cap(args); i++ {
 		typ := RandType(EnabledTypes)
 		if t, ok := typ.(BasicType); !ok {
 			panic("RandFuncType: non basic type " + typ.Name())
