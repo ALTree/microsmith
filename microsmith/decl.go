@@ -18,7 +18,7 @@ var DefaultConf = ProgramConf{
 	StmtConf{MaxStmtDepth: 3},
 	ExprConf{
 		ExprKindChance: []float64{
-			2, 4, 1,
+			2, 4, 2,
 		},
 	},
 	[]Type{
@@ -36,9 +36,9 @@ func RandConf() ProgramConf {
 		StmtConf{MaxStmtDepth: 1 + rand.Intn(3)},
 		ExprConf{
 			ExprKindChance: []float64{
-				float64(rand.Intn(2)), // unary expr
-				float64(rand.Intn(4)), // binary expr
-				float64(rand.Intn(1)), // fun call
+				float64(rand.Intn(4)), // unary expr
+				float64(rand.Intn(8)), // binary expr
+				float64(rand.Intn(6)), // fun call
 			},
 		},
 		nil,
