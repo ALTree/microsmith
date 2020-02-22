@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"regexp"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -43,7 +44,9 @@ func main() {
 	}
 
 	if !*debugF {
-		installDeps()
+		if strings.Contains(*toolchainF, "/go/bin/go") {
+			installDeps()
+		}
 		fmt.Println("Start fuzzing")
 	}
 
