@@ -138,9 +138,15 @@ func Fuzz(seed int64) {
 }
 
 func installDeps() {
-	fmt.Printf("Installing dependencies for linux/%s\n", *archF)
 	cmd := exec.Command(*toolchainF, "install", "math")
-	cmd.Env = append(os.Environ(), "GOOS=linux", "GOARCH="+*archF)
+	goos := "linux"
+	if *archF == "wasm" {
+		goos = "js"
+	}
+	cmd.Env = append(os.Environ(), "GOOS="+goos, "GOARCH="+*archF)
+
+	fmt.Printf("Installing dependencies for %s/%s\n", goos, *archF)
+
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		fmt.Printf("Installing failed with message:\n  ----\n  %s\n  %s\n  ----\n", out, err)
