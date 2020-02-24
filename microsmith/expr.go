@@ -15,15 +15,6 @@ type ExprBuilder struct {
 	scope *Scope // passed down by StmtBuilders
 }
 
-type ExprConf struct {
-
-	// When building a general Expr, chances of generating, in order:
-	//  0. Unary Expression
-	//  1. Binary Expression
-	//  2. Function call
-	ExprKindChance []float64
-}
-
 func NewExprBuilder(rs *rand.Rand, conf ProgramConf, s *Scope) *ExprBuilder {
 	return &ExprBuilder{
 		rs:    rs,
@@ -119,11 +110,10 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 	switch t := t.(type) {
 
 	case BasicType:
-		switch RandIndex(eb.conf.ExprKindChance, eb.rs.Float64()) {
+		switch eb.rs.Intn(3) { //RandIndex(eb.conf.ExprKindChance, eb.rs.Float64()) {
 		case 0: // unary
 			if t.Name() == "string" {
-				// no unary operator for strings, return a binary expr
-				expr = eb.BinaryExpr(t)
+				expr = eb.BinaryExpr(t) // no unary op for strings
 			} else {
 				expr = eb.UnaryExpr(t)
 			}
@@ -135,12 +125,7 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 			} else {
 				// no function in scope with return type t, fallback
 				// to generating an Expr.
-				if t.Name() == "string" || eb.conf.ExprConf.ExprKindChance[0] < eb.rs.Float64() {
-					expr = eb.BinaryExpr(t)
-				} else {
-					expr = eb.UnaryExpr(t)
-				}
-
+				expr = eb.BinaryExpr(t)
 			}
 		default:
 			panic("Expr: bad RandIndex value")

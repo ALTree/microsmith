@@ -10,17 +10,11 @@ import (
 
 type ProgramConf struct {
 	StmtConf       // defined in stmt.go
-	ExprConf       // defined in expr.go
 	SupportedTypes []Type
 }
 
 var DefaultConf = ProgramConf{
 	StmtConf{MaxStmtDepth: 3},
-	ExprConf{
-		ExprKindChance: []float64{
-			2, 4, 2,
-		},
-	},
 	[]Type{
 		BasicType{"int"},
 		BasicType{"float64"},
@@ -34,13 +28,6 @@ var DefaultConf = ProgramConf{
 func RandConf() ProgramConf {
 	pc := ProgramConf{
 		StmtConf{MaxStmtDepth: 1 + rand.Intn(3)},
-		ExprConf{
-			ExprKindChance: []float64{
-				float64(rand.Intn(4)), // unary expr
-				float64(rand.Intn(8)), // binary expr
-				float64(rand.Intn(6)), // fun call
-			},
-		},
 		nil,
 	}
 
@@ -72,20 +59,6 @@ func (bce ConfError) Error() string {
 }
 
 func (pc *ProgramConf) Check(fix bool) error {
-	// ExprKindChance cannot be all zeros
-	sum := 0.0
-	for _, v := range pc.ExprKindChance {
-		sum += v
-	}
-	if sum == 0 {
-		if fix {
-			for i := range pc.ExprKindChance {
-				pc.ExprKindChance[i] += 1.0
-			}
-		} else {
-			return errors.New("Bad Conf: ExprKindChance is all zeros")
-		}
-	}
 
 	// at least one type needs to be enabled
 	if len(pc.SupportedTypes) == 0 {

@@ -44,7 +44,7 @@ func main() {
 	}
 
 	if !*debugF {
-		if strings.Contains(*toolchainF, "/go/bin/go") {
+		if !(strings.Contains(*toolchainF, "gcc") || strings.Contains(*toolchainF, "tinygo")) {
 			installDeps()
 		}
 		fmt.Println("Start fuzzing")

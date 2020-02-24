@@ -15,11 +15,6 @@ var TestConfigurations = map[string]microsmith.ProgramConf{
 		microsmith.StmtConf{
 			MaxStmtDepth: 1,
 		},
-		microsmith.ExprConf{
-			ExprKindChance: []float64{
-				1, 1, 1,
-			},
-		},
 		[]microsmith.Type{
 			microsmith.BasicType{"int"},
 			microsmith.BasicType{"float64"},
@@ -33,11 +28,6 @@ var TestConfigurations = map[string]microsmith.ProgramConf{
 		microsmith.StmtConf{
 			MaxStmtDepth: 2,
 		},
-		microsmith.ExprConf{
-			ExprKindChance: []float64{
-				1, 1, 1,
-			},
-		},
 		[]microsmith.Type{
 			microsmith.BasicType{"int"},
 			microsmith.BasicType{"float64"},
@@ -50,11 +40,6 @@ var TestConfigurations = map[string]microsmith.ProgramConf{
 	"big": {
 		microsmith.StmtConf{
 			MaxStmtDepth: 3,
-		},
-		microsmith.ExprConf{
-			ExprKindChance: []float64{
-				1, 1, 1,
-			},
 		},
 		[]microsmith.Type{
 			microsmith.BasicType{"int"},
@@ -120,12 +105,6 @@ func TestBig(t *testing.T) {
 	testProgramGoTypes(t, 10, TestConfigurations["big"])
 }
 
-func TestAllUnary(t *testing.T) {
-	tc := TestConfigurations["medium"]
-	tc.ExprKindChance = []float64{1.0, 0, 0}
-	testProgramGoTypes(t, 100, tc)
-}
-
 func TestSingleType(t *testing.T) {
 	tc := TestConfigurations["medium"]
 	for _, typ := range []string{
@@ -137,22 +116,6 @@ func TestSingleType(t *testing.T) {
 			testProgramGoTypes(t, 100, tc)
 		})
 	}
-}
-
-func testBadConf(t *testing.T, conf microsmith.ProgramConf) {
-	_, err := microsmith.NewProgram(rand.Int63(), conf)
-	if err == nil {
-		t.Errorf("Expected bad conf error for\n%+v\n", conf)
-	}
-}
-
-func TestBadConfs(t *testing.T) {
-	// all zero ExprKindChance
-	tc := TestConfigurations["medium"]
-	for i := range tc.ExprKindChance {
-		tc.ExprKindChance[i] = 0.0
-	}
-	testBadConf(t, tc)
 }
 
 func TestStmtStats(t *testing.T) {
@@ -213,11 +176,6 @@ func TestProgramGc(t *testing.T) {
 var BenchConf = microsmith.ProgramConf{
 	microsmith.StmtConf{
 		MaxStmtDepth: 2,
-	},
-	microsmith.ExprConf{
-		ExprKindChance: []float64{
-			1, 1, 1,
-		},
 	},
 	[]microsmith.Type{
 		microsmith.BasicType{"int"},
