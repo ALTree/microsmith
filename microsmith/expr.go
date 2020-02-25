@@ -98,7 +98,7 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 	switch t := t.(type) {
 
 	case BasicType:
-		switch eb.rs.Intn(3) { //RandIndex(eb.conf.ExprKindChance, eb.rs.Float64()) {
+		switch eb.rs.Intn(3) {
 		case 0: // unary
 			if t.Name() == "string" {
 				expr = eb.BinaryExpr(t) // no unary op for strings
@@ -195,16 +195,14 @@ func (eb *ExprBuilder) VarOrLit(t Type) interface{} {
 	if eb.rs.Intn(2) == 0 || (!typeInScope && !typeCanDerive) {
 		switch t := t.(type) {
 		case BasicType:
-			if n := t.Name(); n == "int" || n == "string" || n == "float64" || n == "complex128" || n == "rune" {
+			if t.Name() != "bool" {
 				return eb.BasicLit(t)
-			} else if n == "bool" {
+			} else {
 				if eb.rs.Intn(2) == 0 {
 					return TrueIdent
 				} else {
 					return FalseIdent
 				}
-			} else {
-				panic("VarOrLit: unsupported basic type " + t.Name())
 			}
 		case ArrayType:
 			return eb.CompositeLit(t)
@@ -452,9 +450,7 @@ func (eb *ExprBuilder) CallExpr(fun Variable) *ast.CallExpr {
 	case name == "len":
 		return eb.MakeLenCall()
 	case name == "float64":
-		ce := &ast.CallExpr{
-			Fun: FloatIdent,
-		}
+		ce := &ast.CallExpr{Fun: FloatIdent}
 		if eb.Deepen() {
 			ce.Args = []ast.Expr{eb.Expr(BasicType{"int"})}
 		} else {
@@ -488,10 +484,7 @@ func (eb *ExprBuilder) MakeLenCall() *ast.CallExpr {
 		typ = BasicType{"string"}
 	}
 
-	ce := &ast.CallExpr{
-		Fun: LenIdent,
-	}
-
+	ce := &ast.CallExpr{Fun: LenIdent}
 	if eb.Deepen() {
 		ce.Args = []ast.Expr{eb.Expr(typ)}
 	} else {
