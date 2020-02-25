@@ -484,7 +484,7 @@ func (sb *StmtBuilder) IfStmt() *ast.IfStmt {
 	}
 
 	// optionally attach an 'else'
-	if sb.rs.Float64() < 0.5 {
+	if sb.rs.Intn(2) == 0 {
 		is.Else = sb.BlockStmt()
 	}
 
@@ -498,7 +498,7 @@ func (sb *StmtBuilder) SwitchStmt() *ast.SwitchStmt {
 	sb.stats.Switch++
 
 	t := RandType(sb.conf.SupportedTypes)
-	if sb.rs.Int63()%2 == 0 && sb.scope.HasType(PointerOf(t)) {
+	if sb.rs.Intn(2) == 0 && sb.scope.HasType(PointerOf(t)) {
 		// sometimes switch on a pointer value
 		t = PointerOf(t)
 	}
@@ -529,32 +529,16 @@ func (sb *StmtBuilder) CaseClause(t Type, def bool) *ast.CaseClause {
 	return cc
 }
 
-func (sb *StmtBuilder) CanIncDec() (Type, bool) {
-
-	// disabled for now, IncDecStmt is too annoying to make it
-	// work. The main issue is that the IncDecStmt is the only one we
-	// can't generate unconditionally, since it requires an int or
-	// float variable to be in scope.
-	//
-	// TODO(alb): re-enable
-	return nil, false
-
-}
-
-// currently disabled
 func (sb *StmtBuilder) IncDecStmt(t Type) *ast.IncDecStmt {
-	return nil
+	panic("not implemented")
 }
 
 func (sb *StmtBuilder) SendStmt() *ast.SendStmt {
 
 	sb.stats.Send++
 
-	// get the variable .Name
 	st := new(ast.SendStmt)
-
 	ch, ok := sb.scope.GetRandomVarChan(sb.rs)
-
 	if !ok {
 		// no channels in scope, but we can send to a brand new one,
 		// i.e. generate
@@ -646,8 +630,7 @@ func (sb *StmtBuilder) CommClause(def bool) *ast.CommClause {
 // Currently disabled because the code is a mess and it doesn't add
 // much to the generated programs anyway.
 func (sb *StmtBuilder) ExprStmt() *ast.ExprStmt {
-	panic("Should not be called")
-	return nil
+	panic("not implemented")
 }
 
 var noName = ast.Ident{Name: "_"}
