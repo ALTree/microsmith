@@ -12,12 +12,9 @@ func main() {
 package main
 
 func main() {
-	var f func(int) int = func(int) int {
-		x := 1 + 7
-		_ = x
+	var f func(int) int = func(n int) int {
 		return 7
 	}
-    _ = f
 }
 `
 	fset := token.NewFileSet()

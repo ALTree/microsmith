@@ -87,18 +87,6 @@ func (eb *ExprBuilder) CompositeLit(t Type) *ast.CompositeLit {
 	}
 }
 
-func (eb *ExprBuilder) FuncLit(t FuncType) *ast.FuncLit {
-	p, r := t.MakeFieldLists()
-	return &ast.FuncLit{
-		Type: &ast.FuncType{Params: p, Results: r},
-
-		// Body is a Stmt, but ExprBuilder doesn't know about Stmts,
-		// so we always return an empty body. The AssignStmt caller
-		// will provide the function body.
-		Body: &ast.BlockStmt{},
-	}
-}
-
 func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 	eb.depth++
 	defer func() { eb.depth-- }()
@@ -161,7 +149,9 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 		}
 
 	case FuncType:
-		expr = eb.FuncLit(t)
+		// We don't assign to function, so we never need to generate
+		// Exprs of FuncType
+		panic("Expr: called with FuncType")
 
 	default:
 		panic("Expr: bad type " + t.Name())
@@ -261,7 +251,7 @@ func (eb *ExprBuilder) VarOrLit(t Type) interface{} {
 func (eb *ExprBuilder) ArrayIndexExpr(v Variable) *ast.IndexExpr {
 	_, ok := v.Type.(ArrayType)
 	if !ok {
-		panic("MakeArrayIndexExpr: not an array - " + v.String())
+		panic("MakArrayIndexExpr: not an array - " + v.String())
 	}
 
 	// We can't just generate an Expr for the index, because constant

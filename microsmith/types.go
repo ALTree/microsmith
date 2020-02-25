@@ -1,6 +1,7 @@
 package microsmith
 
 import (
+	"fmt"
 	"go/ast"
 	"math/rand"
 	"strconv"
@@ -208,16 +209,23 @@ func (ft FuncType) Sliceable() bool {
 
 // Build two ast.FieldList object (one for params, the other for
 // resultss) from a FuncType, to use in function declarations and
-// function literals.
-func (ft FuncType) MakeFieldLists() (*ast.FieldList, *ast.FieldList) {
+// function literals. If named is true, it gives the function
+// parameters names (p<s>, p<s+1>, ...)
+func (ft FuncType) MakeFieldLists(named bool, s int) (*ast.FieldList, *ast.FieldList) {
+
 	params := &ast.FieldList{
 		List: make([]*ast.Field, 0, len(ft.Args)),
 	}
-	for _, arg := range ft.Args {
-		params.List = append(
-			params.List,
-			&ast.Field{Type: &ast.Ident{Name: arg.Name()}},
-		)
+	for i, arg := range ft.Args {
+		p := ast.Field{
+			Type: &ast.Ident{Name: arg.Name()},
+		}
+		if named {
+			p.Names = []*ast.Ident{
+				&ast.Ident{Name: fmt.Sprintf("p%d", s+i)},
+			}
+		}
+		params.List = append(params.List, &p)
 	}
 
 	results := &ast.FieldList{

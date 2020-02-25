@@ -104,6 +104,11 @@ func (s *Scope) NewIdent(t Type) *ast.Ident {
 	return id
 }
 
+// Adds v to the scope.
+func (s *Scope) AddVariable(i *ast.Ident, t Type) {
+	*s = append(*s, Variable{t, i})
+}
+
 func (s *Scope) DeleteIdentByName(name *ast.Ident) {
 	del := -1
 	for i := range *s {

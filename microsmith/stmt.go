@@ -13,9 +13,8 @@ type StmtBuilder struct {
 	conf   ProgramConf
 	scope  *Scope
 	inloop bool // are we inside a loop?
-
-	// TODO: comment
-	stats StmtStats
+	funcp  int  // counter for function param names
+	stats  StmtStats
 }
 
 type StmtStats struct {
@@ -38,7 +37,7 @@ func NewStmtBuilder(rs *rand.Rand, conf ProgramConf) *StmtBuilder {
 	sb.rs = rs
 	sb.conf = conf
 
-	scope := make(Scope, 0)
+	scope := make(Scope, 0, 16)
 
 	// pre-declared function are always in scope
 	scope = append(scope, Variable{
@@ -318,33 +317,37 @@ func (sb *StmtBuilder) DeclStmt(nVars int, t Type) (*ast.DeclStmt, []*ast.Ident)
 		}
 	case FuncType:
 		// For function we don't just declare the variable, we also
-		// assign to it (so we can give the function a body); since
-		// declaring a bunch of
+		// assign to it (so we can give the function a body):
 		//
-		//   var FNC0 func(int) int
-		//
-		// is not very useful. Instead, we add a Value to the DeclStmt
-		// with a function literal, so we'll get:
-		//
-		//  var FNC0 func(int) int = func(int) int {
+		//  var FNC0 func(int) int = func(p0 int, p1 bool) int {
 		//                             Stmt
 		//                             Stmt
 		//                             return <int expr>
 		//                           }
-		// Which is more interesting.
+		//
 
-		// TODO(alb): give the parameters names, add then to the
-		// current scope, so they can be used in the body.
-
-		// First, build the type specifier for the given FuncType,
-		// i.e. the lhs
-		p, r := t2.MakeFieldLists()
+		// LHS is the type specifier for the given FuncType, with no
+		// parameter names
+		p, r := t2.MakeFieldLists(false, 0)
 		typ = &ast.FuncType{Params: p, Results: r}
 
-		// Now build the rhs, starting from a FuncLit...
-		fl := sb.eb.FuncLit(t2)
+		// RHS
 
-		// ... and then adding a body.
+		// Func type specifier again, but this time with parameter
+		// names
+		p, r = t2.MakeFieldLists(true, sb.funcp)
+		fl := &ast.FuncLit{
+			Type: &ast.FuncType{Params: p, Results: r},
+			Body: &ast.BlockStmt{},
+		}
+
+		// add the parameters to the scope
+		for i, param := range fl.Type.Params.List {
+			sb.scope.AddVariable(param.Names[0], t2.Args[i])
+			sb.funcp++
+		}
+
+		// generate a function body
 		sb.depth++
 		if sb.depth < sb.conf.MaxStmtDepth {
 			oldInloop := sb.inloop
@@ -367,8 +370,13 @@ func (sb *StmtBuilder) DeclStmt(nVars int, t Type) (*ast.DeclStmt, []*ast.Ident)
 			retStmt.Results = append(retStmt.Results, sb.eb.Expr(ret))
 		}
 		fl.Body.List = append(fl.Body.List, retStmt)
-
 		rhs = append(rhs, fl)
+
+		// and remove the function parameters from the scope
+		for _, param := range fl.Type.Params.List {
+			sb.scope.DeleteIdentByName(param.Names[0])
+			sb.funcp--
+		}
 
 	default:
 		panic("DeclStmt: bad type " + t.Name())
