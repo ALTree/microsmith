@@ -136,17 +136,17 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 		expr = eb.CompositeLit(t)
 
 	case PointerType:
+		// Either return a literal of the requested pointer type, &x
+		// with x of type t.Base(), or nil.
 		vt, typeInScope := eb.scope.GetRandomVarOfType(t, eb.rs)
 		vst, baseInScope := eb.scope.GetRandomVarOfType(t.Base(), eb.rs)
-
 		if typeInScope && baseInScope {
-			// if we can do both, choose at random
 			if eb.rs.Intn(2) == 0 {
 				expr = vt.Name
-			} else { // take address of t.Base
+			} else {
 				expr = &ast.UnaryExpr{
 					Op: token.AND,
-					X:  vst.Name, // TODO(alb): we could dereference much more complex Expr
+					X:  vst.Name,
 				}
 			}
 		} else if typeInScope {
@@ -154,11 +154,9 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 		} else if baseInScope {
 			expr = &ast.UnaryExpr{
 				Op: token.AND,
-				X:  vst.Name, // TODO(alb): we could dereference much more complex Expr
+				X:  vst.Name,
 			}
 		} else {
-			// nothing with type t or type t.Base is in scope, so we can't
-			// return a variable nor take the address or one. Return nil.
 			expr = &ast.Ident{Name: "nil"}
 		}
 
