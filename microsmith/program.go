@@ -11,6 +11,7 @@ import (
 	"go/token"
 	"go/types"
 	"log"
+	"math/rand"
 	"os"
 	"os/exec"
 	"strings"
@@ -139,7 +140,8 @@ func (gp *Program) Compile(toolchain, goarch string, noopt, race, ssacheck bool)
 			buildArgs = append(buildArgs, "-N")
 		}
 		if ssacheck {
-			buildArgs = append(buildArgs, "-d=ssa/check/on")
+			cs := fmt.Sprintf("-d=ssa/check/seed=%v", rand.Int())
+			buildArgs = append(buildArgs, cs)
 		}
 		buildArgs = append(buildArgs, gp.fileName)
 		cmd = exec.Command(toolchain, buildArgs...)
