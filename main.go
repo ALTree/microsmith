@@ -76,7 +76,7 @@ func Fuzz(seed int64) {
 
 	for {
 		counter++
-		if counter == 32 {
+		if counter == 16 {
 			conf = microsmith.RandConf()
 			counter = 0
 		}
