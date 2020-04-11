@@ -44,11 +44,11 @@ func (eb *ExprBuilder) BasicLit(t BasicType) *ast.BasicLit {
 		bl.Value = RandRune()
 	case "float64":
 		bl.Kind = token.FLOAT
-		bl.Value = strconv.FormatFloat(100*(eb.rs.Float64()), 'f', 3, 64)
+		bl.Value = strconv.FormatFloat(999*(eb.rs.Float64()), 'f', 1, 64)
 	case "complex128":
 		// There's no complex basiclit, generate an IMAG
 		bl.Kind = token.IMAG
-		bl.Value = strconv.FormatFloat(10*(eb.rs.Float64()), 'f', 3, 64) + "i"
+		bl.Value = strconv.FormatFloat(99*(eb.rs.Float64()), 'f', 2, 64) + "i"
 	case "bool":
 		panic("BasicLit: bool is not a BasicLit")
 	case "string":
