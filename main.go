@@ -35,21 +35,18 @@ func main() {
 
 	flag.Parse()
 
-	rs := rand.New(rand.NewSource(time.Now().UnixNano()))
-
 	nWorkers := *pF
 	if *debugF {
 		nWorkers = 1
 		microsmith.Nfuncs = 1
-	}
-
-	if !*debugF {
+	} else {
 		if !(strings.Contains(*toolchainF, "gcc") || strings.Contains(*toolchainF, "tinygo")) {
 			installDeps()
 		}
 		fmt.Println("Start fuzzing")
 	}
 
+	rs := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 0; i < nWorkers; i++ {
 		go Fuzz(rs.Int63())
 	}
