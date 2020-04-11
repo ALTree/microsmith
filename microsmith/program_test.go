@@ -69,7 +69,7 @@ func testProgramGoTypes(t *testing.T, n int, conf microsmith.ProgramConf) {
 }
 
 func TestDefault(t *testing.T) {
-	testProgramGoTypes(t, 50, microsmith.DefaultConf)
+	testProgramGoTypes(t, 10, microsmith.DefaultConf)
 }
 
 func TestRandConf(t *testing.T) {
