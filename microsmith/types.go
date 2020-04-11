@@ -21,17 +21,17 @@ func Ident(t Type) string {
 	case BasicType:
 		return strings.ToUpper(t.N[:1])
 	case ArrayType:
-		return "A" + Ident(t.Etype)
+		return "a" + Ident(t.Etype)
 	case FuncType:
-		return "FNC"
+		return "fnc"
 	case StructType:
-		return "ST"
+		return "st"
 	case ChanType:
-		return "CH"
+		return "ch"
 	case MapType:
-		return "M"
+		return "m"
 	case PointerType:
-		return "P" + Ident(t.Btype)
+		return "p" + Ident(t.Btype)
 	default:
 		panic("Ident: unknown type " + t.Name())
 	}
