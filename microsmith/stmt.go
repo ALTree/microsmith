@@ -47,13 +47,16 @@ func NewStmtBuilder(rs *rand.Rand, conf ProgramConf) *StmtBuilder {
 		FloatConv,
 		&ast.Ident{Name: FloatConv.Name()}})
 
-	// a couple int and float64 functions from the math package
+	// a few functions from the math package to call
 	scope = append(scope, Variable{
 		MathSqrt,
 		&ast.Ident{Name: MathSqrt.Name()}})
 	scope = append(scope, Variable{
 		MathMax,
 		&ast.Ident{Name: MathMax.Name()}})
+	scope = append(scope, Variable{
+		MathNaN,
+		&ast.Ident{Name: MathNaN.Name()}})
 
 	sb.scope = &scope
 	sb.eb = NewExprBuilder(rs, conf, sb.scope)

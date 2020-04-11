@@ -279,6 +279,12 @@ var MathMax FuncType = FuncType{
 	[]Type{BasicType{"float64"}},
 	false,
 }
+var MathNaN FuncType = FuncType{
+	"math.NaN",
+	[]Type{},
+	[]Type{BasicType{"float64"}},
+	false,
+}
 
 // -------------------------------- //
 //   chan                           //
