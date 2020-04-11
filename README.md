@@ -6,7 +6,7 @@ stress-test Go compilers.
 
 ### Bugs found
 
-#### gc compiler crashes (20)
+#### gc compiler crashes (21)
 
 - [#23504: internal compiler error: panic during layout](https://github.com/golang/go/issues/23504)
 - [#23889: panic: branch too far on arm64](https://github.com/golang/go/issues/23889)
@@ -28,3 +28,4 @@ stress-test Go compilers.
 - [#34520: panic: First time we've seen filename](https://github.com/golang/go/issues/34520)
 - [#35157: internal compiler error: aliasing constant which is not registered](https://github.com/golang/go/issues/35157)
 - [#35695: panic: Assigning a bogus line to XPos with no file](https://github.com/golang/go/issues/35695)
+- [#38359: internal compiler error: can't encode a NaN in AuxInt field](https://github.com/golang/go/issues/38359)
