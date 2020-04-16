@@ -43,7 +43,11 @@ func main() {
 		if !(strings.Contains(*toolchainF, "gcc") || strings.Contains(*toolchainF, "tinygo")) {
 			installDeps()
 		}
-		fmt.Println("Start fuzzing")
+		s := "Start fuzzing"
+		if *ssacheckF {
+			s += fmt.Sprintf(" [seed %v]", microsmith.CheckSeed)
+		}
+		fmt.Println(s)
 	}
 
 	rs := rand.New(rand.NewSource(time.Now().UnixNano()))

@@ -15,6 +15,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 )
 
 // Program holds a Go program (both it source and the reference to the
@@ -37,6 +38,12 @@ type ProgramStats struct {
 }
 
 var Nfuncs int = 8
+var CheckSeed int
+
+func init() {
+	rs := rand.New(rand.NewSource(time.Now().UnixNano()))
+	CheckSeed = rs.Int() % 1e5
+}
 
 // NewProgram uses a DeclBuilder to generate a new random Go program
 // with the given seed.
@@ -140,7 +147,7 @@ func (gp *Program) Compile(toolchain, goarch string, noopt, race, ssacheck bool)
 			buildArgs = append(buildArgs, "-N")
 		}
 		if ssacheck {
-			cs := fmt.Sprintf("-d=ssa/check/seed=%v", rand.Int())
+			cs := fmt.Sprintf("-d=ssa/check/seed=%v", CheckSeed)
 			buildArgs = append(buildArgs, cs)
 		}
 		buildArgs = append(buildArgs, gp.fileName)
