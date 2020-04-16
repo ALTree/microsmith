@@ -50,6 +50,11 @@ func main() {
 		fmt.Println(s)
 	}
 
+	// Create workdir if not already there
+	if _, err := os.Stat(WorkDir); os.IsNotExist(err) {
+		os.Mkdir(WorkDir, os.ModePerm)
+	}
+
 	rs := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 0; i < nWorkers; i++ {
 		go Fuzz(rs.Int63())
