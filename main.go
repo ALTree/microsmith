@@ -108,13 +108,11 @@ func Fuzz(seed int64) {
 			log.Fatalf("Could not write to file: %s", err)
 		}
 
-		// Interrupt and crash Fuzzer if compilation takes more than
-		// 60 seconds
+		// Crash Fuzzer if compilation takes more than 60s
 		timeout := time.AfterFunc(
 			60*time.Second,
 			func() { log.Fatalf("> 60s compilation time for\n%s\n", gp) },
 		)
-
 		out, err := gp.Compile(*toolchainF, *archF, *nooptF, *raceF, *ssacheckF)
 		timeout.Stop()
 
@@ -131,7 +129,7 @@ func Fuzz(seed int64) {
 				atomic.AddInt64(&KnownCount, 1)
 			} else {
 				atomic.AddInt64(&CrashCount, 1)
-				log.Printf("[%v] program did not compile\n%s\n%s", gp.Seed, out, err)
+				log.Printf("Program did not compile\n%s\n%s", gp.Seed, out, err)
 			}
 		}
 
@@ -155,7 +153,7 @@ func installDeps() {
 
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		fmt.Printf("Installing failed with message:\n  ----\n  %s\n  %s\n  ----\n", out, err)
+		fmt.Printf("Installing depencensies failed with message:\n  ----\n  %s\n  %s\n  ----\n", out, err)
 		os.Exit(2)
 	}
 }
