@@ -23,7 +23,7 @@ import (
 //
 // TODO: split to source/seed and filesystem stuff(?)
 type Program struct {
-	Seed     int64
+	id       uint64
 	source   []byte
 	fileName string
 	file     *os.File
@@ -47,21 +47,21 @@ func init() {
 
 // NewProgram uses a DeclBuilder to generate a new random Go program
 // with the given seed.
-func NewProgram(seed int64, conf ProgramConf) (*Program, error) {
+func NewProgram(rs *rand.Rand, conf ProgramConf) (*Program, error) {
 	// Check wheter conf is a valid one, but without silently fixing
 	// it. We want to return an error upstream.
 	if err := conf.Check(false); err != nil {
 		return nil, err
 	}
 
-	gp := new(Program)
-	db := NewDeclBuilder(seed, conf)
-
+	db := NewDeclBuilder(rs, conf)
 	var buf bytes.Buffer
 	printer.Fprint(&buf, token.NewFileSet(), db.File("main", Nfuncs))
 
-	gp.Seed = seed
-	gp.source = buf.Bytes()
+	gp := &Program{
+		id:     rs.Uint64(),
+		source: buf.Bytes(),
+	}
 	gp.Stats.Stmt = db.sb.stats
 
 	// Put a newline between each function to make the generate a
@@ -78,7 +78,7 @@ func NewProgram(seed int64, conf ProgramConf) (*Program, error) {
 // WriteToFile writes gp in a file having name 'prog<gp.seed>' in the
 // folder passsed in the path parameter.
 func (gp *Program) WriteToFile(path string) error {
-	fileName := fmt.Sprintf("prog%v.go", gp.Seed)
+	fileName := fmt.Sprintf("prog%v.go", gp.id)
 	fh, err := os.Create(path + "/" + fileName)
 	defer fh.Close()
 	if err != nil {
@@ -206,10 +206,6 @@ func (gp Program) MoveCrasher() {
 }
 
 func (gp Program) String() string {
-	fmtstr :=
-		"[seed %v]\n" +
-			"----------------\n" +
-			"%s" +
-			"----------------\n"
-	return fmt.Sprintf(fmtstr, gp.Seed, gp.source)
+	line := strings.Repeat("-", 80) + "\n"
+	return fmt.Sprintf(line+"%s"+line, gp.source)
 }

@@ -13,18 +13,6 @@ type ProgramConf struct {
 	SupportedTypes []Type
 }
 
-var DefaultConf = ProgramConf{
-	StmtConf{MaxStmtDepth: 3},
-	[]Type{
-		BasicType{"int"},
-		BasicType{"float64"},
-		BasicType{"complex128"},
-		BasicType{"bool"},
-		BasicType{"string"},
-		BasicType{"rune"},
-	},
-}
-
 func RandConf() ProgramConf {
 	pc := ProgramConf{
 		StmtConf{MaxStmtDepth: 1 + rand.Intn(3)},
@@ -59,7 +47,6 @@ func (bce ConfError) Error() string {
 }
 
 func (pc *ProgramConf) Check(fix bool) error {
-
 	// at least one type needs to be enabled
 	if len(pc.SupportedTypes) == 0 {
 		if fix {
@@ -79,40 +66,28 @@ func (pc *ProgramConf) Check(fix bool) error {
 }
 
 type DeclBuilder struct {
-	rs *rand.Rand
 	sb *StmtBuilder
-
-	// list of function names declared by this DeclBuilder
-	funNames []string
 }
 
-func NewDeclBuilder(seed int64, conf ProgramConf) *DeclBuilder {
-	db := new(DeclBuilder)
-	db.rs = rand.New(rand.NewSource(seed))
-	db.sb = NewStmtBuilder(db.rs, conf)
-	db.funNames = []string{}
-	return db
+func NewDeclBuilder(rs *rand.Rand, conf ProgramConf) *DeclBuilder {
+	return &DeclBuilder{sb: NewStmtBuilder(rs, conf)}
 }
 
-func (db *DeclBuilder) FuncDecl() *ast.FuncDecl {
-	fc := new(ast.FuncDecl)
-	fc.Name = db.FuncIdent()
-	fc.Type = &ast.FuncType{0, new(ast.FieldList), nil}
-	fc.Body = db.sb.BlockStmt()
-	return fc
+func (db *DeclBuilder) FuncDecl(i int) *ast.FuncDecl {
+	return &ast.FuncDecl{
+		Name: db.FuncIdent(i),
+		Type: &ast.FuncType{0, new(ast.FieldList), nil},
+		Body: db.sb.BlockStmt(),
+	}
 }
 
-func (db *DeclBuilder) FuncIdent() *ast.Ident {
+func (db *DeclBuilder) FuncIdent(i int) *ast.Ident {
 	id := new(ast.Ident)
-
-	name := fmt.Sprintf("f%v", len(db.funNames))
-	db.funNames = append(db.funNames, name)
-
 	id.Obj = &ast.Object{
 		Kind: ast.Fun,
-		Name: name,
+		Name: fmt.Sprintf("f%v", i),
 	}
-	id.Name = name
+	id.Name = id.Obj.Name
 
 	return id
 }
@@ -133,7 +108,7 @@ func (db *DeclBuilder) File(pName string, fCount int) *ast.File {
 
 	// now, a few functions
 	for i := 0; i < fCount; i++ {
-		af.Decls = append(af.Decls, db.FuncDecl())
+		af.Decls = append(af.Decls, db.FuncDecl(i))
 	}
 
 	// finally, an empty main func

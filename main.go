@@ -23,7 +23,7 @@ var (
 	archF      = flag.String("arch", "amd64", "The GOARCH to fuzz")
 	debugF     = flag.Bool("debug", false, "Run fuzzer in debug mode")
 	nooptF     = flag.Bool("noopt", false, "Compile with optimizations disabled")
-	pF         = flag.Int("p", 1, "The number of workers")
+	pF         = flag.Uint64("p", 1, "The number of workers")
 	raceF      = flag.Bool("race", false, "Compile with -race")
 	ssacheckF  = flag.Bool("ssacheck", false, "Compile with -d=ssa/check/on")
 	toolchainF = flag.String("bin", "go", "The go toolchain to fuzz")
@@ -63,8 +63,8 @@ func main() {
 		}
 	}
 
-	for i := 0; i < nWorkers; i++ {
-		go Fuzz(7 + i*117)
+	for i := uint64(1); i <= nWorkers; i++ {
+		go Fuzz(i)
 	}
 
 	ticker := time.Tick(30 * time.Second)
@@ -82,8 +82,10 @@ var crashWhitelist = []*regexp.Regexp{
 	// regexp.MustCompile("bvbulkalloc too big"),
 }
 
-func Fuzz(seed int) {
-	rand := rand.New(rand.NewSource(int64(seed)))
+func Fuzz(workerID uint64) {
+	rs := rand.New(
+		rand.NewSource(int64(0xfaff0011 * workerID * uint64(time.Now().UnixNano()))),
+	)
 	conf := microsmith.RandConf()
 
 	counter := 0
@@ -94,7 +96,7 @@ func Fuzz(seed int) {
 			counter = 0
 		}
 
-		gp, err := microsmith.NewProgram(rand.Int63(), conf)
+		gp, err := microsmith.NewProgram(rs, conf)
 		if err != nil {
 			lg.Fatalf("Bad Conf: %s", err)
 		}

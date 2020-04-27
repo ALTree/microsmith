@@ -53,9 +53,8 @@ var TestConfigurations = map[string]microsmith.ProgramConf{
 
 // check n generated programs with go/types (in-memory)
 func testProgramGoTypes(t *testing.T, n int, conf microsmith.ProgramConf) {
-	rand := rand.New(rand.NewSource(42))
 	for i := 0; i < n; i++ {
-		gp, err := microsmith.NewProgram(rand.Int63(), conf)
+		gp, err := microsmith.NewProgram(rand.New(rand.NewSource(42)), conf)
 		if err != nil {
 			t.Fatalf("BadConf error: %s\n", err)
 		}
@@ -66,10 +65,6 @@ func testProgramGoTypes(t *testing.T, n int, conf microsmith.ProgramConf) {
 
 		checkStats(t, gp)
 	}
-}
-
-func TestDefault(t *testing.T) {
-	testProgramGoTypes(t, 10, microsmith.DefaultConf)
 }
 
 func TestRandConf(t *testing.T) {
@@ -119,9 +114,12 @@ func TestSingleType(t *testing.T) {
 }
 
 func TestStmtStats(t *testing.T) {
-	rand := rand.New(rand.NewSource(444))
+
 	for i := 0; i < 100; i++ {
-		gp, _ := microsmith.NewProgram(rand.Int63(), microsmith.DefaultConf)
+		gp, _ := microsmith.NewProgram(
+			rand.New(rand.NewSource(444)),
+			microsmith.RandConf(),
+		)
 		checkStats(t, gp)
 	}
 }
@@ -160,7 +158,7 @@ func TestProgramGc(t *testing.T) {
 	}
 	rand := rand.New(rand.NewSource(42))
 	for i := 0; i < 50; i++ {
-		gp, _ := microsmith.NewProgram(rand.Int63(), microsmith.DefaultConf)
+		gp, _ := microsmith.NewProgram(rand, microsmith.RandConf())
 		err := gp.WriteToFile(WorkDir)
 		if err != nil {
 			t.Fatalf("Could not write to file: %s", err)
@@ -193,7 +191,7 @@ func BenchmarkProgram(b *testing.B) {
 	b.ReportAllocs()
 	rand := rand.New(rand.NewSource(19))
 	for i := 0; i < b.N; i++ {
-		db := microsmith.NewDeclBuilder(rand.Int63(), BenchConf)
+		db := microsmith.NewDeclBuilder(rand, BenchConf)
 		gp = db.File("main", 1)
 	}
 }
