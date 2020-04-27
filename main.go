@@ -141,7 +141,7 @@ func Fuzz(seed int) {
 				fmt.Print(out)
 				fmt.Println("------------------------------------------------------------")
 				gp.MoveCrasher()
-				fmt.Printn("Crasher was saved.")
+				fmt.Println("Crasher was saved.")
 			}
 		}
 
