@@ -15,21 +15,26 @@ import (
 	"github.com/ALTree/microsmith/microsmith"
 )
 
-const WorkDir = "work/"
-
 var BuildCount int64
 var CrashCount int64
 var KnownCount int64
 
 var (
-	pF         = flag.Int("p", 1, "number of workers")
-	debugF     = flag.Bool("debug", false, "run fuzzer in debug mode")
-	archF      = flag.String("arch", "amd64", "GOARCH to fuzz")
-	toolchainF = flag.String("gobin", "go", "go toolchain to fuzz")
-	nooptF     = flag.Bool("noopt", false, "compile with optimizations disabled")
-	raceF      = flag.Bool("race", false, "compile with -race")
-	ssacheckF  = flag.Bool("ssacheck", false, "compile with -d=ssa/check/on")
+	archF      = flag.String("arch", "amd64", "The GOARCH to fuzz")
+	debugF     = flag.Bool("debug", false, "Run fuzzer in debug mode")
+	nooptF     = flag.Bool("noopt", false, "Compile with optimizations disabled")
+	pF         = flag.Int("p", 1, "The number of workers")
+	raceF      = flag.Bool("race", false, "Compile with -race")
+	ssacheckF  = flag.Bool("ssacheck", false, "Compile with -d=ssa/check/on")
+	toolchainF = flag.String("bin", "go", "The go toolchain to fuzz")
+	workdirF   = flag.String("work", "work", "Workdir for the fuzzing process")
 )
+
+var lg *log.Logger
+
+func init() {
+	lg = log.New(os.Stderr, "[ERROR] ", log.Lshortfile)
+}
 
 func main() {
 
@@ -51,13 +56,15 @@ func main() {
 	}
 
 	// Create workdir if not already there
-	if _, err := os.Stat(WorkDir); os.IsNotExist(err) {
-		os.Mkdir(WorkDir, os.ModePerm)
+	if _, err := os.Stat(*workdirF); os.IsNotExist(err) {
+		err := os.MkdirAll(*workdirF, os.ModePerm)
+		if err != nil {
+			lg.Fatalf("%v", err)
+		}
 	}
 
-	rs := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 0; i < nWorkers; i++ {
-		go Fuzz(rs.Int63())
+		go Fuzz(7 + i*117)
 	}
 
 	ticker := time.Tick(30 * time.Second)
@@ -75,11 +82,11 @@ var crashWhitelist = []*regexp.Regexp{
 	// regexp.MustCompile("bvbulkalloc too big"),
 }
 
-func Fuzz(seed int64) {
-	rand := rand.New(rand.NewSource(seed))
-	conf := microsmith.DefaultConf
-	counter := 0
+func Fuzz(seed int) {
+	rand := rand.New(rand.NewSource(int64(seed)))
+	conf := microsmith.RandConf()
 
+	counter := 0
 	for {
 		counter++
 		if counter == 16 {
@@ -89,12 +96,12 @@ func Fuzz(seed int64) {
 
 		gp, err := microsmith.NewProgram(rand.Int63(), conf)
 		if err != nil {
-			log.Fatalf("Bad Conf: %s", err)
+			lg.Fatalf("Bad Conf: %s", err)
 		}
 
 		err = gp.Check()
 		if err != nil {
-			log.Fatalf("Program failed typechecking: %s\n%s", err, gp)
+			lg.Fatalf("Program failed typechecking: %s\n%s", err, gp)
 		}
 
 		if *debugF {
@@ -103,15 +110,15 @@ func Fuzz(seed int64) {
 			os.Exit(0)
 		}
 
-		err = gp.WriteToFile(WorkDir)
+		err = gp.WriteToFile(*workdirF)
 		if err != nil {
-			log.Fatalf("Could not write to file: %s", err)
+			lg.Fatalf("Could not write program to file: %s", err)
 		}
 
 		// Crash Fuzzer if compilation takes more than 60s
 		timeout := time.AfterFunc(
 			60*time.Second,
-			func() { log.Fatalf("> 60s compilation time for\n%s\n", gp) },
+			func() { lg.Fatalf("> 60s compilation time for\n%s\n", gp) },
 		)
 		out, err := gp.Compile(*toolchainF, *archF, *nooptF, *raceF, *ssacheckF)
 		timeout.Stop()
@@ -129,7 +136,12 @@ func Fuzz(seed int64) {
 				atomic.AddInt64(&KnownCount, 1)
 			} else {
 				atomic.AddInt64(&CrashCount, 1)
-				log.Printf("Program did not compile\n%s\n%s", gp.Seed, out, err)
+				fmt.Println("Program compilation failed:")
+				fmt.Println("------------------------------------------------------------")
+				fmt.Print(out)
+				fmt.Println("------------------------------------------------------------")
+				gp.MoveCrasher()
+				fmt.Printn("Crasher was saved.")
 			}
 		}
 
@@ -153,7 +165,6 @@ func installDeps() {
 
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		fmt.Printf("Installing depencensies failed with message:\n  ----\n  %s\n  %s\n  ----\n", out, err)
-		os.Exit(2)
+		lg.Fatalf("Installing dependencies failed with error:\n  ----\n  %s\n  %s\n  ----\n", out, err)
 	}
 }
