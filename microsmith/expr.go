@@ -404,7 +404,10 @@ func (eb *ExprBuilder) BinaryExpr(t Type) *ast.BinaryExpr {
 	// First choose the operator...
 	switch t.Name() {
 	case "int", "rune":
-		ue.Op = eb.chooseToken([]token.Token{token.ADD, token.SUB})
+		ue.Op = eb.chooseToken([]token.Token{
+			token.ADD, token.SUB, token.AND,
+			token.OR, token.XOR, token.AND_NOT,
+		})
 	case "float64", "complex128":
 		ue.Op = eb.chooseToken([]token.Token{token.ADD, token.SUB, token.MUL})
 	case "bool":

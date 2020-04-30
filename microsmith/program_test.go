@@ -60,7 +60,7 @@ func testProgramGoTypes(t *testing.T, n int, conf microsmith.ProgramConf) {
 		}
 		err = gp.Check()
 		if err != nil {
-			t.Fatalf("Program failed typechecking: %s\n%s", err, gp)
+			t.Fatalf("Program failed typechecking with error:\n%s", err)
 		}
 
 		checkStats(t, gp)
@@ -70,7 +70,7 @@ func testProgramGoTypes(t *testing.T, n int, conf microsmith.ProgramConf) {
 func TestRandConf(t *testing.T) {
 	lim := 50
 	if testing.Short() {
-		lim = 10
+		lim = 20
 	}
 	for i := 0; i < lim; i++ {
 		conf := microsmith.RandConf()
