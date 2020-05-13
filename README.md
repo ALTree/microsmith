@@ -6,7 +6,7 @@ stress-test Go compilers.
 
 ### Bugs found
 
-#### gc compiler crashes (21)
+#### gc compiler crashes (23)
 
 - [#23504 internal compiler error: panic during layout](https://github.com/golang/go/issues/23504)
 - [#23889 panic: branch too far on arm64](https://github.com/golang/go/issues/23889)
