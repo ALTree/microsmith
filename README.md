@@ -1,12 +1,10 @@
 
-## Introduction
+microsmith generates random (but always valid) Go programs that can be
+used to stress-test Go compilers.
 
-microsmith generates random Go programs that can be used to
-stress-test Go compilers.
+#### Bugs found
 
-### Bugs found
-
-#### gc compiler crashes (23)
+##### gc compiler crashes (25)
 
 - [#23504 internal compiler error: panic during layout](https://github.com/golang/go/issues/23504)
 - [#23889 panic: branch too far on arm64](https://github.com/golang/go/issues/23889)
@@ -31,3 +29,5 @@ stress-test Go compilers.
 - [#38359 internal compiler error: can't encode a NaN in AuxInt field](https://github.com/golang/go/issues/38359)
 - [#38916 internal compiler error: schedule does not include all values](https://github.com/golang/go/issues/38916)
 - [#38946 panic: log2 of 0 on arm64](https://github.com/golang/go/issues/38946)
+- [#39472 internal compiler error: schedule does not include all values in block](https://github.com/golang/go/issues/39472)
+- [#39505 internal compiler error: Flag* ops should never make it to codegen](https://github.com/golang/go/issues/39505)
