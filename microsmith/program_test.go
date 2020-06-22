@@ -3,12 +3,13 @@ package microsmith_test
 import (
 	"go/ast"
 	"math/rand"
+	"os"
 	"testing"
 
 	"github.com/ALTree/microsmith/microsmith"
 )
 
-const WorkDir = "../work/"
+const WorkDir = "work"
 
 var TestConfigurations = map[string]microsmith.ProgramConf{
 	"small": {
@@ -156,6 +157,17 @@ func TestProgramGc(t *testing.T) {
 	if testing.Short() {
 		t.Skip()
 	}
+
+	if _, err := os.Stat(WorkDir); os.IsNotExist(err) {
+		err := os.MkdirAll(WorkDir, os.ModePerm)
+		if err != nil {
+			t.Fatalf("%v", err)
+		}
+	}
+	defer func() {
+		os.RemoveAll(WorkDir)
+	}()
+
 	rand := rand.New(rand.NewSource(42))
 	for i := 0; i < 50; i++ {
 		gp, _ := microsmith.NewProgram(rand, microsmith.RandConf())
