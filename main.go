@@ -107,7 +107,9 @@ func Fuzz(workerID uint64) {
 		err = gp.Check()
 		if err != nil {
 			if *debugF {
-				fmt.Printf("Program failed typechecking with error:\n%s", err)
+				fmt.Println(gp)
+				fmt.Printf("Program failed typechecking with error:\n%s\n", err)
+				os.Exit(2)
 			} else {
 				lg.Fatalf("Program failed typechecking: %s\n%s", err, gp)
 			}

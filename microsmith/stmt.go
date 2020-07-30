@@ -1,6 +1,7 @@
 package microsmith
 
 import (
+	"fmt"
 	"go/ast"
 	"go/token"
 	"math/rand"
@@ -12,9 +13,11 @@ type StmtBuilder struct {
 	depth  int // how deep the stmt hyerarchy is
 	conf   ProgramConf
 	scope  *Scope
-	inloop bool // are we inside a loop?
-	funcp  int  // counter for function param names
+	inloop bool     // are we inside a loop?
+	labels []string //
+	funcp  int      // counter for function param names
 	stats  StmtStats
+	label  int
 }
 
 type StmtStats struct {
@@ -65,6 +68,7 @@ func NewStmtBuilder(rs *rand.Rand, conf ProgramConf) *StmtBuilder {
 }
 
 func (sb *StmtBuilder) Stmt() ast.Stmt {
+
 	// If the maximum allowed stmt depth has been reached, generate an
 	// assign statement, since they don't nest.
 	if sb.depth > sb.conf.MaxStmtDepth {
@@ -90,7 +94,18 @@ func (sb *StmtBuilder) Stmt() ast.Stmt {
 		if ok && sb.rs.Intn(2) == 0 {
 			return sb.RangeStmt(arr)
 		} else {
-			return sb.ForStmt()
+			if sb.rs.Intn(2) == 0 {
+				sb.label++
+				label := fmt.Sprintf("label%v", sb.label)
+				sb.labels = append(sb.labels, label)
+				fs := &ast.LabeledStmt{
+					Label: &ast.Ident{Name: label},
+					Stmt:  sb.ForStmt(),
+				}
+				return fs
+			} else {
+				return sb.ForStmt()
+			}
 		}
 	case 3:
 		return sb.IfStmt()
@@ -175,15 +190,28 @@ func (sb *StmtBuilder) AssignStmt() *ast.AssignStmt {
 // returns a continue/break statement
 func (sb *StmtBuilder) BranchStmt() *ast.BranchStmt {
 	sb.stats.Branch++
-	if sb.rs.Intn(2) == 0 {
-		return &ast.BranchStmt{
-			Tok: token.CONTINUE,
-		}
-	} else {
-		return &ast.BranchStmt{
-			Tok: token.BREAK,
-		}
+
+	var bs ast.BranchStmt
+
+	switch sb.rs.Intn(3) {
+	case 0:
+		bs.Tok = token.GOTO
+	case 1:
+		bs.Tok = token.CONTINUE
+	case 2:
+		bs.Tok = token.BREAK
 	}
+
+	if len(sb.labels) > 0 {
+		li := sb.rs.Intn(len(sb.labels))
+		bs.Label = &ast.Ident{Name: sb.labels[li]}
+		sb.labels = append(sb.labels[:li], sb.labels[li+1:]...)
+	} else {
+		bs.Tok = token.BREAK
+	}
+
+	return &bs
+
 }
 
 // BlockStmt returns a new Block Statement. The returned Stmt is
@@ -432,6 +460,15 @@ func (sb *StmtBuilder) ForStmt() *ast.ForStmt {
 		// empty loop body
 		fs.Body = &ast.BlockStmt{}
 	}
+
+	for _, l := range sb.labels {
+		fs.Body.List = append(fs.Body.List,
+			&ast.BranchStmt{
+				Tok:   token.GOTO,
+				Label: &ast.Ident{Name: l},
+			})
+	}
+	sb.labels = []string{}
 
 	return &fs
 }

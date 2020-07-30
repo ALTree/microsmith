@@ -6,17 +6,20 @@ import (
 	"go/token"
 )
 
-func main() {
-	// src is the input for which we want to print the AST.
-	src := `
+var src string = `
 package main
 
 func main() {
-	var f func(int) int = func(n int) int {
-		return 7
-	}
+label:
+  for i := 0; i < 10; i++ {
+    if i == 7 {
+      goto label
+    }
+  }
 }
 `
+
+func main() {
 	fset := token.NewFileSet()
 	f, err := parser.ParseFile(fset, "", src, 0)
 	if err != nil {
