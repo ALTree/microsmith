@@ -92,11 +92,22 @@ func (sb *StmtBuilder) Stmt() ast.Stmt {
 		// range loop with chance 0.5; otherwise generate a plain loop
 		arr, ok := sb.scope.GetRandomRangeable(sb.rs)
 		if ok && sb.rs.Intn(2) == 0 {
-			return sb.RangeStmt(arr)
-		} else {
-			if sb.rs.Intn(2) == 0 {
+			if sb.rs.Intn(4) == 0 { // 1 in 4 loops have a label
 				sb.label++
-				label := fmt.Sprintf("label%v", sb.label)
+				label := fmt.Sprintf("lab%v", sb.label)
+				sb.labels = append(sb.labels, label)
+				fs := &ast.LabeledStmt{
+					Label: &ast.Ident{Name: label},
+					Stmt:  sb.RangeStmt(arr),
+				}
+				return fs
+			} else {
+				return sb.RangeStmt(arr)
+			}
+		} else {
+			if sb.rs.Intn(4) == 0 { // 1 in 4 loops have a label
+				sb.label++
+				label := fmt.Sprintf("lab%v", sb.label)
 				sb.labels = append(sb.labels, label)
 				fs := &ast.LabeledStmt{
 					Label: &ast.Ident{Name: label},
@@ -202,6 +213,7 @@ func (sb *StmtBuilder) BranchStmt() *ast.BranchStmt {
 		bs.Tok = token.BREAK
 	}
 
+	// chose a random label to break/continue/goto to
 	if len(sb.labels) > 0 {
 		li := sb.rs.Intn(len(sb.labels))
 		bs.Label = &ast.Ident{Name: sb.labels[li]}
@@ -461,10 +473,11 @@ func (sb *StmtBuilder) ForStmt() *ast.ForStmt {
 		fs.Body = &ast.BlockStmt{}
 	}
 
+	// consume all active labels to avoid unused compilation errors
 	for _, l := range sb.labels {
 		fs.Body.List = append(fs.Body.List,
 			&ast.BranchStmt{
-				Tok:   token.GOTO,
+				Tok:   []token.Token{token.GOTO, token.BREAK, token.CONTINUE}[sb.rs.Intn(3)],
 				Label: &ast.Ident{Name: l},
 			})
 	}
@@ -508,6 +521,15 @@ func (sb *StmtBuilder) RangeStmt(arr Variable) *ast.RangeStmt {
 
 	sb.scope.DeleteIdentByName(i)
 	sb.scope.DeleteIdentByName(v)
+
+	for _, l := range sb.labels {
+		rs.Body.List = append(rs.Body.List,
+			&ast.BranchStmt{
+				Tok:   []token.Token{token.GOTO, token.BREAK, token.CONTINUE}[sb.rs.Intn(3)],
+				Label: &ast.Ident{Name: l},
+			})
+	}
+	sb.labels = []string{}
 
 	return rs
 }
