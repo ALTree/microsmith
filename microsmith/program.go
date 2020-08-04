@@ -144,7 +144,7 @@ func (gp *Program) Compile(toolchain, goarch string, noopt, race, ssacheck bool)
 			buildArgs = append(buildArgs, "-race")
 		}
 		if noopt {
-			buildArgs = append(buildArgs, "-N")
+			buildArgs = append(buildArgs, "-N", "-l")
 		}
 		if ssacheck {
 			cs := fmt.Sprintf("-d=ssa/check/seed=%v", CheckSeed)
