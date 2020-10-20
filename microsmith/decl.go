@@ -40,12 +40,6 @@ func RandConf() ProgramConf {
 	return pc
 }
 
-type ConfError string
-
-func (bce ConfError) Error() string {
-	return fmt.Sprintf("Bad Conf: %s", bce)
-}
-
 func (pc *ProgramConf) Check(fix bool) error {
 	// at least one type needs to be enabled
 	if len(pc.SupportedTypes) == 0 {
