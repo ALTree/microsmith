@@ -464,7 +464,7 @@ func (sb *StmtBuilder) ForStmt() *ast.ForStmt {
 	if sb.rs.Intn(2) == 0 {
 		fs.Post = sb.AssignStmt()
 	}
-	if sb.rs.Int(32) > 0 {
+	if sb.rs.Intn(32) > 0 {
 		sb.inloop = true
 		fs.Body = sb.BlockStmt()
 		sb.inloop = false

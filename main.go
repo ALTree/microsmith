@@ -170,10 +170,14 @@ func installDeps() {
 	if *archF == "wasm" {
 		goos = "js"
 	}
-	cmd.Env = append(os.Environ(), "GOOS="+goos, "GOARCH="+*archF)
+	goarch := *archF
+	if goarch == "386sf" {
+		goarch = "386"
+		cmd.Env = append(os.Environ(), "GO386=softfloat")
+	}
+	cmd.Env = append(os.Environ(), "GOOS="+goos, "GOARCH="+goarch)
 
 	fmt.Printf("Installing dependencies for %s/%s\n", goos, *archF)
-
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		lg.Fatalf("Installing dependencies failed with error:\n  ----\n  %s\n  %s\n  ----\n", out, err)
