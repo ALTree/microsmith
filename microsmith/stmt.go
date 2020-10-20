@@ -455,16 +455,16 @@ func (sb *StmtBuilder) ForStmt() *ast.ForStmt {
 	// - Cond stmt with chance 0.94 (1-1/16)
 	// - Init and Post statements with chance 0.5
 	// - A body with chance 0.97 (1-1/32)
-	if sb.rs.Int63()%16 != 0 {
+	if sb.rs.Intn(16) > 0 {
 		fs.Cond = sb.eb.Expr(BasicType{"bool"})
 	}
-	if sb.rs.Int63()%2 == 0 {
+	if sb.rs.Intn(2) == 0 {
 		fs.Init = sb.AssignStmt()
 	}
-	if sb.rs.Int63()%2 == 0 {
+	if sb.rs.Intn(2) == 0 {
 		fs.Post = sb.AssignStmt()
 	}
-	if sb.rs.Int63()%32 != 0 {
+	if sb.rs.Int(32) > 0 {
 		sb.inloop = true
 		fs.Body = sb.BlockStmt()
 		sb.inloop = false

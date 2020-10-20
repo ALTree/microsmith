@@ -480,8 +480,6 @@ func (eb *ExprBuilder) CallExpr(fun Variable) *ast.CallExpr {
 			Args: args,
 		}
 	}
-
-	panic("unreachable")
 }
 
 func (eb *ExprBuilder) MakeLenCall() *ast.CallExpr {
