@@ -360,6 +360,14 @@ func (eb *ExprBuilder) SliceExpr(v Variable) *ast.SliceExpr {
 		}
 	}
 
+	// make low and high empty sometimes
+	switch r := eb.rs.Intn(8); r {
+	case 0:
+		low = nil
+	case 1:
+		high = nil
+	}
+
 	return &ast.SliceExpr{
 		X:    v.Name,
 		Low:  low,
