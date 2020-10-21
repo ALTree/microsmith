@@ -339,33 +339,33 @@ func (eb *ExprBuilder) SliceExpr(v Variable) *ast.SliceExpr {
 	var low, high ast.Expr
 	indV, hasInt := eb.scope.GetRandomVarOfType(BasicType{"int"}, eb.rs)
 	if hasInt && eb.Deepen() {
-		low = &ast.BinaryExpr{
-			X:  indV.Name,
-			Op: token.ADD,
-			Y:  eb.Expr(BasicType{"int"}),
+		if eb.rs.Intn(8) > 0 {
+			low = &ast.BinaryExpr{
+				X:  indV.Name,
+				Op: token.ADD,
+				Y:  eb.Expr(BasicType{"int"}),
+			}
 		}
-		high = &ast.BinaryExpr{
-			X:  eb.Expr(BasicType{"int"}),
-			Op: token.ADD,
-			Y:  indV.Name,
+		if eb.rs.Intn(8) > 0 {
+			high = &ast.BinaryExpr{
+				X:  eb.Expr(BasicType{"int"}),
+				Op: token.ADD,
+				Y:  indV.Name,
+			}
 		}
 	} else {
-		low = &ast.BasicLit{
-			Kind:  token.INT,
-			Value: strconv.Itoa(eb.rs.Intn(8)),
+		if eb.rs.Intn(8) > 0 {
+			low = &ast.BasicLit{
+				Kind:  token.INT,
+				Value: strconv.Itoa(eb.rs.Intn(8)),
+			}
 		}
-		high = &ast.BasicLit{
-			Kind:  token.INT,
-			Value: strconv.Itoa(8 + eb.rs.Intn(17)),
+		if eb.rs.Intn(8) > 0 {
+			high = &ast.BasicLit{
+				Kind:  token.INT,
+				Value: strconv.Itoa(8 + eb.rs.Intn(17)),
+			}
 		}
-	}
-
-	// make low and high empty sometimes
-	switch r := eb.rs.Intn(8); r {
-	case 0:
-		low = nil
-	case 1:
-		high = nil
 	}
 
 	return &ast.SliceExpr{
