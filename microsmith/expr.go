@@ -36,7 +36,7 @@ func (eb *ExprBuilder) chooseToken(tokens []token.Token) token.Token {
 func (eb *ExprBuilder) BasicLit(t BasicType) *ast.BasicLit {
 	bl := new(ast.BasicLit)
 	switch t.Name() {
-	case "int":
+	case "uint", "int":
 		bl.Kind = token.INT
 		bl.Value = strconv.Itoa(eb.rs.Intn(100))
 	case "rune":
@@ -195,14 +195,23 @@ func (eb *ExprBuilder) VarOrLit(t Type) interface{} {
 	if eb.rs.Intn(2) == 0 || (!typeInScope && !typeCanDerive) {
 		switch t := t.(type) {
 		case BasicType:
-			if t.Name() != "bool" {
-				return eb.BasicLit(t)
-			} else {
+			switch t.Name() {
+			case "bool":
 				if eb.rs.Intn(2) == 0 {
 					return TrueIdent
 				} else {
 					return FalseIdent
 				}
+			case "uint":
+				// Since numerical literals are int by default, for
+				// everything else we need an explicit cast.
+				bl := eb.BasicLit(t)
+				return &ast.CallExpr{
+					Fun:  &ast.Ident{Name: "uint"},
+					Args: []ast.Expr{bl},
+				}
+			default:
+				return eb.BasicLit(t)
 			}
 		case ArrayType:
 			return eb.CompositeLit(t)
@@ -387,6 +396,8 @@ func (eb *ExprBuilder) UnaryExpr(t Type) *ast.UnaryExpr {
 	}
 
 	switch t.Name() {
+	case "uint":
+		ue.Op = token.ADD
 	case "int", "rune", "float64", "complex128":
 		ue.Op = eb.chooseToken([]token.Token{token.ADD, token.SUB})
 	case "bool":
@@ -411,6 +422,11 @@ func (eb *ExprBuilder) BinaryExpr(t Type) *ast.BinaryExpr {
 
 	// First choose the operator...
 	switch t.Name() {
+	case "uint":
+		ue.Op = eb.chooseToken([]token.Token{
+			token.ADD, token.AND,
+			token.OR, token.XOR, token.AND_NOT,
+		})
 	case "int", "rune":
 		ue.Op = eb.chooseToken([]token.Token{
 			token.ADD, token.SUB, token.AND,
@@ -442,6 +458,7 @@ func (eb *ExprBuilder) BinaryExpr(t Type) *ast.BinaryExpr {
 	}
 
 	// ...then build the two branches.
+
 	if eb.Deepen() {
 		ue.X = eb.Expr(t)
 		ue.Y = eb.Expr(t)

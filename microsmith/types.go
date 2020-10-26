@@ -5,7 +5,6 @@ import (
 	"go/ast"
 	"math/rand"
 	"strconv"
-	"strings"
 )
 
 type Type interface {
@@ -15,11 +14,28 @@ type Type interface {
 	Sliceable() bool
 }
 
-// String to use for variable names of this type.
+// Name to use for variable of type t
 func Ident(t Type) string {
 	switch t := t.(type) {
 	case BasicType:
-		return strings.ToUpper(t.N[:1])
+		switch t.N {
+		case "bool":
+			return "b"
+		case "uint":
+			return "ui"
+		case "int":
+			return "i"
+		case "float64":
+			return "f"
+		case "complex128":
+			return "c"
+		case "string":
+			return "s"
+		case "rune":
+			return "r"
+		default:
+			panic("unhandled type: " + t.N)
+		}
 	case ArrayType:
 		return "a" + Ident(t.Etype)
 	case FuncType:
@@ -336,6 +352,7 @@ func MapOf(kt, vt Type) MapType {
 // ------------------------------------ //
 
 var BoolIdent = &ast.Ident{Name: "bool"}
+var UintIdent = &ast.Ident{Name: "uint"}
 var IntIdent = &ast.Ident{Name: "int"}
 var FloatIdent = &ast.Ident{Name: "float64"}
 var ComplexIdent = &ast.Ident{Name: "complex128"}
@@ -346,6 +363,8 @@ func TypeIdent(t string) *ast.Ident {
 	switch t {
 	case "bool":
 		return BoolIdent
+	case "uint":
+		return UintIdent
 	case "int":
 		return IntIdent
 	case "float64":
@@ -356,6 +375,7 @@ func TypeIdent(t string) *ast.Ident {
 		return StringIdent
 	case "rune":
 		return RuneIdent
+
 	default:
 		panic("TypeIdent: cannot handle type " + t)
 	}

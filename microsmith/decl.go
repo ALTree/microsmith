@@ -6,6 +6,7 @@ import (
 	"go/ast"
 	"go/token"
 	"math/rand"
+	"time"
 )
 
 type ProgramConf struct {
@@ -19,8 +20,11 @@ func RandConf() ProgramConf {
 		nil,
 	}
 
+	rs := rand.New(rand.NewSource(int64(time.Now().UnixNano())))
+
 	// give each type a 0.75 chance to be enabled
 	types := []Type{
+		BasicType{"uint"},
 		BasicType{"int"},
 		BasicType{"float64"},
 		BasicType{"complex128"},
@@ -30,7 +34,7 @@ func RandConf() ProgramConf {
 	}
 	var enabledTypes []Type
 	for _, t := range types {
-		if rand.Float64() < 0.75 {
+		if rs.Float64() < 0.75 {
 			enabledTypes = append(enabledTypes, t)
 		}
 	}
@@ -45,6 +49,7 @@ func (pc *ProgramConf) Check(fix bool) error {
 	if len(pc.SupportedTypes) == 0 {
 		if fix {
 			pc.SupportedTypes = []Type{
+				BasicType{"uint"},
 				BasicType{"int"},
 				BasicType{"float64"},
 				BasicType{"complex128"},
