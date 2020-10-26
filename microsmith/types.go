@@ -283,6 +283,12 @@ var FloatConv FuncType = FuncType{
 	[]Type{BasicType{"float64"}},
 	false,
 }
+var IntConv FuncType = FuncType{
+	"int",
+	[]Type{BasicType{"uint"}},
+	[]Type{BasicType{"int"}},
+	false,
+}
 var MathSqrt FuncType = FuncType{
 	"math.Sqrt",
 	[]Type{BasicType{"float64"}},

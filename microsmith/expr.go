@@ -477,14 +477,8 @@ func (eb *ExprBuilder) CallExpr(fun Variable) *ast.CallExpr {
 	switch {
 	case name == "len":
 		return eb.MakeLenCall()
-	case name == "float64":
-		ce := &ast.CallExpr{Fun: FloatIdent}
-		if eb.Deepen() {
-			ce.Args = []ast.Expr{eb.Expr(BasicType{"int"})}
-		} else {
-			ce.Args = []ast.Expr{eb.VarOrLit(BasicType{"int"}).(ast.Expr)}
-		}
-		return ce
+	case name == "float64" || name == "int":
+		return eb.MakeCast(fun.Type.(FuncType))
 	case strings.HasPrefix(name, "math."):
 		return eb.MakeMathCall(fun)
 	default:
@@ -497,6 +491,17 @@ func (eb *ExprBuilder) CallExpr(fun Variable) *ast.CallExpr {
 			Args: args,
 		}
 	}
+}
+
+func (eb *ExprBuilder) MakeCast(f FuncType) *ast.CallExpr {
+	ce := &ast.CallExpr{Fun: &ast.Ident{Name: f.N}}
+	if eb.Deepen() {
+		ce.Args = []ast.Expr{eb.Expr(f.Args[0])}
+	} else {
+		ce.Args = []ast.Expr{eb.VarOrLit(f.Args[0]).(ast.Expr)}
+	}
+	return ce
+
 }
 
 func (eb *ExprBuilder) MakeLenCall() *ast.CallExpr {
