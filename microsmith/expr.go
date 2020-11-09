@@ -443,7 +443,7 @@ func (eb *ExprBuilder) BinaryExpr(t Type) *ast.BinaryExpr {
 		//   invalid operation: 8 >> i (shift of type float64)
 		ue.Op = eb.chooseToken([]token.Token{
 			token.ADD, token.AND, token.AND_NOT, token.MUL,
-			token.OR, token.SUB, token.XOR,
+			token.OR, token.SHR, token.SUB, token.XOR,
 		})
 	case "rune":
 		ue.Op = eb.chooseToken([]token.Token{

@@ -44,7 +44,7 @@ func NewStmtBuilder(rs *rand.Rand, conf ProgramConf) *StmtBuilder {
 	scope = append(scope, []Variable{
 		// pre-declared function
 		{LenFun, &ast.Ident{Name: LenFun.Name()}},
-		{FloatConv, &ast.Ident{Name: FloatConv.Name()}},
+		//{FloatConv, &ast.Ident{Name: FloatConv.Name()}},
 		{IntConv, &ast.Ident{Name: IntConv.Name()}},
 
 		// a few functions from the math package
