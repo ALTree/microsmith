@@ -98,25 +98,21 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 	switch t := t.(type) {
 
 	case BasicType:
-		switch eb.rs.Intn(3) {
+		switch eb.rs.Intn(6) { // prioritize function calls, if available
 		case 0: // unary
 			if t.Name() == "string" {
-				expr = eb.BinaryExpr(t) // no unary op for strings
+				expr = eb.BinaryExpr(t)
 			} else {
 				expr = eb.UnaryExpr(t)
 			}
 		case 1: // binary
 			expr = eb.BinaryExpr(t)
-		case 2: // function call
+		default: // function call
 			if v, ok := eb.scope.GetRandomFunc(t); ok {
 				expr = eb.CallExpr(v)
-			} else {
-				// no function in scope with return type t, fallback
-				// to generating an Expr.
+			} else { // fallback
 				expr = eb.BinaryExpr(t)
 			}
-		default:
-			panic("Expr: bad RandIndex value")
 		}
 
 	case ArrayType:
@@ -245,24 +241,20 @@ func (eb *ExprBuilder) VarOrLit(t Type) interface{} {
 			Op: token.MUL,
 			X:  &ast.Ident{Name: vst.Name.Name},
 		}
-	default:
-		panic("argh")
 	}
 
 	panic("unreachable")
-
 }
 
 // Returns an ast.IndexExpr which index into v (of type Array) either
 // using an int literal or an int Expr.
 func (eb *ExprBuilder) ArrayIndexExpr(v Variable) *ast.IndexExpr {
-	_, ok := v.Type.(ArrayType)
-	if !ok {
-		panic("MakArrayIndexExpr: not an array - " + v.String())
+	if _, ok := v.Type.(ArrayType); !ok {
+		panic("ArrayIndexExpr: not an array: " + v.String())
 	}
 
 	// We can't just generate an Expr for the index, because constant
-	// exprs that end up being negative will cause a compilation error.
+	// exprs that end up being negative cause a compilation error.
 	//
 	// If there is at least one int variable in scope, we can generate
 	// 'I + Expr()' as index, which is guaranteed not to be constant. If
@@ -291,7 +283,7 @@ func (eb *ExprBuilder) ArrayIndexExpr(v Variable) *ast.IndexExpr {
 func (eb *ExprBuilder) MapIndexExpr(v Variable) *ast.IndexExpr {
 	mv, ok := v.Type.(MapType)
 	if !ok {
-		panic("not an array - " + v.String())
+		panic("not an array: " + v.String())
 	}
 
 	var index ast.Expr
@@ -312,7 +304,7 @@ func (eb *ExprBuilder) MapIndexExpr(v Variable) *ast.IndexExpr {
 func (eb *ExprBuilder) StructFieldExpr(v Variable, t Type) *ast.SelectorExpr {
 	sv, ok := v.Type.(StructType)
 	if !ok {
-		panic("not a struct - " + v.String())
+		panic("not a struct: " + v.String())
 	}
 
 	for i, ft := range sv.Ftypes {
@@ -329,8 +321,7 @@ func (eb *ExprBuilder) StructFieldExpr(v Variable, t Type) *ast.SelectorExpr {
 
 // Returns an ast.UnaryExpr which receive from the channel v.
 func (eb *ExprBuilder) ChanReceiveExpr(v Variable) *ast.UnaryExpr {
-	_, ok := v.Type.(ChanType)
-	if !ok {
+	if _, ok := v.Type.(ChanType); !ok {
 		panic("not a chan - " + v.String())
 	}
 
@@ -397,15 +388,15 @@ func (eb *ExprBuilder) UnaryExpr(t Type) *ast.UnaryExpr {
 
 	switch t.Name() {
 	case "uint":
-		ue.Op = token.ADD
-	case "int", "rune", "float64", "complex128":
+		ue.Op = eb.chooseToken([]token.Token{token.ADD})
+	case "int", "rune":
+		ue.Op = eb.chooseToken([]token.Token{token.ADD, token.SUB, token.XOR})
+	case "float64", "complex128":
 		ue.Op = eb.chooseToken([]token.Token{token.ADD, token.SUB})
 	case "bool":
 		ue.Op = eb.chooseToken([]token.Token{token.NOT})
-	case "string":
-		panic("UnaryExpr: invalid type string")
 	default:
-		panic("UnaryExpr: unimplemented type " + t.Name())
+		panic("UnaryExpr: invalid type " + t.Name())
 	}
 
 	if eb.Deepen() {
@@ -424,13 +415,40 @@ func (eb *ExprBuilder) BinaryExpr(t Type) *ast.BinaryExpr {
 	switch t.Name() {
 	case "uint":
 		ue.Op = eb.chooseToken([]token.Token{
-			token.ADD, token.AND,
-			token.OR, token.XOR, token.AND_NOT,
+			token.ADD, token.AND, token.AND_NOT, token.MUL,
+			token.OR, token.SHR, token.XOR,
 		})
-	case "int", "rune":
+	case "int":
+		// NOTE: we can't generate token.SHR for ints, because int
+		// expressions are used as args for float64() conversions, and
+		// in this:
+		//
+		//   var i int = 2
+		// 	 float64(8 >> i)
+		//
+		// 8 is actually of type float64(!); because, according to
+		// the spec:
+		//
+		//   If the left operand of a non-constant shift expression is
+		//   an untyped constant, it is first implicitly converted to
+		//   the type it would assume if the shift expression were
+		//   replaced by its left operand alone.
+		//
+		// and apparently in float64(8), 8 untyped is a float64. So
+		//
+		//   float64(8 >> i)
+		//
+		// fails to compile with error:
+		//
+		//   invalid operation: 8 >> i (shift of type float64)
 		ue.Op = eb.chooseToken([]token.Token{
-			token.ADD, token.SUB, token.AND,
-			token.OR, token.XOR, token.AND_NOT,
+			token.ADD, token.AND, token.AND_NOT, token.MUL,
+			token.OR, token.SUB, token.XOR,
+		})
+	case "rune":
+		ue.Op = eb.chooseToken([]token.Token{
+			token.ADD, token.AND, token.AND_NOT,
+			token.OR, token.SUB, token.XOR,
 		})
 	case "float64", "complex128":
 		ue.Op = eb.chooseToken([]token.Token{token.ADD, token.SUB, token.MUL})
@@ -461,7 +479,13 @@ func (eb *ExprBuilder) BinaryExpr(t Type) *ast.BinaryExpr {
 
 	if eb.Deepen() {
 		ue.X = eb.Expr(t)
-		ue.Y = eb.Expr(t)
+		if ue.Op != token.SHR {
+			ue.Y = eb.Expr(t)
+		} else {
+			// The compiler rejects stupid shifts, so we need control
+			// on the shift amount.
+			ue.Y = eb.VarOrLit(t).(ast.Expr)
+		}
 	} else {
 		ue.X = eb.VarOrLit(t).(ast.Expr)
 		ue.Y = eb.VarOrLit(t).(ast.Expr)
