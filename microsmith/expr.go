@@ -42,7 +42,7 @@ func (eb *ExprBuilder) BasicLit(t BasicType) *ast.BasicLit {
 	case "rune":
 		bl.Kind = token.CHAR
 		bl.Value = RandRune()
-	case "float64":
+	case "float32", "float64":
 		bl.Kind = token.FLOAT
 		bl.Value = strconv.FormatFloat(999*(eb.rs.Float64()), 'f', 1, 64)
 	case "complex128":
@@ -199,11 +199,17 @@ func (eb *ExprBuilder) VarOrLit(t Type) interface{} {
 					return FalseIdent
 				}
 			case "uint":
-				// Since numerical literals are int by default, for
-				// everything else we need an explicit cast.
+				// Since integer lits are int by default, we need an
+				// explicit cast for uint.
 				bl := eb.BasicLit(t)
 				return &ast.CallExpr{
 					Fun:  &ast.Ident{Name: "uint"},
+					Args: []ast.Expr{bl},
+				}
+			case "float32":
+				bl := eb.BasicLit(t)
+				return &ast.CallExpr{
+					Fun:  &ast.Ident{Name: "float32"},
 					Args: []ast.Expr{bl},
 				}
 			default:
@@ -391,7 +397,7 @@ func (eb *ExprBuilder) UnaryExpr(t Type) *ast.UnaryExpr {
 		ue.Op = eb.chooseToken([]token.Token{token.ADD})
 	case "int", "rune":
 		ue.Op = eb.chooseToken([]token.Token{token.ADD, token.SUB, token.XOR})
-	case "float64", "complex128":
+	case "float32", "float64", "complex128":
 		ue.Op = eb.chooseToken([]token.Token{token.ADD, token.SUB})
 	case "bool":
 		ue.Op = eb.chooseToken([]token.Token{token.NOT})
@@ -450,7 +456,7 @@ func (eb *ExprBuilder) BinaryExpr(t Type) *ast.BinaryExpr {
 			token.ADD, token.AND, token.AND_NOT,
 			token.OR, token.SUB, token.XOR,
 		})
-	case "float64", "complex128":
+	case "float32", "float64", "complex128":
 		ue.Op = eb.chooseToken([]token.Token{token.ADD, token.SUB, token.MUL})
 	case "bool":
 		if eb.rs.Intn(2) == 0 {

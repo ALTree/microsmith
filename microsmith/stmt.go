@@ -44,13 +44,15 @@ func NewStmtBuilder(rs *rand.Rand, conf ProgramConf) *StmtBuilder {
 	scope = append(scope, []Variable{
 		// pre-declared function
 		{LenFun, &ast.Ident{Name: LenFun.Name()}},
-		//{FloatConv, &ast.Ident{Name: FloatConv.Name()}},
+		{Float32Conv, &ast.Ident{Name: Float32Conv.Name()}},
+		{Float64Conv, &ast.Ident{Name: Float64Conv.Name()}},
 		{IntConv, &ast.Ident{Name: IntConv.Name()}},
 
 		// a few functions from the math package
 		{MathSqrt, &ast.Ident{Name: MathSqrt.Name()}},
 		{MathMax, &ast.Ident{Name: MathMax.Name()}},
-		{MathNaN, &ast.Ident{Name: MathNaN.Name()}}}...,
+		{MathNaN, &ast.Ident{Name: MathNaN.Name()}},
+		{MathLdexp, &ast.Ident{Name: MathLdexp.Name()}}}...,
 	)
 	sb.scope = &scope
 

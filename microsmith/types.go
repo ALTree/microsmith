@@ -25,6 +25,8 @@ func Ident(t Type) string {
 			return "ui"
 		case "int":
 			return "i"
+		case "float32":
+			return "h"
 		case "float64":
 			return "f"
 		case "complex128":
@@ -277,9 +279,15 @@ var LenFun FuncType = FuncType{
 	[]Type{BasicType{"int"}},
 	false,
 }
-var FloatConv FuncType = FuncType{
+var Float32Conv FuncType = FuncType{
+	"float32",
+	[]Type{BasicType{"float64"}},
+	[]Type{BasicType{"float32"}},
+	false,
+}
+var Float64Conv FuncType = FuncType{
 	"float64",
-	[]Type{BasicType{"int"}},
+	[]Type{BasicType{"float32"}},
 	[]Type{BasicType{"float64"}},
 	false,
 }
@@ -289,6 +297,7 @@ var IntConv FuncType = FuncType{
 	[]Type{BasicType{"int"}},
 	false,
 }
+
 var MathSqrt FuncType = FuncType{
 	"math.Sqrt",
 	[]Type{BasicType{"float64"}},
@@ -304,6 +313,12 @@ var MathMax FuncType = FuncType{
 var MathNaN FuncType = FuncType{
 	"math.NaN",
 	[]Type{},
+	[]Type{BasicType{"float64"}},
+	false,
+}
+var MathLdexp FuncType = FuncType{
+	"math.Ldexp",
+	[]Type{BasicType{"float64"}, BasicType{"int"}},
 	[]Type{BasicType{"float64"}},
 	false,
 }
@@ -360,7 +375,8 @@ func MapOf(kt, vt Type) MapType {
 var BoolIdent = &ast.Ident{Name: "bool"}
 var UintIdent = &ast.Ident{Name: "uint"}
 var IntIdent = &ast.Ident{Name: "int"}
-var FloatIdent = &ast.Ident{Name: "float64"}
+var Float32Ident = &ast.Ident{Name: "float32"}
+var Float64Ident = &ast.Ident{Name: "float64"}
 var ComplexIdent = &ast.Ident{Name: "complex128"}
 var StringIdent = &ast.Ident{Name: "string"}
 var RuneIdent = &ast.Ident{Name: "rune"}
@@ -373,8 +389,10 @@ func TypeIdent(t string) *ast.Ident {
 		return UintIdent
 	case "int":
 		return IntIdent
+	case "float32":
+		return Float32Ident
 	case "float64":
-		return FloatIdent
+		return Float64Ident
 	case "complex128":
 		return ComplexIdent
 	case "string":

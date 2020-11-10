@@ -26,6 +26,7 @@ func RandConf() ProgramConf {
 	types := []Type{
 		BasicType{"uint"},
 		BasicType{"int"},
+		BasicType{"float32"},
 		BasicType{"float64"},
 		BasicType{"complex128"},
 		BasicType{"bool"},
