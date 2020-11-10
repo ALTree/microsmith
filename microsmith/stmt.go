@@ -384,21 +384,21 @@ func (sb *StmtBuilder) DeclStmt(nVars int, t Type) (*ast.DeclStmt, []*ast.Ident)
 		// generate a function body
 		sb.depth++
 		if sb.depth < sb.conf.MaxStmtDepth {
-			oldInloop := sb.inloop
+			oil := sb.inloop
 			sb.inloop = false
 			fl.Body = sb.BlockStmt()
-			sb.inloop = oldInloop
+			sb.inloop = oil
 		} else {
-			fl.Body = &ast.BlockStmt{
-				List: []ast.Stmt{
-					sb.AssignStmt(),
-					sb.AssignStmt(),
-				},
+			n := 2 + sb.rs.Intn(3) // 2 to 4 stmts
+			stl := make([]ast.Stmt, 0, n)
+			for i := 0; i < n; i++ {
+				stl = append(stl, sb.AssignStmt())
 			}
+			fl.Body = &ast.BlockStmt{List: stl}
 		}
 		sb.depth--
 
-		// Finally, append a closing return statement.
+		// Finally, append a closing return statement
 		retStmt := &ast.ReturnStmt{Results: []ast.Expr{}}
 		for _, ret := range t2.Ret {
 			retStmt.Results = append(retStmt.Results, sb.eb.Expr(ret))
@@ -406,7 +406,7 @@ func (sb *StmtBuilder) DeclStmt(nVars int, t Type) (*ast.DeclStmt, []*ast.Ident)
 		fl.Body.List = append(fl.Body.List, retStmt)
 		rhs = append(rhs, fl)
 
-		// and remove the function parameters from the scope
+		// and remove the function parameters from scope
 		for _, param := range fl.Type.Params.List {
 			sb.scope.DeleteIdentByName(param.Names[0])
 			sb.funcp--

@@ -32,13 +32,13 @@ func RandString() string {
 func RandRune() string {
 	switch rand.Intn(3) {
 	case 0:
-		// "single character within the quotes"
+		// single character within the quotes: 'a'
 		return "'" + string(byte('0'+rand.Intn('Z'-'0'))) + "'"
 	case 1:
-		// "\x followed by exactly two hexadecimal digits""
+		// \x followed by exactly two hexadecimal digits: \x4f
 		return "'\\x" + strconv.FormatInt(0x10+int64(rand.Intn(0xff-0x10)), 16) + "'"
 	case 2:
-		// "\u followed by exactly four hexadecimal digits"
+		// \u followed by exactly four hexadecimal digits: \u3b7f
 		return "'\\u" + strconv.FormatInt(0x1000+int64(rand.Intn(0xd000-0x1000)), 16) + "'"
 	default:
 		panic("unreachable")

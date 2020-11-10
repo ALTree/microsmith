@@ -98,14 +98,14 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 	switch t := t.(type) {
 
 	case BasicType:
-		switch eb.rs.Intn(6) { // prioritize function calls, if available
+		switch eb.rs.Intn(8) {
 		case 0: // unary
 			if t.Name() == "string" {
 				expr = eb.BinaryExpr(t)
 			} else {
 				expr = eb.UnaryExpr(t)
 			}
-		case 1: // binary
+		case 1, 2, 3: // binary
 			expr = eb.BinaryExpr(t)
 		default: // function call
 			if v, ok := eb.scope.GetRandomFunc(t); ok {
