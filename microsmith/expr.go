@@ -417,7 +417,6 @@ func (eb *ExprBuilder) UnaryExpr(t Type) *ast.UnaryExpr {
 func (eb *ExprBuilder) BinaryExpr(t Type) *ast.BinaryExpr {
 	ue := new(ast.BinaryExpr)
 
-	// First choose the operator...
 	switch t.Name() {
 	case "uint":
 		ue.Op = eb.chooseToken([]token.Token{
@@ -481,7 +480,40 @@ func (eb *ExprBuilder) BinaryExpr(t Type) *ast.BinaryExpr {
 		panic("BinaryExpr: unimplemented type " + t.Name())
 	}
 
-	// ...then build the two branches.
+	// for some types, we need to ensure at least one element of the
+	// expr tree is a variable, or we could trigger compilation errors
+	// like "constant overflows uint" on Exprs that end up being all
+	// literals (and thus computable at compile time), and outside the
+	// type range.
+	if t.Name() == "uint" {
+
+		// make sure LHS is not a constant
+		vi, ok := eb.scope.GetRandomVarOfType(BasicType{t.Name()}, eb.rs)
+		if ok {
+			// at least one variable of the required type is in scope,
+			// use that one
+			ue.X = vi.Name
+		} else {
+			// otherwise, cast from an int var (there's always one)
+			vi, ok := eb.scope.GetRandomVarOfType(BasicType{"int"}, eb.rs)
+			if !ok {
+				panic("BinaryExpr: no int in scope")
+			}
+			ue.X = &ast.CallExpr{
+				Fun:  &ast.Ident{Name: t.Name()},
+				Args: []ast.Expr{vi.Name},
+			}
+		}
+
+		// RHS can be whatever
+		if eb.Deepen() {
+			ue.Y = eb.Expr(t)
+		} else {
+			ue.Y = eb.VarOrLit(t).(ast.Expr)
+		}
+
+		return ue
+	}
 
 	if eb.Deepen() {
 		ue.X = eb.Expr(t)
