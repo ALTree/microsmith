@@ -104,12 +104,12 @@ func TestBig(t *testing.T) {
 func TestSingleType(t *testing.T) {
 	tc := TestConfigurations["medium"]
 	for _, typ := range []string{
-		"bool", "int", "rune", "string",
-		"float64", "complex128",
+		"bool", "int", "uint", "rune",
+		"string", "float64", "complex128",
 	} {
 		t.Run(typ, func(t *testing.T) {
 			tc.SupportedTypes = []microsmith.Type{microsmith.BasicType{typ}}
-			testProgramGoTypes(t, 100, tc)
+			testProgramGoTypes(t, 20, tc)
 		})
 	}
 }
