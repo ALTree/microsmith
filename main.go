@@ -71,18 +71,23 @@ func main() {
 
 	ticker := time.Tick(30 * time.Second)
 	for _ = range ticker {
-		fmt.Printf("Built: %4d (%5.1f/min)  |  crashes: %v\n",
+		fmt.Printf("Built: %4d (%5.1f/min)  |  crashes: %v",
 			atomic.LoadInt64(&BuildCount),
 			float64(atomic.LoadInt64(&BuildCount))/time.Since(startTime).Minutes(),
 			atomic.LoadInt64(&CrashCount),
 		)
+		if kc := atomic.LoadInt64(&KnownCount); kc == 0 {
+			fmt.Print("\n")
+		} else {
+			fmt.Printf("  (known: %v)\n", kc)
+		}
 	}
 
 	select {}
 }
 
 var crashWhitelist = []*regexp.Regexp{
-	// regexp.MustCompile("bvbulkalloc too big"),
+	regexp.MustCompile("illegal combination SRA"),
 }
 
 func Fuzz(workerID uint64) {
