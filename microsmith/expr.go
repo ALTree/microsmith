@@ -36,7 +36,7 @@ func (eb *ExprBuilder) chooseToken(tokens []token.Token) token.Token {
 func (eb *ExprBuilder) BasicLit(t BasicType) *ast.BasicLit {
 	bl := new(ast.BasicLit)
 	switch t.Name() {
-	case "uint", "int":
+	case "uint", "int", "int8", "int16":
 		bl.Kind = token.INT
 		bl.Value = strconv.Itoa(eb.rs.Intn(100))
 	case "rune":
@@ -198,12 +198,12 @@ func (eb *ExprBuilder) VarOrLit(t Type) interface{} {
 				} else {
 					return FalseIdent
 				}
-			case "uint":
+			case "uint", "int8", "int16":
 				// Since integer lits are int by default, we need an
-				// explicit cast for uint.
+				// explicit cast for other types.
 				bl := eb.BasicLit(t)
 				return &ast.CallExpr{
-					Fun:  &ast.Ident{Name: "uint"},
+					Fun:  &ast.Ident{Name: t.Name()},
 					Args: []ast.Expr{bl},
 				}
 			case "float32":
@@ -395,8 +395,9 @@ func (eb *ExprBuilder) UnaryExpr(t Type) *ast.UnaryExpr {
 	switch t.Name() {
 	case "uint":
 		ue.Op = eb.chooseToken([]token.Token{token.ADD})
-	case "int", "rune":
+	case "int", "rune", "int8", "int16":
 		ue.Op = eb.chooseToken([]token.Token{token.ADD, token.SUB, token.XOR})
+		ue.Op = eb.chooseToken([]token.Token{token.ADD})
 	case "float32", "float64", "complex128":
 		ue.Op = eb.chooseToken([]token.Token{token.ADD, token.SUB})
 	case "bool":
@@ -423,7 +424,7 @@ func (eb *ExprBuilder) BinaryExpr(t Type) *ast.BinaryExpr {
 			token.ADD, token.AND, token.AND_NOT, token.MUL,
 			token.OR, token.SHR, token.XOR,
 		})
-	case "int":
+	case "int", "int8", "int16":
 		// NOTE: we can't generate token.SHR for ints, because int
 		// expressions are used as args for float64() conversions, and
 		// in this:
@@ -480,12 +481,17 @@ func (eb *ExprBuilder) BinaryExpr(t Type) *ast.BinaryExpr {
 		panic("BinaryExpr: unimplemented type " + t.Name())
 	}
 
+	t2 := t
+	if ue.Op == token.SHR { // ensure rhs > 0 for shifts
+		t2 = BasicType{"uint"}
+	}
+
 	// for some types, we need to ensure at least one element of the
 	// expr tree is a variable, or we could trigger compilation errors
 	// like "constant overflows uint" on Exprs that end up being all
 	// literals (and thus computable at compile time), and outside the
 	// type range.
-	if t.Name() == "uint" {
+	if t.Name() == "uint" || t.Name() == "int8" || t.Name() == "int16" /*|| t.Name() == "int"*/ {
 
 		// make sure LHS is not a constant
 		vi, ok := eb.scope.GetRandomVarOfType(BasicType{t.Name()}, eb.rs)
@@ -507,9 +513,9 @@ func (eb *ExprBuilder) BinaryExpr(t Type) *ast.BinaryExpr {
 
 		// RHS can be whatever
 		if eb.Deepen() {
-			ue.Y = eb.Expr(t)
+			ue.Y = eb.Expr(t2)
 		} else {
-			ue.Y = eb.VarOrLit(t).(ast.Expr)
+			ue.Y = eb.VarOrLit(t2).(ast.Expr)
 		}
 
 		return ue
@@ -518,15 +524,15 @@ func (eb *ExprBuilder) BinaryExpr(t Type) *ast.BinaryExpr {
 	if eb.Deepen() {
 		ue.X = eb.Expr(t)
 		if ue.Op != token.SHR {
-			ue.Y = eb.Expr(t)
+			ue.Y = eb.Expr(t2)
 		} else {
 			// The compiler rejects stupid shifts, so we need control
 			// on the shift amount.
-			ue.Y = eb.VarOrLit(t).(ast.Expr)
+			ue.Y = eb.VarOrLit(t2).(ast.Expr)
 		}
 	} else {
 		ue.X = eb.VarOrLit(t).(ast.Expr)
-		ue.Y = eb.VarOrLit(t).(ast.Expr)
+		ue.Y = eb.VarOrLit(t2).(ast.Expr)
 	}
 
 	return ue

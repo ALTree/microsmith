@@ -25,6 +25,8 @@ func RandConf() ProgramConf {
 	// give each type a 0.75 chance to be enabled
 	types := []Type{
 		BasicType{"uint"},
+		BasicType{"int8"},
+		BasicType{"int16"},
 		BasicType{"int"},
 		BasicType{"float32"},
 		BasicType{"float64"},
@@ -50,12 +52,8 @@ func (pc *ProgramConf) Check(fix bool) error {
 	if len(pc.SupportedTypes) == 0 {
 		if fix {
 			pc.SupportedTypes = []Type{
-				BasicType{"uint"},
 				BasicType{"int"},
-				BasicType{"float64"},
-				BasicType{"complex128"},
 				BasicType{"bool"},
-				BasicType{"string"},
 			}
 		} else {
 			return errors.New("Bad Conf: len(EnabledTypes) is zero")

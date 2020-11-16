@@ -23,6 +23,10 @@ func Ident(t Type) string {
 			return "b"
 		case "uint":
 			return "ui"
+		case "int8":
+			return "i8_"
+		case "int16":
+			return "i16_"
 		case "int":
 			return "i"
 		case "float32":
@@ -374,6 +378,8 @@ func MapOf(kt, vt Type) MapType {
 
 var BoolIdent = &ast.Ident{Name: "bool"}
 var UintIdent = &ast.Ident{Name: "uint"}
+var Int8Ident = &ast.Ident{Name: "int8"}
+var Int16Ident = &ast.Ident{Name: "int16"}
 var IntIdent = &ast.Ident{Name: "int"}
 var Float32Ident = &ast.Ident{Name: "float32"}
 var Float64Ident = &ast.Ident{Name: "float64"}
@@ -387,6 +393,10 @@ func TypeIdent(t string) *ast.Ident {
 		return BoolIdent
 	case "uint":
 		return UintIdent
+	case "int8":
+		return Int8Ident
+	case "int16":
+		return Int16Ident
 	case "int":
 		return IntIdent
 	case "float32":
