@@ -4,7 +4,7 @@ used to stress-test Go compilers.
 
 #### Bugs found
 
-##### gc compiler crashes (25)
+##### gc compiler crashes (26)
 
 - [#23504 internal compiler error: panic during layout](https://github.com/golang/go/issues/23504)
 - [#23889 panic: branch too far on arm64](https://github.com/golang/go/issues/23889)
@@ -31,3 +31,4 @@ used to stress-test Go compilers.
 - [#38946 panic: log2 of 0 on arm64](https://github.com/golang/go/issues/38946)
 - [#39472 internal compiler error: schedule does not include all values in block](https://github.com/golang/go/issues/39472)
 - [#39505 internal compiler error: Flag* ops should never make it to codegen](https://github.com/golang/go/issues/39505)
+- [#42587 illegal combination SRA ADDCON REG REG on mips](https://github.com/golang/go/issues/42587)
