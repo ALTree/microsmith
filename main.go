@@ -48,11 +48,9 @@ func main() {
 		if !(strings.Contains(*toolchainF, "gcc") || strings.Contains(*toolchainF, "tinygo")) {
 			installDeps()
 		}
-		s := "Start fuzzing"
 		if *ssacheckF {
-			s += fmt.Sprintf(" [seed %v]", microsmith.CheckSeed)
+			fmt.Printf("ssacheck [seed = %v]\n", microsmith.CheckSeed)
 		}
-		fmt.Println(s)
 	}
 
 	// Create workdir if not already there
@@ -71,7 +69,7 @@ func main() {
 
 	ticker := time.Tick(30 * time.Second)
 	for _ = range ticker {
-		fmt.Printf("Built: %4d (%5.1f/min)  |  crashes: %v",
+		fmt.Printf("Built %4d (%5.1f/min)  |  %v crashes",
 			atomic.LoadInt64(&BuildCount),
 			float64(atomic.LoadInt64(&BuildCount))/time.Since(startTime).Minutes(),
 			atomic.LoadInt64(&CrashCount),
@@ -182,7 +180,6 @@ func installDeps() {
 	}
 	cmd.Env = append(os.Environ(), "GOOS="+goos, "GOARCH="+goarch)
 
-	fmt.Printf("Installing dependencies for %s/%s\n", goos, *archF)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		lg.Fatalf("Installing dependencies failed with error:\n  ----\n  %s\n  %s\n  ----\n", out, err)
