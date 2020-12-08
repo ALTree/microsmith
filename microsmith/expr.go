@@ -487,7 +487,7 @@ func (eb *ExprBuilder) BinaryExpr(t Type) *ast.BinaryExpr {
 	// "constant overflows uint" on Exprs that end up being all
 	// literals (and thus computable at compile time), and outside the
 	// type's range.
-	if IsInt(t) || IsUint(t) {
+	if IsInt(t) || IsUint(t) || t.Name() == "float32" {
 
 		// make sure LHS is not a constant
 		vi, ok := eb.scope.GetRandomVarOfType(BasicType{t.Name()}, eb.rs)

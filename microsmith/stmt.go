@@ -35,17 +35,22 @@ type StmtConf struct {
 	MaxStmtDepth int // max depth of block nesting
 }
 
+var InitialScope Scope
+
+func init() {
+	InitialScope := make(Scope, 0, 16)
+	for _, f := range PredeclaredFuncs {
+		InitialScope = append(InitialScope, Variable{f, &ast.Ident{Name: f.Name()}})
+	}
+}
+
 func NewStmtBuilder(rs *rand.Rand, conf ProgramConf) *StmtBuilder {
 	sb := new(StmtBuilder)
 	sb.rs = rs
 	sb.conf = conf
-
 	scope := make(Scope, 0, 32)
-	for _, f := range PredeclaredFuncs {
-		scope = append(scope, Variable{f, &ast.Ident{Name: f.Name()}})
-	}
+	scope = append(scope, InitialScope...)
 	sb.scope = &scope
-
 	sb.eb = NewExprBuilder(rs, conf, sb.scope)
 	return sb
 }
