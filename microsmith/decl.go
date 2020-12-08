@@ -24,14 +24,15 @@ func RandConf() ProgramConf {
 
 	// give each type a 0.75 chance to be enabled
 	types := []Type{
-		BasicType{"uint"},
+		BasicType{"bool"},
 		BasicType{"int8"},
 		BasicType{"int16"},
+		BasicType{"int32"},
 		BasicType{"int"},
+		BasicType{"uint"},
 		BasicType{"float32"},
 		BasicType{"float64"},
 		BasicType{"complex128"},
-		BasicType{"bool"},
 		BasicType{"string"},
 		BasicType{"rune"},
 	}

@@ -215,6 +215,5 @@ func (gp Program) MoveCrasher() {
 }
 
 func (gp Program) String() string {
-	line := strings.Repeat("-", 80)
-	return fmt.Sprintf(line+"\n%s"+line, gp.source)
+	return string(gp.source)
 }

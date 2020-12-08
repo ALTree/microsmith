@@ -46,7 +46,11 @@ func NewStmtBuilder(rs *rand.Rand, conf ProgramConf) *StmtBuilder {
 		{LenFun, &ast.Ident{Name: LenFun.Name()}},
 		{Float32Conv, &ast.Ident{Name: Float32Conv.Name()}},
 		{Float64Conv, &ast.Ident{Name: Float64Conv.Name()}},
+		{Float64Conv_2, &ast.Ident{Name: Float64Conv_2.Name()}},
 		{IntConv, &ast.Ident{Name: IntConv.Name()}},
+		{Int32Conv, &ast.Ident{Name: Int32Conv.Name()}},
+		{Int32Conv_2, &ast.Ident{Name: Int32Conv_2.Name()}},
+		{Int16Conv, &ast.Ident{Name: Int16Conv.Name()}},
 
 		// a few functions from the math package
 		{MathSqrt, &ast.Ident{Name: MathSqrt.Name()}},

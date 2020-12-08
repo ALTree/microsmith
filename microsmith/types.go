@@ -21,14 +21,16 @@ func Ident(t Type) string {
 		switch t.N {
 		case "bool":
 			return "b"
-		case "uint":
-			return "ui"
 		case "int8":
 			return "i8_"
 		case "int16":
 			return "i16_"
+		case "int32":
+			return "i32_"
 		case "int":
 			return "i"
+		case "uint":
+			return "u"
 		case "float32":
 			return "h"
 		case "float64":
@@ -93,6 +95,15 @@ func (bt BasicType) Name() string {
 func (bt BasicType) Sliceable() bool {
 	return bt.N == "string"
 }
+
+// func IsInt(t Type) bool {
+// 	switch t.Name() {
+// 	case "int", "int8", "int16", "int32", "int64":
+// 		return true
+// 	default:
+// 		return false
+// 	}
+// }
 
 // -------------------------------- //
 //   pointer                        //
@@ -295,10 +306,34 @@ var Float64Conv FuncType = FuncType{
 	[]Type{BasicType{"float64"}},
 	false,
 }
+var Float64Conv_2 FuncType = FuncType{
+	"float64",
+	[]Type{BasicType{"int"}},
+	[]Type{BasicType{"float64"}},
+	false,
+}
 var IntConv FuncType = FuncType{
 	"int",
 	[]Type{BasicType{"uint"}},
 	[]Type{BasicType{"int"}},
+	false,
+}
+var Int32Conv FuncType = FuncType{
+	"int32",
+	[]Type{BasicType{"int16"}},
+	[]Type{BasicType{"int32"}},
+	false,
+}
+var Int32Conv_2 FuncType = FuncType{
+	"int32",
+	[]Type{BasicType{"int8"}},
+	[]Type{BasicType{"int32"}},
+	false,
+}
+var Int16Conv FuncType = FuncType{
+	"int16",
+	[]Type{BasicType{"int8"}},
+	[]Type{BasicType{"int16"}},
 	false,
 }
 
@@ -377,10 +412,11 @@ func MapOf(kt, vt Type) MapType {
 // ------------------------------------ //
 
 var BoolIdent = &ast.Ident{Name: "bool"}
-var UintIdent = &ast.Ident{Name: "uint"}
 var Int8Ident = &ast.Ident{Name: "int8"}
 var Int16Ident = &ast.Ident{Name: "int16"}
+var Int32Ident = &ast.Ident{Name: "int32"}
 var IntIdent = &ast.Ident{Name: "int"}
+var UintIdent = &ast.Ident{Name: "uint"}
 var Float32Ident = &ast.Ident{Name: "float32"}
 var Float64Ident = &ast.Ident{Name: "float64"}
 var ComplexIdent = &ast.Ident{Name: "complex128"}
@@ -397,6 +433,8 @@ func TypeIdent(t string) *ast.Ident {
 		return Int8Ident
 	case "int16":
 		return Int16Ident
+	case "int32":
+		return Int32Ident
 	case "int":
 		return IntIdent
 	case "float32":
@@ -409,7 +447,6 @@ func TypeIdent(t string) *ast.Ident {
 		return StringIdent
 	case "rune":
 		return RuneIdent
-
 	default:
 		panic("TypeIdent: cannot handle type " + t)
 	}

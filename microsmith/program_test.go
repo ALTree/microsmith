@@ -2,6 +2,7 @@ package microsmith_test
 
 import (
 	"go/ast"
+	"io/ioutil"
 	"math/rand"
 	"os"
 	"testing"
@@ -61,6 +62,10 @@ func testProgramGoTypes(t *testing.T, n int, conf microsmith.ProgramConf) {
 		}
 		err = gp.Check()
 		if err != nil {
+			tmpfile, _ := ioutil.TempFile("", "fail*.go")
+			if _, err := tmpfile.Write([]byte(gp.String())); err != nil {
+				t.Fatal(err)
+			}
 			t.Fatalf("Program failed typechecking with error:\n%s", err)
 		}
 

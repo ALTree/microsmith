@@ -36,7 +36,7 @@ func (eb *ExprBuilder) chooseToken(tokens []token.Token) token.Token {
 func (eb *ExprBuilder) BasicLit(t BasicType) *ast.BasicLit {
 	bl := new(ast.BasicLit)
 	switch t.Name() {
-	case "uint", "int", "int8", "int16":
+	case "uint", "int", "int8", "int16", "int32":
 		bl.Kind = token.INT
 		bl.Value = strconv.Itoa(eb.rs.Intn(100))
 	case "rune":
@@ -198,7 +198,7 @@ func (eb *ExprBuilder) VarOrLit(t Type) interface{} {
 				} else {
 					return FalseIdent
 				}
-			case "uint", "int8", "int16":
+			case "uint", "int8", "int16", "int32":
 				// Since integer lits are int by default, we need an
 				// explicit cast for other types.
 				bl := eb.BasicLit(t)
@@ -395,9 +395,8 @@ func (eb *ExprBuilder) UnaryExpr(t Type) *ast.UnaryExpr {
 	switch t.Name() {
 	case "uint":
 		ue.Op = eb.chooseToken([]token.Token{token.ADD})
-	case "int", "rune", "int8", "int16":
+	case "int", "rune", "int8", "int16", "int32":
 		ue.Op = eb.chooseToken([]token.Token{token.ADD, token.SUB, token.XOR})
-		ue.Op = eb.chooseToken([]token.Token{token.ADD})
 	case "float32", "float64", "complex128":
 		ue.Op = eb.chooseToken([]token.Token{token.ADD, token.SUB})
 	case "bool":
@@ -419,12 +418,12 @@ func (eb *ExprBuilder) BinaryExpr(t Type) *ast.BinaryExpr {
 	ue := new(ast.BinaryExpr)
 
 	switch t.Name() {
-	case "uint":
+	case "uint", "int8", "int16", "int32":
 		ue.Op = eb.chooseToken([]token.Token{
 			token.ADD, token.AND, token.AND_NOT, token.MUL,
-			token.OR, token.SHR, token.XOR,
+			token.OR, token.SHR, token.SUB, token.XOR,
 		})
-	case "int", "int8", "int16":
+	case "int":
 		// NOTE: we can't generate token.SHR for ints, because int
 		// expressions are used as args for float64() conversions, and
 		// in this:
@@ -449,7 +448,7 @@ func (eb *ExprBuilder) BinaryExpr(t Type) *ast.BinaryExpr {
 		//   invalid operation: 8 >> i (shift of type float64)
 		ue.Op = eb.chooseToken([]token.Token{
 			token.ADD, token.AND, token.AND_NOT, token.MUL,
-			token.OR, token.SHR, token.SUB, token.XOR,
+			token.OR /*token.SHR,*/, token.SUB, token.XOR,
 		})
 	case "rune":
 		ue.Op = eb.chooseToken([]token.Token{
@@ -460,9 +459,6 @@ func (eb *ExprBuilder) BinaryExpr(t Type) *ast.BinaryExpr {
 		ue.Op = eb.chooseToken([]token.Token{token.ADD, token.SUB, token.MUL})
 	case "bool":
 		if eb.rs.Intn(2) == 0 {
-			// If ints and/or strings are enabled, we can generate '<'
-			// too, otherwise we're restricted to eq/neq. Select a
-			// random type, and then find a suitable op
 			t = RandType(eb.conf.SupportedTypes)
 			ops := []token.Token{token.EQL, token.NEQ}
 			if name := t.Name(); name != "bool" && name != "complex128" {
@@ -486,12 +482,12 @@ func (eb *ExprBuilder) BinaryExpr(t Type) *ast.BinaryExpr {
 		t2 = BasicType{"uint"}
 	}
 
-	// for some types, we need to ensure at least one element of the
-	// expr tree is a variable, or we could trigger compilation errors
-	// like "constant overflows uint" on Exprs that end up being all
+	// For some types, we need to ensure at least one leaf of the expr
+	// tree is a variable, or we'll trigger compilation errors as
+	// "constant overflows uint" on Exprs that end up being all
 	// literals (and thus computable at compile time), and outside the
-	// type range.
-	if t.Name() == "uint" || t.Name() == "int8" || t.Name() == "int16" /*|| t.Name() == "int"*/ {
+	// type's range.
+	if t.Name() == "uint" || t.Name() == "int8" || t.Name() == "int16" || t.Name() == "int32" {
 
 		// make sure LHS is not a constant
 		vi, ok := eb.scope.GetRandomVarOfType(BasicType{t.Name()}, eb.rs)
