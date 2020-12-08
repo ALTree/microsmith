@@ -27,6 +27,8 @@ func Ident(t Type) string {
 			return "i16_"
 		case "int32":
 			return "i32_"
+		case "int64":
+			return "i64_"
 		case "int":
 			return "i"
 		case "uint":
@@ -96,14 +98,23 @@ func (bt BasicType) Sliceable() bool {
 	return bt.N == "string"
 }
 
-// func IsInt(t Type) bool {
-// 	switch t.Name() {
-// 	case "int", "int8", "int16", "int32", "int64":
-// 		return true
-// 	default:
-// 		return false
-// 	}
-// }
+func IsInt(t Type) bool {
+	switch t.Name() {
+	case "int", "int8", "int16", "int32", "int64":
+		return true
+	default:
+		return false
+	}
+}
+
+func IsUint(t Type) bool {
+	switch t.Name() {
+	case "uint", "uint8", "uint16", "uint32", "uint64":
+		return true
+	default:
+		return false
+	}
+}
 
 // -------------------------------- //
 //   pointer                        //
@@ -289,77 +300,104 @@ func RandFuncType(EnabledTypes []Type) FuncType {
 }
 
 var LenFun FuncType = FuncType{
-	"len",
-	nil, // custom handling
-	[]Type{BasicType{"int"}},
-	false,
+	N:    "len",
+	Args: nil, // custom handling
+	Ret:  []Type{BasicType{"int"}},
 }
-var Float32Conv FuncType = FuncType{
-	"float32",
-	[]Type{BasicType{"float64"}},
-	[]Type{BasicType{"float32"}},
-	false,
+var Float32Float64Conv FuncType = FuncType{
+	N:    "float32",
+	Args: []Type{BasicType{"float64"}},
+	Ret:  []Type{BasicType{"float32"}},
 }
-var Float64Conv FuncType = FuncType{
-	"float64",
-	[]Type{BasicType{"float32"}},
-	[]Type{BasicType{"float64"}},
-	false,
+var Float64Float32Conv FuncType = FuncType{
+	N:    "float64",
+	Args: []Type{BasicType{"float32"}},
+	Ret:  []Type{BasicType{"float64"}},
 }
-var Float64Conv_2 FuncType = FuncType{
-	"float64",
-	[]Type{BasicType{"int"}},
-	[]Type{BasicType{"float64"}},
-	false,
+var IntFloat64Conv FuncType = FuncType{
+	N:    "float64",
+	Args: []Type{BasicType{"int"}},
+	Ret:  []Type{BasicType{"float64"}},
 }
-var IntConv FuncType = FuncType{
-	"int",
-	[]Type{BasicType{"uint"}},
-	[]Type{BasicType{"int"}},
-	false,
+var IntUintConv FuncType = FuncType{
+	N:    "int",
+	Args: []Type{BasicType{"uint"}},
+	Ret:  []Type{BasicType{"int"}},
 }
-var Int32Conv FuncType = FuncType{
-	"int32",
-	[]Type{BasicType{"int16"}},
-	[]Type{BasicType{"int32"}},
-	false,
+var UintIntConv FuncType = FuncType{
+	N:    "uint",
+	Args: []Type{BasicType{"int"}},
+	Ret:  []Type{BasicType{"uint"}},
 }
-var Int32Conv_2 FuncType = FuncType{
-	"int32",
-	[]Type{BasicType{"int8"}},
-	[]Type{BasicType{"int32"}},
-	false,
+var Int16IntConv FuncType = FuncType{
+	N:    "int16",
+	Args: []Type{BasicType{"int"}},
+	Ret:  []Type{BasicType{"int16"}},
 }
-var Int16Conv FuncType = FuncType{
-	"int16",
-	[]Type{BasicType{"int8"}},
-	[]Type{BasicType{"int16"}},
-	false,
+var IntInt16Conv FuncType = FuncType{
+	N:    "int",
+	Args: []Type{BasicType{"int16"}},
+	Ret:  []Type{BasicType{"int"}},
+}
+var Int8Int32Conv FuncType = FuncType{
+	N:    "int8",
+	Args: []Type{BasicType{"int32"}},
+	Ret:  []Type{BasicType{"int8"}},
+}
+var Int32Int8Conv FuncType = FuncType{
+	N:    "int32",
+	Args: []Type{BasicType{"int8"}},
+	Ret:  []Type{BasicType{"int32"}},
+}
+var Int8UintConv FuncType = FuncType{
+	N:    "int8",
+	Args: []Type{BasicType{"uint"}},
+	Ret:  []Type{BasicType{"int8"}},
+}
+var IntInt64Conv FuncType = FuncType{
+	N:    "int",
+	Args: []Type{BasicType{"int64"}},
+	Ret:  []Type{BasicType{"int"}},
 }
 
 var MathSqrt FuncType = FuncType{
-	"math.Sqrt",
-	[]Type{BasicType{"float64"}},
-	[]Type{BasicType{"float64"}},
-	false,
+	N:    "math.Sqrt",
+	Args: []Type{BasicType{"float64"}},
+	Ret:  []Type{BasicType{"float64"}},
 }
 var MathMax FuncType = FuncType{
-	"math.Max",
-	[]Type{BasicType{"float64"}, BasicType{"float64"}},
-	[]Type{BasicType{"float64"}},
-	false,
+	N:    "math.Max",
+	Args: []Type{BasicType{"float64"}, BasicType{"float64"}},
+	Ret:  []Type{BasicType{"float64"}},
 }
 var MathNaN FuncType = FuncType{
-	"math.NaN",
-	[]Type{},
-	[]Type{BasicType{"float64"}},
-	false,
+	N:    "math.NaN",
+	Args: []Type{},
+	Ret:  []Type{BasicType{"float64"}},
 }
 var MathLdexp FuncType = FuncType{
-	"math.Ldexp",
-	[]Type{BasicType{"float64"}, BasicType{"int"}},
-	[]Type{BasicType{"float64"}},
-	false,
+	N:    "math.Ldexp",
+	Args: []Type{BasicType{"float64"}, BasicType{"int"}},
+	Ret:  []Type{BasicType{"float64"}},
+}
+
+var PredeclaredFuncs = []FuncType{
+	LenFun,
+	Float32Float64Conv,
+	Float64Float32Conv,
+	IntFloat64Conv,
+	IntUintConv,
+	UintIntConv,
+	Int16IntConv,
+	IntInt16Conv,
+	Int8Int32Conv,
+	Int32Int8Conv,
+	Int8UintConv,
+	IntInt64Conv,
+	MathSqrt,
+	MathMax,
+	MathNaN,
+	MathLdexp,
 }
 
 // -------------------------------- //
@@ -411,45 +449,23 @@ func MapOf(kt, vt Type) MapType {
 //   preallocated                       //
 // ------------------------------------ //
 
-var BoolIdent = &ast.Ident{Name: "bool"}
-var Int8Ident = &ast.Ident{Name: "int8"}
-var Int16Ident = &ast.Ident{Name: "int16"}
-var Int32Ident = &ast.Ident{Name: "int32"}
-var IntIdent = &ast.Ident{Name: "int"}
-var UintIdent = &ast.Ident{Name: "uint"}
-var Float32Ident = &ast.Ident{Name: "float32"}
-var Float64Ident = &ast.Ident{Name: "float64"}
-var ComplexIdent = &ast.Ident{Name: "complex128"}
-var StringIdent = &ast.Ident{Name: "string"}
-var RuneIdent = &ast.Ident{Name: "rune"}
+var Idents = map[string]*ast.Ident{
+	"bool":       &ast.Ident{Name: "bool"},
+	"int":        &ast.Ident{Name: "int"},
+	"int8":       &ast.Ident{Name: "int8"},
+	"int16":      &ast.Ident{Name: "int16"},
+	"int32":      &ast.Ident{Name: "int32"},
+	"int64":      &ast.Ident{Name: "int64"},
+	"uint":       &ast.Ident{Name: "uint"},
+	"float32":    &ast.Ident{Name: "float32"},
+	"float64":    &ast.Ident{Name: "float64"},
+	"complex128": &ast.Ident{Name: "complex128"},
+	"rune":       &ast.Ident{Name: "rune"},
+	"string":     &ast.Ident{Name: "string"},
+}
 
 func TypeIdent(t string) *ast.Ident {
-	switch t {
-	case "bool":
-		return BoolIdent
-	case "uint":
-		return UintIdent
-	case "int8":
-		return Int8Ident
-	case "int16":
-		return Int16Ident
-	case "int32":
-		return Int32Ident
-	case "int":
-		return IntIdent
-	case "float32":
-		return Float32Ident
-	case "float64":
-		return Float64Ident
-	case "complex128":
-		return ComplexIdent
-	case "string":
-		return StringIdent
-	case "rune":
-		return RuneIdent
-	default:
-		panic("TypeIdent: cannot handle type " + t)
-	}
+	return Idents[t]
 }
 
 var LenIdent = &ast.Ident{Name: "len"}

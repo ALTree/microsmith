@@ -18,10 +18,12 @@ var TestConfigurations = map[string]microsmith.ProgramConf{
 			MaxStmtDepth: 1,
 		},
 		[]microsmith.Type{
+			microsmith.BasicType{"bool"},
 			microsmith.BasicType{"int"},
+			microsmith.BasicType{"uint"},
 			microsmith.BasicType{"float64"},
 			microsmith.BasicType{"complex128"},
-			microsmith.BasicType{"bool"},
+			microsmith.BasicType{"rune"},
 			microsmith.BasicType{"string"},
 		},
 	},
@@ -31,10 +33,12 @@ var TestConfigurations = map[string]microsmith.ProgramConf{
 			MaxStmtDepth: 2,
 		},
 		[]microsmith.Type{
+			microsmith.BasicType{"bool"},
 			microsmith.BasicType{"int"},
+			microsmith.BasicType{"uint"},
 			microsmith.BasicType{"float64"},
 			microsmith.BasicType{"complex128"},
-			microsmith.BasicType{"bool"},
+			microsmith.BasicType{"rune"},
 			microsmith.BasicType{"string"},
 		},
 	},
@@ -44,10 +48,12 @@ var TestConfigurations = map[string]microsmith.ProgramConf{
 			MaxStmtDepth: 3,
 		},
 		[]microsmith.Type{
+			microsmith.BasicType{"bool"},
 			microsmith.BasicType{"int"},
+			microsmith.BasicType{"uint"},
 			microsmith.BasicType{"float64"},
 			microsmith.BasicType{"complex128"},
-			microsmith.BasicType{"bool"},
+			microsmith.BasicType{"rune"},
 			microsmith.BasicType{"string"},
 		},
 	},
@@ -109,8 +115,8 @@ func TestBig(t *testing.T) {
 func TestSingleType(t *testing.T) {
 	tc := TestConfigurations["medium"]
 	for _, typ := range []string{
-		"bool", "int", "uint", "rune", "string",
-		"float32", "float64", "complex128",
+		"bool", "int", "int8", "int16", "int32", "int64", "uint",
+		"float32", "float64", "complex128", "rune", "string",
 	} {
 		t.Run(typ, func(t *testing.T) {
 			tc.SupportedTypes = []microsmith.Type{microsmith.BasicType{typ}}
@@ -120,12 +126,8 @@ func TestSingleType(t *testing.T) {
 }
 
 func TestStmtStats(t *testing.T) {
-
 	for i := 0; i < 100; i++ {
-		gp, _ := microsmith.NewProgram(
-			rand.New(rand.NewSource(444)),
-			microsmith.RandConf(),
-		)
+		gp, _ := microsmith.NewProgram(rand.New(rand.NewSource(444)), microsmith.RandConf())
 		checkStats(t, gp)
 	}
 }
@@ -193,12 +195,14 @@ var BenchConf = microsmith.ProgramConf{
 		MaxStmtDepth: 2,
 	},
 	[]microsmith.Type{
+		microsmith.BasicType{"bool"},
 		microsmith.BasicType{"int"},
+		microsmith.BasicType{"int16"},
+		microsmith.BasicType{"uint"},
 		microsmith.BasicType{"float64"},
 		microsmith.BasicType{"complex128"},
-		microsmith.BasicType{"bool"},
-		microsmith.BasicType{"string"},
 		microsmith.BasicType{"rune"},
+		microsmith.BasicType{"string"},
 	},
 }
 

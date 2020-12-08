@@ -40,24 +40,10 @@ func NewStmtBuilder(rs *rand.Rand, conf ProgramConf) *StmtBuilder {
 	sb.rs = rs
 	sb.conf = conf
 
-	scope := make(Scope, 0, 16)
-	scope = append(scope, []Variable{
-		// pre-declared function
-		{LenFun, &ast.Ident{Name: LenFun.Name()}},
-		{Float32Conv, &ast.Ident{Name: Float32Conv.Name()}},
-		{Float64Conv, &ast.Ident{Name: Float64Conv.Name()}},
-		{Float64Conv_2, &ast.Ident{Name: Float64Conv_2.Name()}},
-		{IntConv, &ast.Ident{Name: IntConv.Name()}},
-		{Int32Conv, &ast.Ident{Name: Int32Conv.Name()}},
-		{Int32Conv_2, &ast.Ident{Name: Int32Conv_2.Name()}},
-		{Int16Conv, &ast.Ident{Name: Int16Conv.Name()}},
-
-		// a few functions from the math package
-		{MathSqrt, &ast.Ident{Name: MathSqrt.Name()}},
-		{MathMax, &ast.Ident{Name: MathMax.Name()}},
-		{MathNaN, &ast.Ident{Name: MathNaN.Name()}},
-		{MathLdexp, &ast.Ident{Name: MathLdexp.Name()}}}...,
-	)
+	scope := make(Scope, 0, 32)
+	for _, f := range PredeclaredFuncs {
+		scope = append(scope, Variable{f, &ast.Ident{Name: f.Name()}})
+	}
 	sb.scope = &scope
 
 	sb.eb = NewExprBuilder(rs, conf, sb.scope)

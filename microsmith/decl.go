@@ -22,23 +22,24 @@ func RandConf() ProgramConf {
 
 	rs := rand.New(rand.NewSource(int64(time.Now().UnixNano())))
 
-	// give each type a 0.75 chance to be enabled
+	// give each type a 0.70 chance to be enabled
 	types := []Type{
 		BasicType{"bool"},
+		BasicType{"int"},
 		BasicType{"int8"},
 		BasicType{"int16"},
 		BasicType{"int32"},
-		BasicType{"int"},
+		BasicType{"int64"},
 		BasicType{"uint"},
 		BasicType{"float32"},
 		BasicType{"float64"},
 		BasicType{"complex128"},
-		BasicType{"string"},
 		BasicType{"rune"},
+		BasicType{"string"},
 	}
 	var enabledTypes []Type
 	for _, t := range types {
-		if rs.Float64() < 0.75 {
+		if rs.Float64() < 0.70 {
 			enabledTypes = append(enabledTypes, t)
 		}
 	}

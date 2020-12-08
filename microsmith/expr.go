@@ -36,7 +36,7 @@ func (eb *ExprBuilder) chooseToken(tokens []token.Token) token.Token {
 func (eb *ExprBuilder) BasicLit(t BasicType) *ast.BasicLit {
 	bl := new(ast.BasicLit)
 	switch t.Name() {
-	case "uint", "int", "int8", "int16", "int32":
+	case "uint", "int", "int8", "int16", "int32", "int64":
 		bl.Kind = token.INT
 		bl.Value = strconv.Itoa(eb.rs.Intn(100))
 	case "rune":
@@ -198,7 +198,7 @@ func (eb *ExprBuilder) VarOrLit(t Type) interface{} {
 				} else {
 					return FalseIdent
 				}
-			case "uint", "int8", "int16", "int32":
+			case "uint", "int8", "int16", "int32", "int64":
 				// Since integer lits are int by default, we need an
 				// explicit cast for other types.
 				bl := eb.BasicLit(t)
@@ -395,14 +395,14 @@ func (eb *ExprBuilder) UnaryExpr(t Type) *ast.UnaryExpr {
 	switch t.Name() {
 	case "uint":
 		ue.Op = eb.chooseToken([]token.Token{token.ADD})
-	case "int", "rune", "int8", "int16", "int32":
+	case "int", "rune", "int8", "int16", "int32", "int64":
 		ue.Op = eb.chooseToken([]token.Token{token.ADD, token.SUB, token.XOR})
 	case "float32", "float64", "complex128":
 		ue.Op = eb.chooseToken([]token.Token{token.ADD, token.SUB})
 	case "bool":
 		ue.Op = eb.chooseToken([]token.Token{token.NOT})
 	default:
-		panic("UnaryExpr: invalid type " + t.Name())
+		panic("Unhandled type " + t.Name())
 	}
 
 	if eb.Deepen() {
@@ -418,7 +418,7 @@ func (eb *ExprBuilder) BinaryExpr(t Type) *ast.BinaryExpr {
 	ue := new(ast.BinaryExpr)
 
 	switch t.Name() {
-	case "uint", "int8", "int16", "int32":
+	case "uint", "int8", "int16", "int32", "int64":
 		ue.Op = eb.chooseToken([]token.Token{
 			token.ADD, token.AND, token.AND_NOT, token.MUL,
 			token.OR, token.SHR, token.SUB, token.XOR,
@@ -474,7 +474,7 @@ func (eb *ExprBuilder) BinaryExpr(t Type) *ast.BinaryExpr {
 	case "string":
 		ue.Op = eb.chooseToken([]token.Token{token.ADD})
 	default:
-		panic("BinaryExpr: unimplemented type " + t.Name())
+		panic("Unhandled type " + t.Name())
 	}
 
 	t2 := t
@@ -487,7 +487,7 @@ func (eb *ExprBuilder) BinaryExpr(t Type) *ast.BinaryExpr {
 	// "constant overflows uint" on Exprs that end up being all
 	// literals (and thus computable at compile time), and outside the
 	// type's range.
-	if t.Name() == "uint" || t.Name() == "int8" || t.Name() == "int16" || t.Name() == "int32" {
+	if IsInt(t) || IsUint(t) {
 
 		// make sure LHS is not a constant
 		vi, ok := eb.scope.GetRandomVarOfType(BasicType{t.Name()}, eb.rs)
