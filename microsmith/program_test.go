@@ -82,7 +82,7 @@ func testProgramGoTypes(t *testing.T, n int, conf microsmith.ProgramConf) {
 func TestRandConf(t *testing.T) {
 	lim := 50
 	if testing.Short() {
-		lim = 20
+		lim = 5
 	}
 	for i := 0; i < lim; i++ {
 		conf := microsmith.RandConf()
@@ -109,7 +109,11 @@ func TestMedium(t *testing.T) {
 }
 
 func TestBig(t *testing.T) {
-	testProgramGoTypes(t, 10, TestConfigurations["big"])
+	lim := 10
+	if testing.Short() {
+		lim = 2
+	}
+	testProgramGoTypes(t, lim, TestConfigurations["big"])
 }
 
 func TestSingleType(t *testing.T) {
@@ -120,13 +124,13 @@ func TestSingleType(t *testing.T) {
 	} {
 		t.Run(typ, func(t *testing.T) {
 			tc.SupportedTypes = []microsmith.Type{microsmith.BasicType{typ}}
-			testProgramGoTypes(t, 20, tc)
+			testProgramGoTypes(t, 10, tc)
 		})
 	}
 }
 
 func TestStmtStats(t *testing.T) {
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 50; i++ {
 		gp, _ := microsmith.NewProgram(rand.New(rand.NewSource(444)), microsmith.RandConf())
 		checkStats(t, gp)
 	}

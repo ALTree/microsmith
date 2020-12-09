@@ -421,7 +421,8 @@ func (eb *ExprBuilder) BinaryExpr(t Type) *ast.BinaryExpr {
 	case "uint", "int8", "int16", "int32", "int64":
 		ue.Op = eb.chooseToken([]token.Token{
 			token.ADD, token.AND, token.AND_NOT, token.MUL,
-			token.OR, token.SHR, token.SUB, token.XOR,
+			token.OR, token.QUO, token.REM, token.SHR,
+			token.SUB, token.XOR,
 		})
 	case "int":
 		// NOTE: we can't generate token.SHR for ints, because int
@@ -489,29 +490,28 @@ func (eb *ExprBuilder) BinaryExpr(t Type) *ast.BinaryExpr {
 	// type's range.
 	if IsInt(t) || IsUint(t) || t.Name() == "float32" {
 
-		// make sure LHS is not a constant
-		vi, ok := eb.scope.GetRandomVarOfType(BasicType{t.Name()}, eb.rs)
-		if ok {
-			// at least one variable of the required type is in scope,
-			// use that one
-			ue.X = vi.Name
+		// LHS can be whatever
+		if eb.Deepen() {
+			ue.X = eb.Expr(t)
 		} else {
-			// otherwise, cast from an int var (there's always one)
+			ue.X = eb.VarOrLit(t).(ast.Expr)
+		}
+
+		// make sure the RHS is not a constant expression
+		vi, ok := eb.scope.GetRandomVarOfType(BasicType{t2.Name()}, eb.rs)
+		if ok {
+			// a variable of the required type is in scope, use that
+			ue.Y = vi.Name
+		} else {
+			// otherwise, cast from an int (there's always one in scope)
 			vi, ok := eb.scope.GetRandomVarOfType(BasicType{"int"}, eb.rs)
 			if !ok {
 				panic("BinaryExpr: no int in scope")
 			}
-			ue.X = &ast.CallExpr{
-				Fun:  &ast.Ident{Name: t.Name()},
+			ue.Y = &ast.CallExpr{
+				Fun:  &ast.Ident{Name: t2.Name()},
 				Args: []ast.Expr{vi.Name},
 			}
-		}
-
-		// RHS can be whatever
-		if eb.Deepen() {
-			ue.Y = eb.Expr(t2)
-		} else {
-			ue.Y = eb.VarOrLit(t2).(ast.Expr)
 		}
 
 		return ue
