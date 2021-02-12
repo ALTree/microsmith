@@ -66,24 +66,31 @@ func (eb *ExprBuilder) CompositeLit(t Type) *ast.CompositeLit {
 	case BasicType:
 		panic("CompositeLit: basic type " + t.Name())
 	case ArrayType:
-		cl := &ast.CompositeLit{
-			Type: &ast.ArrayType{Elt: &ast.Ident{
-				Name: t.Base().Name()},
-			},
-		}
-		clElems := []ast.Expr{}
+		cl := &ast.CompositeLit{Type: t.TypeAst()}
+		elems := []ast.Expr{}
 		for i := 0; i < eb.rs.Intn(5); i++ {
 			if eb.Deepen() {
-				clElems = append(clElems, eb.Expr(t.Base()))
+				elems = append(elems, eb.Expr(t.Base()))
 			} else {
-				clElems = append(clElems, eb.VarOrLit(t.Base()).(ast.Expr))
+				elems = append(elems, eb.VarOrLit(t.Base()).(ast.Expr))
 			}
 		}
-		cl.Elts = clElems
-
+		cl.Elts = elems
+		return cl
+	case StructType:
+		cl := &ast.CompositeLit{Type: t.TypeAst()}
+		elems := []ast.Expr{}
+		for _, t := range t.Ftypes {
+			if eb.Deepen() {
+				elems = append(elems, eb.Expr(t))
+			} else {
+				elems = append(elems, eb.VarOrLit(t).(ast.Expr))
+			}
+		}
+		cl.Elts = elems
 		return cl
 	default:
-		panic("CompositeLit: bad type " + t.Name())
+		panic("CompositeLit: unsupported type " + t.Name())
 	}
 }
 

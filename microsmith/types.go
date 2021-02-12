@@ -157,12 +157,18 @@ func (at ArrayType) Base() Type {
 	return at.Etype
 }
 
-func (bt ArrayType) Sliceable() bool {
+func (at ArrayType) Sliceable() bool {
 	return true
 }
 
 func ArrOf(t Type) ArrayType {
 	return ArrayType{t}
+}
+
+func (at ArrayType) TypeAst() *ast.ArrayType {
+	return &ast.ArrayType{
+		Elt: &ast.Ident{Name: at.Base().Name()},
+	}
 }
 
 // -------------------------------- //
@@ -192,7 +198,7 @@ func (st StructType) String() string {
 	return s
 }
 
-func (st StructType) BuildAst() *ast.StructType {
+func (st StructType) TypeAst() *ast.StructType {
 
 	fields := make([]*ast.Field, 0, len(st.Fnames))
 

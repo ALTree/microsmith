@@ -129,17 +129,21 @@ func (sb *StmtBuilder) AssignStmt() *ast.AssignStmt {
 	switch t := v.Type.(type) {
 
 	case StructType:
-		// we don't build struct literals yet, so if we got a struct
-		// we'll assign to one of its fields.
-		//
-		// TODO(alb): implement support for struct literals in Expr,
-		// then enable assignments to structs
-		fieldType := t.Ftypes[sb.rs.Intn(len(t.Fnames))]
-		return &ast.AssignStmt{
-			// struct.field = <expr>
-			Lhs: []ast.Expr{sb.eb.StructFieldExpr(v, fieldType)},
-			Tok: token.ASSIGN,
-			Rhs: []ast.Expr{sb.eb.Expr(fieldType)},
+		// For structs, 50/50 between assigning to the variable, or
+		// setting one of its fields.
+		if sb.rs.Intn(2) == 0 { // v = struct{<expr>, <expr>, ...}
+			return &ast.AssignStmt{
+				Lhs: []ast.Expr{v.Name},
+				Tok: token.ASSIGN,
+				Rhs: []ast.Expr{sb.eb.CompositeLit(t)},
+			}
+		} else { // v.field = <expr>
+			fieldType := t.Ftypes[sb.rs.Intn(len(t.Fnames))]
+			return &ast.AssignStmt{
+				Lhs: []ast.Expr{sb.eb.StructFieldExpr(v, fieldType)},
+				Tok: token.ASSIGN,
+				Rhs: []ast.Expr{sb.eb.Expr(fieldType)},
+			}
 		}
 
 	case ArrayType:
@@ -338,7 +342,7 @@ func (sb *StmtBuilder) DeclStmt(nVars int, t Type) (*ast.DeclStmt, []*ast.Ident)
 	case PointerType:
 		typ = &ast.StarExpr{X: TypeIdent(t2.Base().Name())}
 	case StructType:
-		typ = t2.BuildAst()
+		typ = t2.TypeAst()
 	case ChanType:
 		typ = &ast.ChanType{Dir: 3, Value: TypeIdent(t2.Base().Name())}
 	case MapType:

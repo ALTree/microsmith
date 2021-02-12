@@ -9,13 +9,18 @@ import (
 var src string = `
 package main
 
+import "fmt"
+
 func main() {
-label:
-  for i := 0; i < 10; i++ {
-    if i == 7 {
-      goto label
-    }
-  }
+	var s struct {
+		i int
+		s string
+	}
+
+	s = struct {
+		i int
+		s string
+	}{0, "hi"}
 }
 `
 
