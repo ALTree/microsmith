@@ -175,11 +175,8 @@ func TestProgramGc(t *testing.T) {
 			t.Fatalf("%v", err)
 		}
 	}
-	defer func() {
-		os.RemoveAll(WorkDir)
-	}()
-
 	rand := rand.New(rand.NewSource(42))
+	keepdir := false
 	for i := 0; i < 50; i++ {
 		gp, _ := microsmith.NewProgram(rand, microsmith.RandConf())
 		err := gp.WriteToFile(WorkDir)
@@ -188,9 +185,13 @@ func TestProgramGc(t *testing.T) {
 		}
 		out, err := gp.Compile("go", "amd64", false, false, false)
 		if err != nil {
-			t.Fatalf("Program did not compile: %s\n%s\n%s", out, err, gp)
+			t.Fatalf("Program did not compile: %s", out)
+			keepdir = false
 		}
-		gp.DeleteFile()
+	}
+
+	if !keepdir {
+		os.RemoveAll(WorkDir)
 	}
 }
 
