@@ -266,20 +266,13 @@ func (eb *ExprBuilder) ArrayIndexExpr(v Variable) *ast.IndexExpr {
 		panic("ArrayIndexExpr: not an array: " + v.String())
 	}
 
-	// We can't just generate an Expr for the index, because constant
-	// exprs that end up being negative cause a compilation error.
-	//
-	// If there is at least one int variable in scope, we can generate
-	// 'I + Expr()' as index, which is guaranteed not to be constant. If
-	// not, we just to use a literal.
 	var index ast.Expr
-	vi, ok := eb.scope.GetRandomVarOfType(BasicType{"int"}, eb.rs)
-	if ok && eb.Deepen() {
-		index = &ast.BinaryExpr{
-			X:  vi.Name,
-			Op: token.ADD,
-			Y:  eb.Expr(BasicType{"int"}),
-		}
+	if eb.rs.Intn(2) == 0 && eb.Deepen() {
+		// Expr() could be UnaryExpr(), which is not allowed since if
+		// it ends up negative and constant it'll trigger a
+		// compilation error. Use BinaryExpr() which is guaranteed not
+		// to be constant for ints.
+		index = eb.BinaryExpr(BasicType{"int"})
 	} else {
 		index = eb.VarOrLit(BasicType{"int"}).(ast.Expr)
 	}
