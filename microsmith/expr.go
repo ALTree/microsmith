@@ -184,8 +184,6 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 // derived expression is only returned when there are not variables of
 // type t in scope.
 //
-// TODO(alb): make it return derived Expr more often
-//
 // TODO(alb): we never call SliceExpr, i.e. if the requested type is
 // []int we always return any []int in scope, but we should instead
 // sometimes return an expr that slices into one of the []ints
@@ -194,8 +192,9 @@ func (eb *ExprBuilder) VarOrLit(t Type) interface{} {
 	vt, typeInScope := eb.scope.GetRandomVarOfType(t, eb.rs)
 	vst, typeCanDerive := eb.scope.GetRandomVarOfSubtype(t, eb.rs)
 
-	// Literal of type t
-	if eb.rs.Intn(2) == 0 || (!typeInScope && !typeCanDerive) {
+	// No variable of type t is in scope, and we cannot derive from
+	// another variable, so return a literal.
+	if (!typeInScope && !typeCanDerive) || eb.rs.Intn(2) == 0 {
 		switch t := t.(type) {
 		case BasicType:
 			switch t.Name() {
@@ -229,8 +228,9 @@ func (eb *ExprBuilder) VarOrLit(t Type) interface{} {
 		}
 	}
 
-	// Expr of type t
-	if typeInScope {
+	// If we can't derive, return a variable (possibly by slicing). If
+	// we can, 50/50 between deriving and returning a variable.
+	if !typeCanDerive || (typeInScope && eb.rs.Intn(2) == 0) {
 		// If it's sliceable, slice it with chance 0.5
 		if vt.Type.Sliceable() && eb.rs.Intn(2) == 0 {
 			return eb.SliceExpr(vt)
@@ -238,7 +238,6 @@ func (eb *ExprBuilder) VarOrLit(t Type) interface{} {
 			return vt.Name
 		}
 	}
-	// no variable of type t in scope, we have to derive.
 
 	switch vst.Type.(type) {
 	case ArrayType:
