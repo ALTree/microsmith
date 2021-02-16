@@ -152,7 +152,7 @@ func (sb *StmtBuilder) AssignStmt() *ast.AssignStmt {
 		//   2. AI[<expr>] = <expr>
 		if sb.rs.Intn(2) == 0 {
 			return &ast.AssignStmt{
-				Lhs: []ast.Expr{sb.eb.ArrayIndexExpr(v)},
+				Lhs: []ast.Expr{sb.eb.IndexExpr(v)},
 				Tok: token.ASSIGN,
 				Rhs: []ast.Expr{sb.eb.Expr(t.Base())},
 			}

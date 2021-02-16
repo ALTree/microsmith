@@ -21,6 +21,8 @@ func Ident(t Type) string {
 		switch t.N {
 		case "bool":
 			return "b"
+		case "byte":
+			return "by"
 		case "int8":
 			return "i8_"
 		case "int16":
@@ -109,7 +111,7 @@ func IsInt(t Type) bool {
 
 func IsUint(t Type) bool {
 	switch t.Name() {
-	case "uint", "uint8", "uint16", "uint32", "uint64":
+	case "byte", "uint", "uint8", "uint16", "uint32", "uint64":
 		return true
 	default:
 		return false
@@ -457,6 +459,7 @@ func MapOf(kt, vt Type) MapType {
 
 var Idents = map[string]*ast.Ident{
 	"bool":       &ast.Ident{Name: "bool"},
+	"byte":       &ast.Ident{Name: "byte"},
 	"int":        &ast.Ident{Name: "int"},
 	"int8":       &ast.Ident{Name: "int8"},
 	"int16":      &ast.Ident{Name: "int16"},

@@ -282,7 +282,12 @@ func (ls Scope) GetRandomVarOfSubtype(t Type, rs *rand.Rand) (Variable, bool) {
 				vars = append(vars, v)
 			}
 		case BasicType:
-			// Can't be used to derive, nothing to do
+			if t.Name() != "byte" {
+				continue
+			}
+			if v.Type.Name() == "string" {
+				vars = append(vars, v)
+			}
 		}
 	}
 

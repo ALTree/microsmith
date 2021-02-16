@@ -36,7 +36,7 @@ func (eb *ExprBuilder) chooseToken(tokens []token.Token) token.Token {
 func (eb *ExprBuilder) BasicLit(t BasicType) *ast.BasicLit {
 	bl := new(ast.BasicLit)
 	switch t.Name() {
-	case "uint", "int", "int8", "int16", "int32", "int64":
+	case "byte", "uint", "int", "int8", "int16", "int32", "int64":
 		bl.Kind = token.INT
 		bl.Value = strconv.Itoa(eb.rs.Intn(100))
 	case "rune":
@@ -205,7 +205,7 @@ func (eb *ExprBuilder) VarOrLit(t Type) interface{} {
 				} else {
 					return FalseIdent
 				}
-			case "uint", "int8", "int16", "int32", "int64":
+			case "byte", "uint", "int8", "int16", "int32", "int64":
 				// Since integer lits are int by default, we need an
 				// explicit cast for other types.
 				bl := eb.BasicLit(t)
@@ -242,7 +242,7 @@ func (eb *ExprBuilder) VarOrLit(t Type) interface{} {
 
 	switch vst.Type.(type) {
 	case ArrayType:
-		return eb.ArrayIndexExpr(vst)
+		return eb.IndexExpr(vst)
 	case MapType:
 		return eb.MapIndexExpr(vst)
 	case StructType:
@@ -254,6 +254,10 @@ func (eb *ExprBuilder) VarOrLit(t Type) interface{} {
 			Op: token.MUL,
 			X:  &ast.Ident{Name: vst.Name.Name},
 		}
+	case BasicType:
+		if vst.Type.Name() == "string" {
+			return eb.IndexExpr(vst)
+		}
 	}
 
 	panic("unreachable")
@@ -261,8 +265,10 @@ func (eb *ExprBuilder) VarOrLit(t Type) interface{} {
 
 // Returns an ast.IndexExpr which index into v (of type Array) either
 // using an int literal or an int Expr.
-func (eb *ExprBuilder) ArrayIndexExpr(v Variable) *ast.IndexExpr {
-	if _, ok := v.Type.(ArrayType); !ok {
+func (eb *ExprBuilder) IndexExpr(v Variable) *ast.IndexExpr {
+	_, oka := v.Type.(ArrayType)
+	_, oks := v.Type.(BasicType)
+	if !(oka || (oks && v.Type.Name() == "string")) {
 		panic("ArrayIndexExpr: not an array: " + v.String())
 	}
 
@@ -393,9 +399,9 @@ func (eb *ExprBuilder) UnaryExpr(t Type) *ast.UnaryExpr {
 	}
 
 	switch t.Name() {
-	case "uint":
+	case "byte", "uint":
 		ue.Op = eb.chooseToken([]token.Token{token.ADD})
-	case "int", "rune", "int8", "int16", "int32", "int64":
+	case "int", "rune", "int8", "int16", "int32", "int64": /* TODO: replace with isInt?*/
 		ue.Op = eb.chooseToken([]token.Token{token.ADD, token.SUB, token.XOR})
 	case "float32", "float64", "complex128":
 		ue.Op = eb.chooseToken([]token.Token{token.ADD, token.SUB})
@@ -418,7 +424,7 @@ func (eb *ExprBuilder) BinaryExpr(t Type) *ast.BinaryExpr {
 	ue := new(ast.BinaryExpr)
 
 	switch t.Name() {
-	case "uint", "int8", "int16", "int32", "int64":
+	case "byte", "uint", "int8", "int16", "int32", "int64":
 		ue.Op = eb.chooseToken([]token.Token{
 			token.ADD, token.AND, token.AND_NOT, token.MUL,
 			token.OR, token.QUO, token.REM, token.SHR,
