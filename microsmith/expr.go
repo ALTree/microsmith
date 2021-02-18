@@ -400,7 +400,7 @@ func (eb *ExprBuilder) UnaryExpr(t Type) *ast.UnaryExpr {
 	switch t.Name() {
 	case "byte", "uint":
 		ue.Op = eb.chooseToken([]token.Token{token.ADD})
-	case "int", "rune", "int8", "int16", "int32", "int64": /* TODO: replace with isInt?*/
+	case "int", "rune", "int8", "int16", "int32", "int64":
 		ue.Op = eb.chooseToken([]token.Token{token.ADD, token.SUB, token.XOR})
 	case "float32", "float64", "complex128":
 		ue.Op = eb.chooseToken([]token.Token{token.ADD, token.SUB})
@@ -430,22 +430,21 @@ func (eb *ExprBuilder) BinaryExpr(t Type) *ast.BinaryExpr {
 			token.SUB, token.XOR,
 		})
 	case "int":
-		// NOTE: we can't generate token.SHR for ints, because int
+		// We can't generate token.SHR for ints, because int
 		// expressions are used as args for float64() conversions, and
 		// in this:
 		//
 		//   var i int = 2
 		// 	 float64(8 >> i)
 		//
-		// 8 is actually of type float64(!); because, according to
-		// the spec:
+		// 8 is actually of type float64; because, from the spec:
 		//
 		//   If the left operand of a non-constant shift expression is
 		//   an untyped constant, it is first implicitly converted to
 		//   the type it would assume if the shift expression were
 		//   replaced by its left operand alone.
 		//
-		// and apparently in float64(8), 8 untyped is a float64. So
+		// ans apparently in float64(8), 8 is a float64. So
 		//
 		//   float64(8 >> i)
 		//

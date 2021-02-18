@@ -161,14 +161,14 @@ func Fuzz(workerID uint64) {
 
 		atomic.AddInt64(&BuildCount, 1)
 		if err == nil || known {
-			gp.DeleteFile()
+			gp.DeleteSource()
 		}
 
 	}
 }
 
 func installDeps() {
-	cmd := exec.Command(*toolchainF, "install", "math")
+	cmd := exec.Command(*toolchainF, "install", "std")
 	goos := "linux"
 	if *archF == "wasm" {
 		goos = "js"

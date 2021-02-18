@@ -12,15 +12,7 @@ package main
 import "fmt"
 
 func main() {
-	var s struct {
-		i int
-		s string
-	}
-
-	s = struct {
-		i int
-		s string
-	}{0, "hi"}
+   f0()
 }
 `
 

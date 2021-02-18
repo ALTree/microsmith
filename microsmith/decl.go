@@ -112,12 +112,17 @@ func (db *DeclBuilder) File(pName string, fCount int) *ast.File {
 		af.Decls = append(af.Decls, db.FuncDecl(i))
 	}
 
-	// finally, an empty main func
+	// finally, the main function
 	if pName == "main" {
 		mainF := &ast.FuncDecl{
 			Name: &ast.Ident{Name: "main"},
 			Type: &ast.FuncType{Params: &ast.FieldList{}},
 			Body: &ast.BlockStmt{},
+		}
+		for i := 0; i < fCount; i++ {
+			mainF.Body.List = append(
+				mainF.Body.List,
+				&ast.ExprStmt{&ast.CallExpr{Fun: db.FuncIdent(i)}})
 		}
 		af.Decls = append(af.Decls, mainF)
 	}
