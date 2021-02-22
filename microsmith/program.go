@@ -164,20 +164,21 @@ func (gp *Program) Compile(toolchain, goarch string, noopt, race, ssacheck bool)
 		}
 		buildArgs = append(buildArgs, gp.fileName)
 
-		cmd := exec.Command(toolchain, buildArgs...)
+		env := os.Environ()
 		if goarch == "wasm" {
-			cmd.Env = append(os.Environ(), "GOOS=js")
+			env = append(env, "GOOS=js")
 		} else {
-			cmd.Env = append(os.Environ(), "GOOS=linux")
+			env = append(env, "GOOS=linux")
 		}
 		if goarch == "386sf" {
-			cmd.Env = append(cmd.Env, "GOARCH=386", "GO386=softfloat")
+			env = append(env, "GOARCH=386", "GO386=softfloat")
 		} else {
-			cmd.Env = append(cmd.Env, "GOARCH="+goarch)
+			env = append(env, "GOARCH="+goarch)
 		}
 
 		// compile
-		cmd.Dir = gp.workdir
+		cmd := exec.Command(toolchain, buildArgs...)
+		cmd.Dir, cmd.Env = gp.workdir, env
 		out, err := cmd.CombinedOutput()
 		if err != nil {
 			return string(out), err
@@ -185,8 +186,7 @@ func (gp *Program) Compile(toolchain, goarch string, noopt, race, ssacheck bool)
 
 		// link
 		cmd = exec.Command(toolchain, "tool", "link", "-o", binName, arcName)
-		cmd.Env = append(os.Environ(), "GOOS=linux", "GOARCH="+goarch)
-		cmd.Dir = gp.workdir
+		cmd.Dir, cmd.Env = gp.workdir, env
 		out, err = cmd.CombinedOutput()
 		if err != nil {
 			return string(out), err
