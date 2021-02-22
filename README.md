@@ -4,7 +4,7 @@ used to stress-test Go compilers.
 
 #### Bugs found
 
-##### gc compiler crashes (29)
+##### gc compiler crashes (30)
 
 - [#23504 internal compiler error: panic during layout](https://github.com/golang/go/issues/23504)
 - [#23889 panic: branch too far on arm64](https://github.com/golang/go/issues/23889)
@@ -35,3 +35,4 @@ used to stress-test Go compilers.
 - [#42610 internal compiler error: PPC64 shift arg mb out of range](https://github.com/golang/go/issues/42610)
 - [#43099 internal compiler error: panic during lower (integer divide by zero)](https://github.com/golang/go/issues/43099)
 - [#43701 panic: invalid memory address or nil pointer dereference](https://github.com/golang/go/issues/43701)
+- [#44465 internal compiler error: arg 1 does not dominate](https://github.com/golang/go/issues/44465)
