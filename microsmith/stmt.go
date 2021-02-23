@@ -147,9 +147,9 @@ func (sb *StmtBuilder) AssignStmt() *ast.AssignStmt {
 		}
 
 	case ArrayType:
-		// if we got an array, 50/50 between
-		//   1. AI = []int{ <exprs> }
-		//   2. AI[<expr>] = <expr>
+		// For arrays, 50/50 between
+		//   1. A = { <exprs> }
+		//   2. A[<expr>] = <expr>
 		if sb.rs.Intn(2) == 0 {
 			return &ast.AssignStmt{
 				Lhs: []ast.Expr{sb.eb.IndexExpr(v)},
@@ -168,10 +168,21 @@ func (sb *StmtBuilder) AssignStmt() *ast.AssignStmt {
 		panic("AssignStmt: requested addressable, got chan")
 
 	case MapType:
-		return &ast.AssignStmt{
-			Lhs: []ast.Expr{sb.eb.MapIndexExpr(v)},
-			Tok: token.ASSIGN,
-			Rhs: []ast.Expr{sb.eb.Expr(v.Type.(MapType).ValueT)},
+		// For maps, 50/50 between
+		//   1. M = { <expr>: <expr> }
+		//   2. M[<expr>] = <expr>
+		if sb.rs.Intn(2) == 0 {
+			return &ast.AssignStmt{
+				Lhs: []ast.Expr{sb.eb.MapIndexExpr(v)},
+				Tok: token.ASSIGN,
+				Rhs: []ast.Expr{sb.eb.Expr(v.Type.(MapType).ValueT)},
+			}
+		} else {
+			return &ast.AssignStmt{
+				Lhs: []ast.Expr{v.Name},
+				Tok: token.ASSIGN,
+				Rhs: []ast.Expr{sb.eb.Expr(v.Type)},
+			}
 		}
 
 	case FuncType:

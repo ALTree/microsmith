@@ -77,6 +77,24 @@ func (eb *ExprBuilder) CompositeLit(t Type) *ast.CompositeLit {
 		}
 		cl.Elts = elems
 		return cl
+	case MapType:
+		cl := &ast.CompositeLit{Type: t.TypeAst()}
+		var e *ast.KeyValueExpr
+		if eb.Deepen() {
+			e = &ast.KeyValueExpr{
+				Key:   eb.Expr(t.KeyT),
+				Value: eb.Expr(t.ValueT),
+			}
+		} else {
+			e = &ast.KeyValueExpr{
+				Key:   eb.VarOrLit(t.KeyT).(ast.Expr),
+				Value: eb.VarOrLit(t.ValueT).(ast.Expr),
+			}
+		}
+		// Duplicate map keys are a compile error, but avoiding them
+		// is hard, so only have 1 element for now.
+		cl.Elts = []ast.Expr{e}
+		return cl
 	case StructType:
 		cl := &ast.CompositeLit{Type: t.TypeAst()}
 		elems := []ast.Expr{}
@@ -124,6 +142,9 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 
 	case ArrayType:
 		// no unary or binary operators for composite types
+		expr = eb.CompositeLit(t)
+
+	case MapType:
 		expr = eb.CompositeLit(t)
 
 	case PointerType:

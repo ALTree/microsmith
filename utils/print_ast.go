@@ -12,7 +12,8 @@ package main
 import "fmt"
 
 func main() {
-   f0()
+  var m map[int]string
+  m = map[int]string{1: "hi"}
 }
 `
 

@@ -453,6 +453,13 @@ func MapOf(kt, vt Type) MapType {
 	return MapType{kt, vt}
 }
 
+func (mp MapType) TypeAst() *ast.MapType {
+	return &ast.MapType{
+		Key:   &ast.Ident{Name: mp.KeyT.Name()},
+		Value: &ast.Ident{Name: mp.ValueT.Name()},
+	}
+}
+
 // ------------------------------------ //
 //   preallocated                       //
 // ------------------------------------ //
