@@ -205,10 +205,9 @@ func (gp Program) DeleteBinaries() {
 	if err != nil {
 		log.Printf("could not remove %s: %s", binPath+".o", err)
 	}
-	err = os.Remove(binPath)
-	if err != nil {
-		log.Printf("could not remove %s: %s", binPath, err)
-	}
+
+	// ignore error since some toolchains don't write a binary
+	_ = os.Remove(binPath)
 }
 
 // DeleteSource deletes the file containing the source code of gp, as
