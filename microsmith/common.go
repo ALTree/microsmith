@@ -5,25 +5,26 @@ import (
 	"strconv"
 )
 
-// Returns a random ASCII string of length 0-15
+// Returns a random ASCII string of length 0-16
 func RandString() string {
 	rs := []string{
 		`""`,
-		`"u"`,
-		`"g?"`,
-		`"dga"`,
-		`"o32f"`,
-		`";v9;o"`,
-		`":v=gz6"`,
-		`"rvo:i6i"`,
-		`"d8vl1=k8"`,
-		`"v23u=7e;z"`,
-		`"c[rv=qy;5j"`,
-		`"b@0jpkdi8j5"`,
-		`"c1uw9ob=tjr4"`,
-		`"bem>?u@zhuitn"`,
-		`"zo9tpa==1e0o<="`,
-		`"abn87ct2i[ww=>:"`,
+		`"a"`,
+		`"ab"`,
+		`"abc"`,
+		`"abcd"`,
+		`"abcde"`,
+		`"abcdef"`,
+		`"abcdefg"`,
+		`"abcdefgh"`,
+		`"abcdefghi"`,
+		`"abcdefghij"`,
+		`"abcdefghijk"`,
+		`"abcdefghijkl"`,
+		`"abcdefghijklm"`,
+		`"abcdefghijklmn"`,
+		`"abcdefghijklmno"`,
+		`"abcdefghijklmnop"`,
 	}
 	return rs[rand.Intn(len(rs))]
 }
