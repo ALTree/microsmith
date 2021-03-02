@@ -163,7 +163,7 @@ func (at ArrayType) Sliceable() bool {
 	return true
 }
 
-func ArrOf(t Type) ArrayType {
+func ArrayOf(t Type) ArrayType {
 	return ArrayType{t}
 }
 
@@ -297,14 +297,29 @@ func RandFuncType(EnabledTypes []Type) FuncType {
 	args := make([]Type, 0, rand.Intn(6))
 	for i := 0; i < cap(args); i++ {
 		typ := RandType(EnabledTypes)
-		if t, ok := typ.(BasicType); !ok {
+		if _, ok := typ.(BasicType); !ok {
 			panic("RandFuncType: non basic type " + typ.Name())
-		} else {
-			args = append(args, t)
 		}
+		t := typ
+		if rand.Intn(2) == 0 {
+			t = PointerOf(t)
+		}
+		if rand.Intn(2) == 0 {
+			t = ArrayOf(t)
+		}
+		args = append(args, t)
 	}
-	ret := []Type{RandType(EnabledTypes)}
-	return FuncType{"FU", args, ret, true}
+
+	// choose return type
+	ret := RandType(EnabledTypes)
+	if rand.Intn(2) == 0 {
+		ret = PointerOf(ret)
+	}
+	if rand.Intn(2) == 0 {
+		ret = ArrayOf(ret)
+	}
+
+	return FuncType{"FU", args, []Type{ret}, true}
 }
 
 var LenFun FuncType = FuncType{

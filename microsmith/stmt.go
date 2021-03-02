@@ -314,7 +314,7 @@ func (sb *StmtBuilder) RandomType() Type {
 		}
 		switch sb.rs.Intn(6) {
 		case 0:
-			t = ArrOf(t)
+			t = ArrayOf(t)
 		case 1:
 			t2 := RandType(st)
 			if sb.rs.Intn(3) == 0 {
