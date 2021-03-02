@@ -481,7 +481,11 @@ var Idents = map[string]*ast.Ident{
 }
 
 func TypeIdent(t string) *ast.Ident {
-	return Idents[t]
+	if i, ok := Idents[t]; ok {
+		return i
+	} else {
+		return &ast.Ident{Name: t}
+	}
 }
 
 var LenIdent = &ast.Ident{Name: "len"}

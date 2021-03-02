@@ -282,48 +282,54 @@ func (sb *StmtBuilder) BlockStmt() *ast.BlockStmt {
 }
 
 // Returns an arrays of n random Types. That can include basic types,
-// arrays, chans, and randomly generated struct types. It's guaranteed
-// to have at least one addressable/assignable type.
+// arrays, chans, and randomly generated struct and func types. It's
+// guaranteed to have at least one addressable/assignable type.
 func (sb *StmtBuilder) RandomTypes(n int) []Type {
 	if n < 1 {
-		panic("RandomTypes: n is 0")
+		panic("n < 1")
 	}
 
 	types := make([]Type, 0, n)
+	types = append(types, BasicType{"int"}) // Mandatory assignable type
 
-	// first, our mandatory assignable type; use an Int
-	types = append(types, BasicType{"int"})
-	n--
-
-	st := sb.conf.SupportedTypes
-	for ; n > 0; n-- {
-		// Choose at random between a struct, a function, or a basic
-		// type with chances 1, 1, 4
-		switch sb.rs.Intn(6) {
-		case 0:
-			types = append(types, RandStructType(st))
-		case 1:
-			types = append(types, RandFuncType(st))
-		default:
-			t := RandType(st)
-			switch sb.rs.Intn(6) {
-			case 0:
-				t = ArrOf(t)
-			case 1:
-				t2 := RandType(st)
-				t = MapOf(t, t2)
-			case 2:
-				t = PointerOf(t)
-			case 3:
-				t = ChanOf(t)
-			default: // 3 < n < 6
-				// 1/3 of keeping t as a plain variable
-			}
-			types = append(types, t)
-		}
+	for i := 0; i < n-1; i++ {
+		types = append(types, sb.RandomType())
 	}
 
 	return types
+}
+
+func (sb *StmtBuilder) RandomType() Type {
+	st := sb.conf.SupportedTypes
+	var t Type
+	switch sb.rs.Intn(6) {
+	case 0:
+		t = RandStructType(st)
+	case 1:
+		t = RandFuncType(st)
+	default:
+		t = RandType(st)
+		if sb.rs.Intn(3) == 0 {
+			t = PointerOf(t)
+		}
+		switch sb.rs.Intn(6) {
+		case 0:
+			t = ArrOf(t)
+		case 1:
+			t2 := RandType(st)
+			if sb.rs.Intn(3) == 0 {
+				t2 = PointerOf(t2)
+			}
+			t = MapOf(t, t2)
+		case 2:
+			t = PointerOf(t)
+		case 3:
+			t = ChanOf(t)
+		default: // 3 < n < 6
+			// 1/3 of keeping t as a plain variable
+		}
+	}
+	return t
 }
 
 // DeclStmt returns a DeclStmt where nVars new variables of type kind

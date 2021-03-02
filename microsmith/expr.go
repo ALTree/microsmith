@@ -141,7 +141,6 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 		}
 
 	case ArrayType:
-		// no unary or binary operators for composite types
 		expr = eb.CompositeLit(t)
 
 	case MapType:
@@ -244,8 +243,19 @@ func (eb *ExprBuilder) VarOrLit(t Type) interface{} {
 			}
 		case ArrayType:
 			return eb.CompositeLit(t)
+		case PointerType:
+			if typeInScope {
+				return vt.Name
+			} else if vt, ok := eb.scope.GetRandomVarOfType(t.Base(), eb.rs); ok {
+				return &ast.UnaryExpr{
+					Op: token.AND,
+					X:  &ast.Ident{Name: vt.Name.Name},
+				}
+			} else {
+				return &ast.Ident{Name: "nil"}
+			}
 		default:
-			panic("VarOrLit: unsupported type")
+			panic("VarOrLit: unsupported type " + t.Name())
 		}
 	}
 
