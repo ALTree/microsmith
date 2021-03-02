@@ -140,10 +140,7 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 			}
 		}
 
-	case ArrayType:
-		expr = eb.CompositeLit(t)
-
-	case MapType:
+	case ArrayType, MapType:
 		expr = eb.CompositeLit(t)
 
 	case PointerType:
@@ -170,11 +167,6 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 		} else {
 			expr = &ast.Ident{Name: "nil"}
 		}
-
-	case FuncType:
-		// We don't assign to function, so we never need to generate
-		// Exprs of FuncType
-		panic("Expr: called with FuncType")
 
 	default:
 		panic("Expr: bad type " + t.Name())
