@@ -36,3 +36,7 @@ used to stress-test Go compilers.
 - [#43099 internal compiler error: panic during lower (integer divide by zero)](https://github.com/golang/go/issues/43099)
 - [#43701 panic: invalid memory address or nil pointer dereference](https://github.com/golang/go/issues/43701)
 - [#44465 internal compiler error: arg 1 does not dominate](https://github.com/golang/go/issues/44465)
+
+##### tinygo (1)
+
+- [#1653 LLVM ERROR: Cannot select: intrinsic %llvm.coro.size](https://github.com/tinygo-org/tinygo/issues/1653)
