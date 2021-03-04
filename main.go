@@ -43,7 +43,7 @@ func main() {
 	nWorkers := *pF
 	if *debugF {
 		nWorkers = 1
-		microsmith.Nfuncs = 1
+		microsmith.FuncCount = 1
 	} else {
 		if !(strings.Contains(*toolchainF, "gcc") || strings.Contains(*toolchainF, "tinygo")) {
 			installDeps()

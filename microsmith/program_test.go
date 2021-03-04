@@ -225,6 +225,6 @@ func BenchmarkProgram(b *testing.B) {
 	rand := rand.New(rand.NewSource(19))
 	for i := 0; i < b.N; i++ {
 		db := microsmith.NewDeclBuilder(rand, BenchConf)
-		gp = db.File("main", 1)
+		gp = db.File(1)
 	}
 }

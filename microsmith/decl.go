@@ -94,9 +94,9 @@ func (db *DeclBuilder) FuncIdent(i int) *ast.Ident {
 
 // returns *ast.File containing a package 'pName' and its source code,
 // containing fCount functions.
-func (db *DeclBuilder) File(pName string, fCount int) *ast.File {
+func (db *DeclBuilder) File(n int) *ast.File {
 	af := new(ast.File)
-	af.Name = &ast.Ident{0, pName, nil}
+	af.Name = &ast.Ident{0, "main", nil}
 	af.Decls = []ast.Decl{}
 
 	af.Decls = append(af.Decls, MakeImport(`"math"`))
@@ -107,24 +107,23 @@ func (db *DeclBuilder) File(pName string, fCount int) *ast.File {
 	af.Decls = append(af.Decls, MakeUsePakage(`"math"`))
 
 	// now, a few functions
-	for i := 0; i < fCount; i++ {
+	for i := 0; i < n; i++ {
 		af.Decls = append(af.Decls, db.FuncDecl(i))
 	}
 
 	// finally, the main function
-	if pName == "main" {
-		mainF := &ast.FuncDecl{
-			Name: &ast.Ident{Name: "main"},
-			Type: &ast.FuncType{Params: &ast.FieldList{}},
-			Body: &ast.BlockStmt{},
-		}
-		for i := 0; i < fCount; i++ {
-			mainF.Body.List = append(
-				mainF.Body.List,
-				&ast.ExprStmt{&ast.CallExpr{Fun: db.FuncIdent(i)}})
-		}
-		af.Decls = append(af.Decls, mainF)
+
+	mainF := &ast.FuncDecl{
+		Name: &ast.Ident{Name: "main"},
+		Type: &ast.FuncType{Params: &ast.FieldList{}},
+		Body: &ast.BlockStmt{},
 	}
+	for i := 0; i < n; i++ {
+		mainF.Body.List = append(
+			mainF.Body.List,
+			&ast.ExprStmt{&ast.CallExpr{Fun: db.FuncIdent(i)}})
+	}
+	af.Decls = append(af.Decls, mainF)
 
 	return af
 }

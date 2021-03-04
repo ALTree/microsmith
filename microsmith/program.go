@@ -37,7 +37,7 @@ type ProgramStats struct {
 	// TODO: expr stats
 }
 
-var Nfuncs int = 8
+var FuncCount = 8
 var CheckSeed int
 
 func init() {
@@ -48,6 +48,7 @@ func init() {
 // NewProgram uses a DeclBuilder to generate a new random Go program
 // with the given seed.
 func NewProgram(rs *rand.Rand, conf ProgramConf) (*Program, error) {
+
 	// Check if conf is a valid one, but without silently fixing it.
 	// We want to return an error upstream.
 	if err := conf.Check(false); err != nil {
@@ -56,7 +57,7 @@ func NewProgram(rs *rand.Rand, conf ProgramConf) (*Program, error) {
 
 	db := NewDeclBuilder(rs, conf)
 	var buf bytes.Buffer
-	printer.Fprint(&buf, token.NewFileSet(), db.File("main", Nfuncs))
+	printer.Fprint(&buf, token.NewFileSet(), db.File(FuncCount))
 
 	gp := &Program{id: rs.Uint64(), source: buf.Bytes()}
 	gp.Stats.Stmt = db.sb.stats
