@@ -129,10 +129,10 @@ func Fuzz(workerID uint64) {
 			lg.Fatalf("Could not write program to file: %s", err)
 		}
 
-		// Crash Fuzzer if compilation takes more than 60s
+		// Stop fuzzing if the compiler hangs for more than 60s
 		timeout := time.AfterFunc(
 			60*time.Second,
-			func() { lg.Fatalf("> 60s compilation time for\n%s\n", gp) },
+			func() { lg.Fatalf("Program took more than 60s to compile\n") },
 		)
 		out, err := gp.Compile(*toolchainF, *archF, *nooptF, *raceF, *ssacheckF)
 		timeout.Stop()

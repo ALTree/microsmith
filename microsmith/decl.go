@@ -16,8 +16,7 @@ type ProgramConf struct {
 
 func RandConf() ProgramConf {
 	pc := ProgramConf{
-		StmtConf{MaxStmtDepth: 1 + rand.Intn(3)},
-		nil,
+		StmtConf: StmtConf{MaxStmtDepth: 1 + rand.Intn(3)},
 	}
 
 	rs := rand.New(rand.NewSource(int64(time.Now().UnixNano())))
