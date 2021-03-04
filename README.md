@@ -37,6 +37,11 @@ used to stress-test Go compilers.
 - [#43701 panic: invalid memory address or nil pointer dereference](https://github.com/golang/go/issues/43701)
 - [#44465 internal compiler error: arg 1 does not dominate](https://github.com/golang/go/issues/44465)
 
+##### gccgo (2)
+
+- [#44383 internal compiler error: Segmentation fault during GIMPLE pass ealias](https://github.com/golang/go/issues/44383)
+- [#44386 internal compiler error: Segmentation fault with -Og during GIMPLE pass fre](https://github.com/golang/go/issues/44386)
+
 ##### tinygo (1)
 
 - [#1653 LLVM ERROR: Cannot select: intrinsic %llvm.coro.size](https://github.com/tinygo-org/tinygo/issues/1653)
