@@ -7,7 +7,7 @@ import (
 	"math/rand"
 )
 
-var allTypes = []Type{
+var AllTypes = []Type{
 	BasicType{"int"}, // always enabled, leave in first position
 	BasicType{"bool"},
 	BasicType{"byte"},
@@ -31,8 +31,8 @@ type ProgramConf struct {
 func RandConf(rs *rand.Rand) ProgramConf {
 	var pc ProgramConf
 	pc.StmtConf = StmtConf{MaxStmtDepth: 1 + rand.Intn(3)}
-	pc.SupportedTypes = []Type{allTypes[0]}
-	for _, t := range allTypes[1:] {
+	pc.SupportedTypes = []Type{AllTypes[0]}
+	for _, t := range AllTypes[1:] {
 		if rs.Float64() < 0.70 { // each type has a 0.70 chance to be enabled
 			pc.SupportedTypes = append(pc.SupportedTypes, t)
 		}
