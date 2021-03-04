@@ -92,13 +92,13 @@ func Fuzz(workerID uint64) {
 	rs := rand.New(
 		rand.NewSource(int64(0xfaff0011 * workerID * uint64(time.Now().UnixNano()))),
 	)
-	conf := microsmith.RandConf()
+	conf := microsmith.RandConf(rs)
 
 	counter := 0
 	for {
 		counter++
 		if counter == 16 {
-			conf = microsmith.RandConf()
+			conf = microsmith.RandConf(rs)
 			counter = 0
 		}
 

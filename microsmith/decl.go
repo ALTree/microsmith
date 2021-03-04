@@ -1,68 +1,43 @@
 package microsmith
 
 import (
-	"errors"
 	"fmt"
 	"go/ast"
 	"go/token"
 	"math/rand"
-	"time"
 )
+
+var allTypes = []Type{
+	BasicType{"int"}, // always enabled, leave in first position
+	BasicType{"bool"},
+	BasicType{"byte"},
+	BasicType{"int8"},
+	BasicType{"int16"},
+	BasicType{"int32"},
+	BasicType{"int64"},
+	BasicType{"uint"},
+	BasicType{"float32"},
+	BasicType{"float64"},
+	BasicType{"complex128"},
+	BasicType{"rune"},
+	BasicType{"string"},
+}
 
 type ProgramConf struct {
 	StmtConf       // defined in stmt.go
 	SupportedTypes []Type
 }
 
-func RandConf() ProgramConf {
-	pc := ProgramConf{
-		StmtConf: StmtConf{MaxStmtDepth: 1 + rand.Intn(3)},
-	}
-
-	rs := rand.New(rand.NewSource(int64(time.Now().UnixNano())))
-
-	// give each type a 0.70 chance to be enabled
-	types := []Type{
-		BasicType{"bool"},
-		BasicType{"byte"},
-		BasicType{"int"},
-		BasicType{"int8"},
-		BasicType{"int16"},
-		BasicType{"int32"},
-		BasicType{"int64"},
-		BasicType{"uint"},
-		BasicType{"float32"},
-		BasicType{"float64"},
-		BasicType{"complex128"},
-		BasicType{"rune"},
-		BasicType{"string"},
-	}
-	var enabledTypes []Type
-	for _, t := range types {
-		if rs.Float64() < 0.70 {
-			enabledTypes = append(enabledTypes, t)
+func RandConf(rs *rand.Rand) ProgramConf {
+	var pc ProgramConf
+	pc.StmtConf = StmtConf{MaxStmtDepth: 1 + rand.Intn(3)}
+	pc.SupportedTypes = []Type{allTypes[0]}
+	for _, t := range allTypes[1:] {
+		if rs.Float64() < 0.70 { // each type has a 0.70 chance to be enabled
+			pc.SupportedTypes = append(pc.SupportedTypes, t)
 		}
 	}
-	pc.SupportedTypes = enabledTypes
-
-	pc.Check(true) // fix conf without reporting errors
 	return pc
-}
-
-func (pc *ProgramConf) Check(fix bool) error {
-	// at least one type needs to be enabled
-	if len(pc.SupportedTypes) == 0 {
-		if fix {
-			pc.SupportedTypes = []Type{
-				BasicType{"int"},
-				BasicType{"bool"},
-			}
-		} else {
-			return errors.New("Bad Conf: len(EnabledTypes) is zero")
-		}
-	}
-
-	return nil
 }
 
 type DeclBuilder struct {

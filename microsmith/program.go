@@ -49,12 +49,6 @@ func init() {
 // with the given seed.
 func NewProgram(rs *rand.Rand, conf ProgramConf) (*Program, error) {
 
-	// Check if conf is a valid one, but without silently fixing it.
-	// We want to return an error upstream.
-	if err := conf.Check(false); err != nil {
-		return nil, err
-	}
-
 	db := NewDeclBuilder(rs, conf)
 	var buf bytes.Buffer
 	printer.Fprint(&buf, token.NewFileSet(), db.File(FuncCount))

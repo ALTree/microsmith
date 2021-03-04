@@ -84,7 +84,7 @@ func TestRandConf(t *testing.T) {
 		lim = 5
 	}
 	for i := 0; i < lim; i++ {
-		conf := microsmith.RandConf()
+		conf := microsmith.RandConf(rand.New(rand.NewSource(42)))
 		// leave this (useful for debugging)
 		//fmt.Printf("%+v\n\n", conf)
 		testProgramGoTypes(t, 10, conf)
@@ -138,7 +138,8 @@ func TestSingleType(t *testing.T) {
 
 func TestStmtStats(t *testing.T) {
 	for i := 0; i < 50; i++ {
-		gp, _ := microsmith.NewProgram(rand.New(rand.NewSource(444)), microsmith.RandConf())
+		rs := rand.New(rand.NewSource(444))
+		gp, _ := microsmith.NewProgram(rs, microsmith.RandConf(rs))
 		checkStats(t, gp)
 	}
 }
@@ -185,7 +186,7 @@ func TestProgramGc(t *testing.T) {
 	rand := rand.New(rand.NewSource(42))
 	keepdir := false
 	for i := 0; i < 50; i++ {
-		gp, _ := microsmith.NewProgram(rand, microsmith.RandConf())
+		gp, _ := microsmith.NewProgram(rand, microsmith.RandConf(rand))
 		err := gp.WriteToFile(WorkDir)
 		if err != nil {
 			t.Fatalf("Could not write to file: %s", err)
