@@ -378,6 +378,18 @@ func (sb *StmtBuilder) DeclStmt(nVars int, t Type) (*ast.DeclStmt, []*ast.Ident)
 		//                           }
 		//
 
+		// First off all, remove all the labels currently in scope.
+		// The Go Specification says:
+		//
+		//    The scope of a label is the body of the function in which
+		//    it is declared and excludes the body of any nested
+		//    function.
+		//
+		// So the nested function we're about to create cannot use
+		// labels created outside its body.
+		oldLabels := sb.labels
+		sb.labels = []string{}
+
 		// LHS is the type specifier for the given FuncType, with no
 		// parameter names
 		p, r := t2.MakeFieldLists(false, 0)
@@ -424,11 +436,14 @@ func (sb *StmtBuilder) DeclStmt(nVars int, t Type) (*ast.DeclStmt, []*ast.Ident)
 		fl.Body.List = append(fl.Body.List, retStmt)
 		rhs = append(rhs, fl)
 
-		// and remove the function parameters from scope
+		// remove the function parameters from scope...
 		for _, param := range fl.Type.Params.List {
 			sb.scope.DeleteIdentByName(param.Names[0])
 			sb.funcp--
 		}
+
+		// and restore the labels.
+		sb.labels = oldLabels
 
 	default:
 		panic("DeclStmt: bad type " + t.Name())

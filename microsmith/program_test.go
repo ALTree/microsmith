@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"os"
+	"runtime"
 	"testing"
 
 	"github.com/ALTree/microsmith/microsmith"
@@ -12,50 +13,48 @@ import (
 
 const WorkDir = "work"
 
+var allTypes = []microsmith.Type{
+	microsmith.BasicType{"bool"},
+	microsmith.BasicType{"byte"},
+	microsmith.BasicType{"int"},
+	microsmith.BasicType{"int8"},
+	microsmith.BasicType{"int16"},
+	microsmith.BasicType{"int32"},
+	microsmith.BasicType{"int64"},
+	microsmith.BasicType{"uint"},
+	microsmith.BasicType{"float32"},
+	microsmith.BasicType{"float64"},
+	microsmith.BasicType{"complex128"},
+	microsmith.BasicType{"rune"},
+	microsmith.BasicType{"string"},
+}
+
 var TestConfigurations = map[string]microsmith.ProgramConf{
 	"small": {
 		microsmith.StmtConf{
 			MaxStmtDepth: 1,
 		},
-		[]microsmith.Type{
-			microsmith.BasicType{"bool"},
-			microsmith.BasicType{"int"},
-			microsmith.BasicType{"uint"},
-			microsmith.BasicType{"float64"},
-			microsmith.BasicType{"complex128"},
-			microsmith.BasicType{"rune"},
-			microsmith.BasicType{"string"},
-		},
+		allTypes,
 	},
 
 	"medium": {
 		microsmith.StmtConf{
 			MaxStmtDepth: 2,
 		},
-		[]microsmith.Type{
-			microsmith.BasicType{"bool"},
-			microsmith.BasicType{"int"},
-			microsmith.BasicType{"uint"},
-			microsmith.BasicType{"float64"},
-			microsmith.BasicType{"complex128"},
-			microsmith.BasicType{"rune"},
-			microsmith.BasicType{"string"},
-		},
+		allTypes,
 	},
 
 	"big": {
 		microsmith.StmtConf{
 			MaxStmtDepth: 3,
 		},
-		[]microsmith.Type{
-			microsmith.BasicType{"bool"},
-			microsmith.BasicType{"int"},
-			microsmith.BasicType{"uint"},
-			microsmith.BasicType{"float64"},
-			microsmith.BasicType{"complex128"},
-			microsmith.BasicType{"rune"},
-			microsmith.BasicType{"string"},
+		allTypes,
+	},
+	"huge": {
+		microsmith.StmtConf{
+			MaxStmtDepth: 5,
 		},
+		allTypes,
 	},
 }
 
@@ -116,6 +115,14 @@ func TestBig(t *testing.T) {
 	testProgramGoTypes(t, lim, TestConfigurations["big"])
 }
 
+func TestHuge(t *testing.T) {
+	lim := 5
+	if testing.Short() {
+		lim = 1
+	}
+	testProgramGoTypes(t, lim, TestConfigurations["huge"])
+}
+
 func TestSingleType(t *testing.T) {
 	tc := TestConfigurations["medium"]
 	for _, typ := range []string{
@@ -165,7 +172,7 @@ func checkStats(t *testing.T, p *microsmith.Program) {
 // Check generated programs with go tool compile (from file). This is
 // much slower than using go/types.
 func TestProgramGc(t *testing.T) {
-	if testing.Short() {
+	if testing.Short() || runtime.GOOS == "windows" {
 		t.Skip()
 	}
 
