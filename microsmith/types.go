@@ -294,7 +294,7 @@ func (ft FuncType) MakeFieldLists(named bool, s int) (*ast.FieldList, *ast.Field
 }
 
 func RandFuncType(EnabledTypes []Type) FuncType {
-	args := make([]Type, 0, rand.Intn(6))
+	args := make([]Type, 0, rand.Intn(8))
 	for i := 0; i < cap(args); i++ {
 		typ := RandType(EnabledTypes)
 		if _, ok := typ.(BasicType); !ok {
@@ -304,7 +304,7 @@ func RandFuncType(EnabledTypes []Type) FuncType {
 		if rand.Intn(2) == 0 {
 			t = PointerOf(t)
 		}
-		if rand.Intn(2) == 0 {
+		if rand.Intn(4) == 0 {
 			t = ArrayOf(t)
 		}
 		args = append(args, t)
@@ -315,7 +315,7 @@ func RandFuncType(EnabledTypes []Type) FuncType {
 	if rand.Intn(2) == 0 {
 		ret = PointerOf(ret)
 	}
-	if rand.Intn(2) == 0 {
+	if rand.Intn(4) == 0 {
 		ret = ArrayOf(ret)
 	}
 
