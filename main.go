@@ -20,13 +20,13 @@ var CrashCount int64
 var KnownCount int64
 
 var (
-	archF      = flag.String("arch", "", "The GOARCH to fuzz")
-	debugF     = flag.Bool("debug", false, "Run fuzzer in debug mode")
+	archF      = flag.String("arch", "", "GOARCHs to fuzz (comma separated list)")
+	debugF     = flag.Bool("debug", false, "Run in debug mode")
 	nooptF     = flag.Bool("noopt", false, "Compile with optimizations disabled")
-	pF         = flag.Uint64("p", 1, "The number of workers")
+	pF         = flag.Uint64("p", 1, "Number of workers")
 	raceF      = flag.Bool("race", false, "Compile with -race")
 	ssacheckF  = flag.Bool("ssacheck", false, "Compile with -d=ssa/check/on")
-	toolchainF = flag.String("bin", "", "The go toolchain to fuzz")
+	toolchainF = flag.String("bin", "", "Go toolchain to fuzz")
 	workdirF   = flag.String("work", "work", "Workdir for the fuzzing process")
 )
 
