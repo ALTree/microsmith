@@ -31,6 +31,7 @@ var (
 )
 
 var lg *log.Logger
+var archs []string
 
 func init() {
 	lg = log.New(os.Stderr, "[ERROR] ", log.Lshortfile)
@@ -40,13 +41,17 @@ func main() {
 
 	flag.Parse()
 
+	archs = strings.Split(*archF, ",")
+
 	nWorkers := *pF
 	if *debugF {
 		nWorkers = 1
 		microsmith.FuncCount = 1
 	} else {
 		if !(strings.Contains(*toolchainF, "gcc") || strings.Contains(*toolchainF, "tinygo")) {
-			installDeps()
+			for _, a := range archs {
+				installDeps(a)
+			}
 		}
 		if *ssacheckF {
 			fmt.Printf("ssacheck [seed = %v]\n", microsmith.CheckSeed)
@@ -129,37 +134,39 @@ func Fuzz(workerID uint64) {
 			lg.Fatalf("Could not write program to file: %s", err)
 		}
 
-		// Stop fuzzing if the compiler hangs for more than 60s
-		timeout := time.AfterFunc(
-			60*time.Second,
-			func() { lg.Fatalf("Program took more than 60s to compile\n") },
-		)
-		out, err := gp.Compile(*toolchainF, *archF, *nooptF, *raceF, *ssacheckF)
-		timeout.Stop()
-
 		var known bool
-		if err != nil {
-			for _, crash := range crashWhitelist {
-				if crash.MatchString(out) {
-					known = true
+		for _, arch := range archs {
+			timeout := time.AfterFunc(
+				60*time.Second,
+				func() { lg.Fatalf("Program took more than 60s to compile\n") },
+			)
+			out, err := gp.Compile(*toolchainF, arch, *nooptF, *raceF, *ssacheckF)
+			timeout.Stop()
+			atomic.AddInt64(&BuildCount, 1)
+
+			if err != nil {
+				for _, crash := range crashWhitelist {
+					if crash.MatchString(out) {
+						known = true
+						break
+					}
+				}
+
+				if known {
+					atomic.AddInt64(&KnownCount, 1)
+				} else {
+					atomic.AddInt64(&CrashCount, 1)
+					fmt.Printf("%v compilation failed\n", arch)
+					fmt.Println("------------------------------------------------------------")
+					fmt.Print(out)
+					fmt.Println("------------------------------------------------------------")
+					gp.MoveCrasher()
+					fmt.Println("Crasher was saved.")
 					break
 				}
 			}
-
-			if known {
-				atomic.AddInt64(&KnownCount, 1)
-			} else {
-				atomic.AddInt64(&CrashCount, 1)
-				fmt.Println("Program compilation failed:")
-				fmt.Println("------------------------------------------------------------")
-				fmt.Print(out)
-				fmt.Println("------------------------------------------------------------")
-				gp.MoveCrasher()
-				fmt.Println("Crasher was saved.")
-			}
 		}
 
-		atomic.AddInt64(&BuildCount, 1)
 		if err == nil || known {
 			gp.DeleteSource()
 		}
@@ -167,13 +174,12 @@ func Fuzz(workerID uint64) {
 	}
 }
 
-func installDeps() {
+func installDeps(goarch string) {
 	cmd := exec.Command(*toolchainF, "install", "std")
 	goos := "linux"
-	if *archF == "wasm" {
+	if goarch == "wasm" {
 		goos = "js"
 	}
-	goarch := *archF
 	if goarch == "386sf" {
 		goarch = "386"
 		cmd.Env = append(os.Environ(), "GO386=softfloat")
