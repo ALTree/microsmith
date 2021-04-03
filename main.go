@@ -20,7 +20,7 @@ var CrashCount int64
 var KnownCount int64
 
 var (
-	archF      = flag.String("arch", "amd64", "The GOARCH to fuzz")
+	archF      = flag.String("arch", "", "The GOARCH to fuzz")
 	debugF     = flag.Bool("debug", false, "Run fuzzer in debug mode")
 	nooptF     = flag.Bool("noopt", false, "Compile with optimizations disabled")
 	pF         = flag.Uint64("p", 1, "The number of workers")
@@ -41,6 +41,16 @@ func main() {
 
 	flag.Parse()
 
+	tc := guessToolchain(*toolchainF)
+	if tc == "gc" && *archF == "" {
+		fmt.Println("-arch must be set when fuzzing gc")
+		os.Exit(2)
+	}
+	if tc != "gc" && *archF != "" {
+		fmt.Println("-arch must not be set when not fuzzing gc")
+		os.Exit(2)
+	}
+
 	archs = strings.Split(*archF, ",")
 
 	nWorkers := *pF
@@ -48,7 +58,7 @@ func main() {
 		nWorkers = 1
 		microsmith.FuncCount = 1
 	} else {
-		if !(strings.Contains(*toolchainF, "gcc") || strings.Contains(*toolchainF, "tinygo")) {
+		if tc == "gc" {
 			for _, a := range archs {
 				installDeps(a)
 			}
@@ -90,7 +100,7 @@ func main() {
 }
 
 var crashWhitelist = []*regexp.Regexp{
-	regexp.MustCompile("illegal combination SRA"),
+	// regexp.MustCompile("illegal combination SRA"),
 }
 
 func Fuzz(workerID uint64) {
@@ -102,17 +112,14 @@ func Fuzz(workerID uint64) {
 	counter := 0
 	for {
 		counter++
-		if counter == 16 {
+		if counter == 30 {
 			conf = microsmith.RandConf(rs)
 			counter = 0
 		}
 
-		gp, err := microsmith.NewProgram(rs, conf)
-		if err != nil {
-			lg.Fatalf("Bad Conf: %s", err)
-		}
+		gp := microsmith.NewProgram(rs, conf)
 
-		err = gp.Check()
+		err := gp.Check()
 		if err != nil {
 			if *debugF {
 				fmt.Println(gp)
@@ -186,5 +193,16 @@ func installDeps(goarch string) {
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		lg.Fatalf("Installing dependencies failed with error:\n  ----\n  %s\n  %s\n  ----\n", out, err)
+	}
+}
+
+func guessToolchain(toolchain string) string {
+	switch {
+	case strings.Contains(*toolchainF, "gcc"):
+		return "gcc"
+	case strings.Contains(*toolchainF, "tinygo"):
+		return "tinygo"
+	default:
+		return "gc"
 	}
 }

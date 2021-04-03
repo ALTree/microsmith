@@ -47,7 +47,7 @@ func init() {
 
 // NewProgram uses a DeclBuilder to generate a new random Go program
 // with the given seed.
-func NewProgram(rs *rand.Rand, conf ProgramConf) (*Program, error) {
+func NewProgram(rs *rand.Rand, conf ProgramConf) *Program {
 
 	db := NewDeclBuilder(rs, conf)
 	var buf bytes.Buffer
@@ -64,7 +64,7 @@ func NewProgram(rs *rand.Rand, conf ProgramConf) (*Program, error) {
 		[]byte("\nfunc "),
 	)
 
-	return gp, nil
+	return gp
 }
 
 // WriteToFile writes gp's source in a file named prog<gp.seed>.go, in
