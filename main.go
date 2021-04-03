@@ -142,7 +142,6 @@ func Fuzz(workerID uint64) {
 			)
 			out, err := gp.Compile(*toolchainF, arch, *nooptF, *raceF, *ssacheckF)
 			timeout.Stop()
-			atomic.AddInt64(&BuildCount, 1)
 
 			if err != nil {
 				for _, crash := range crashWhitelist {
@@ -156,8 +155,8 @@ func Fuzz(workerID uint64) {
 					atomic.AddInt64(&KnownCount, 1)
 				} else {
 					atomic.AddInt64(&CrashCount, 1)
-					fmt.Printf("%v compilation failed\n", arch)
 					fmt.Println("------------------------------------------------------------")
+					fmt.Printf("Compilation failed for GOARCH=%v with error:\n", arch)
 					fmt.Print(out)
 					fmt.Println("------------------------------------------------------------")
 					gp.MoveCrasher()
@@ -167,6 +166,7 @@ func Fuzz(workerID uint64) {
 			}
 		}
 
+		atomic.AddInt64(&BuildCount, 1)
 		gp.DeleteSource()
 	}
 }
