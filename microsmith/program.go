@@ -209,10 +209,7 @@ func (gp Program) DeleteBinaries() {
 // written to disk from gp.WriteTofdFile.
 func (gp Program) DeleteSource() {
 	fn := gp.file.Name()
-	err := os.Remove(fn)
-	if err != nil {
-		log.Printf("could not remove %s: %s", fn, err)
-	}
+	_ = os.Remove(fn)
 }
 
 // Move gp in a workdir subfolder named "crash".

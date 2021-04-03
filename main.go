@@ -167,10 +167,7 @@ func Fuzz(workerID uint64) {
 			}
 		}
 
-		if err == nil || known {
-			gp.DeleteSource()
-		}
-
+		gp.DeleteSource()
 	}
 }
 
