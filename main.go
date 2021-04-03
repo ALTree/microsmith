@@ -26,7 +26,7 @@ var (
 	pF         = flag.Uint64("p", 1, "The number of workers")
 	raceF      = flag.Bool("race", false, "Compile with -race")
 	ssacheckF  = flag.Bool("ssacheck", false, "Compile with -d=ssa/check/on")
-	toolchainF = flag.String("bin", "go", "The go toolchain to fuzz")
+	toolchainF = flag.String("bin", "", "The go toolchain to fuzz")
 	workdirF   = flag.String("work", "work", "Workdir for the fuzzing process")
 )
 
@@ -41,6 +41,11 @@ func main() {
 
 	flag.Parse()
 
+	if *toolchainF == "" {
+		fmt.Println("-bin must be set")
+		os.Exit(2)
+	}
+
 	tc := guessToolchain(*toolchainF)
 	if tc == "gc" && *archF == "" {
 		fmt.Println("-arch must be set when fuzzing gc")
@@ -48,6 +53,11 @@ func main() {
 	}
 	if tc != "gc" && *archF != "" {
 		fmt.Println("-arch must not be set when not fuzzing gc")
+		os.Exit(2)
+	}
+
+	if _, err := os.Stat(*toolchainF); os.IsNotExist(err) {
+		fmt.Printf("toolchain %v does not exist\n", *toolchainF)
 		os.Exit(2)
 	}
 
@@ -162,12 +172,14 @@ func Fuzz(workerID uint64) {
 					atomic.AddInt64(&KnownCount, 1)
 				} else {
 					atomic.AddInt64(&CrashCount, 1)
-					fmt.Println("------------------------------------------------------------")
-					fmt.Printf("Compilation failed for GOARCH=%v with error:\n", arch)
-					fmt.Print(out)
+					if arch != "" {
+						fmt.Printf("-- CRASH (%v) ----------------------------------------------\n", arch)
+					} else {
+						fmt.Printf("-- CRASH ---------------------------------------------------\n")
+					}
+					fmt.Println(fiveLines(out))
 					fmt.Println("------------------------------------------------------------")
 					gp.MoveCrasher()
-					fmt.Println("Crasher was saved.")
 					break
 				}
 			}
@@ -205,4 +217,17 @@ func guessToolchain(toolchain string) string {
 	default:
 		return "gc"
 	}
+}
+
+func fiveLines(s string) string {
+	nl := 0
+	for i := range s {
+		if s[i] == '\n' {
+			nl++
+		}
+		if nl == 5 {
+			return s[:i] + "\n..."
+		}
+	}
+	return s
 }
