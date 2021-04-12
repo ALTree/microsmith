@@ -185,7 +185,12 @@ func (gp *Program) Compile(arch string, fz FuzzOptions) (string, error) {
 		}
 
 		// link
-		cmd = exec.Command(fz.Toolchain, "tool", "link", "-o", binName, arcName)
+		linkArgs := []string{"tool", "link"}
+		if fz.Race {
+			linkArgs = append(linkArgs, "-race")
+		}
+		linkArgs = append(linkArgs, "-o", binName, arcName)
+		cmd = exec.Command(fz.Toolchain, linkArgs...)
 		cmd.Dir, cmd.Env = gp.workdir, env
 		out, err = cmd.CombinedOutput()
 		if err != nil {
