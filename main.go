@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"regexp"
+	"runtime"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -45,6 +46,11 @@ func main() {
 		os.Exit(2)
 	}
 
+	if *raceF && runtime.GOOS == "windows" {
+		fmt.Println("-race fuzzing is not supported on Windows")
+		os.Exit(2)
+	}
+
 	tc := guessToolchain(*toolchainF)
 	if tc == "gc" && *archF == "" {
 		fmt.Println("-arch must be set when fuzzing gc")
@@ -60,11 +66,13 @@ func main() {
 		os.Exit(2)
 	}
 
+	fz := microsmith.FuzzOptions{*toolchainF, *nooptF, *raceF, *ssacheckF}
+
 	archs = strings.Split(*archF, ",")
 
 	if tc == "gc" {
 		for _, a := range archs {
-			installDeps(a)
+			installDeps(a, fz)
 		}
 	}
 	if *ssacheckF {
@@ -83,7 +91,7 @@ func main() {
 	startTime := time.Now()
 
 	for i := uint64(1); i <= *pF; i++ {
-		go Fuzz(i)
+		go Fuzz(i, fz)
 	}
 
 	ticker := time.Tick(30 * time.Second)
@@ -107,7 +115,7 @@ var crashWhitelist = []*regexp.Regexp{
 	// regexp.MustCompile("illegal combination SRA"),
 }
 
-func Fuzz(workerID uint64) {
+func Fuzz(workerID uint64, fz microsmith.FuzzOptions) {
 	rs := rand.New(
 		rand.NewSource(int64(0xfaff0011 * workerID * uint64(time.Now().UnixNano()))),
 	)
@@ -145,7 +153,7 @@ func Fuzz(workerID uint64) {
 					os.Exit(2)
 				},
 			)
-			out, err := gp.Compile(*toolchainF, arch, *nooptF, *raceF, *ssacheckF)
+			out, err := gp.Compile(arch, fz)
 			timeout.Stop()
 
 			if err != nil {
@@ -193,21 +201,27 @@ func debugRun() {
 	}
 }
 
-func installDeps(goarch string) {
-	cmd := exec.Command(*toolchainF, "install", "std")
+func installDeps(arch string, fz microsmith.FuzzOptions) {
+	var cmd *exec.Cmd
+	if fz.Race {
+		cmd = exec.Command(fz.Toolchain, "install", "-race", "std")
+	} else {
+		cmd = exec.Command(fz.Toolchain, "install", "std")
+	}
+
 	goos := "linux"
-	if goarch == "wasm" {
+	if arch == "wasm" {
 		goos = "js"
 	}
-	if goarch == "386sf" {
-		goarch = "386"
+	if arch == "386sf" {
+		arch = "386"
 		cmd.Env = append(os.Environ(), "GO386=softfloat")
 	}
-	cmd.Env = append(os.Environ(), "GOOS="+goos, "GOARCH="+goarch)
+	cmd.Env = append(os.Environ(), "GOOS="+goos, "GOARCH="+arch)
 
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		fmt.Printf("Installing dependencies failed with error:\n  ----\n  %s\n  %s\n  ----\n", out, err)
+		fmt.Printf("Installing dependencies failed with error:\n----\n%s\n%s\n----\n", out, err)
 		os.Exit(2)
 	}
 }
