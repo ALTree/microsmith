@@ -35,6 +35,11 @@ func main() {
 
 	flag.Parse()
 
+	if *debugF {
+		debugRun()
+		os.Exit(0)
+	}
+
 	if *toolchainF == "" {
 		fmt.Println("-bin must be set")
 		os.Exit(2)
@@ -57,19 +62,13 @@ func main() {
 
 	archs = strings.Split(*archF, ",")
 
-	nWorkers := *pF
-	if *debugF {
-		nWorkers = 1
-		microsmith.FuncCount = 1
-	} else {
-		if tc == "gc" {
-			for _, a := range archs {
-				installDeps(a)
-			}
+	if tc == "gc" {
+		for _, a := range archs {
+			installDeps(a)
 		}
-		if *ssacheckF {
-			fmt.Printf("ssacheck [seed = %v]\n", microsmith.CheckSeed)
-		}
+	}
+	if *ssacheckF {
+		fmt.Printf("ssacheck [seed = %v]\n", microsmith.CheckSeed)
 	}
 
 	// Create workdir if not already there
@@ -83,7 +82,7 @@ func main() {
 
 	startTime := time.Now()
 
-	for i := uint64(1); i <= nWorkers; i++ {
+	for i := uint64(1); i <= *pF; i++ {
 		go Fuzz(i)
 	}
 
@@ -126,19 +125,8 @@ func Fuzz(workerID uint64) {
 
 		err := gp.Check()
 		if err != nil {
-			if *debugF {
-				fmt.Println(gp)
-				fmt.Printf("Program failed typechecking with error:\n%s\n", err)
-				os.Exit(2)
-			} else {
-				fmt.Printf("Program failed typechecking: %s\n%s", err, gp)
-				os.Exit(2)
-			}
-		}
-
-		if *debugF {
-			fmt.Println(gp)
-			os.Exit(0)
+			fmt.Printf("Program failed typechecking: %s\n%s", err, gp)
+			os.Exit(2)
 		}
 
 		err = gp.WriteToFile(*workdirF)
@@ -187,6 +175,21 @@ func Fuzz(workerID uint64) {
 
 		atomic.AddInt64(&BuildCount, 1)
 		gp.DeleteSource()
+	}
+}
+
+func debugRun() {
+	rs := rand.New(rand.NewSource(int64(uint64(time.Now().UnixNano()))))
+	conf := microsmith.RandConf(rs)
+
+	microsmith.FuncCount = 1
+	gp := microsmith.NewProgram(rs, conf)
+
+	err := gp.Check()
+	fmt.Println(gp)
+	if err != nil {
+		fmt.Printf("Program failed typechecking with error:\n%s\n", err)
+		os.Exit(2)
 	}
 }
 
