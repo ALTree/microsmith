@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -30,12 +29,7 @@ var (
 	workdirF   = flag.String("work", "work", "Workdir for the fuzzing process")
 )
 
-var lg *log.Logger
 var archs []string
-
-func init() {
-	lg = log.New(os.Stderr, "[ERROR] ", log.Lshortfile)
-}
 
 func main() {
 
@@ -82,7 +76,8 @@ func main() {
 	if _, err := os.Stat(*workdirF); os.IsNotExist(err) {
 		err := os.MkdirAll(*workdirF, os.ModePerm)
 		if err != nil {
-			lg.Fatalf("%v", err)
+			fmt.Println(err)
+			os.Exit(2)
 		}
 	}
 
@@ -136,26 +131,31 @@ func Fuzz(workerID uint64) {
 				fmt.Printf("Program failed typechecking with error:\n%s\n", err)
 				os.Exit(2)
 			} else {
-				lg.Fatalf("Program failed typechecking: %s\n%s", err, gp)
+				fmt.Printf("Program failed typechecking: %s\n%s", err, gp)
+				os.Exit(2)
 			}
 		}
 
 		if *debugF {
-			// TODO: print gp stats too(?)
 			fmt.Println(gp)
 			os.Exit(0)
 		}
 
 		err = gp.WriteToFile(*workdirF)
 		if err != nil {
-			lg.Fatalf("Could not write program to file: %s", err)
+			fmt.Printf("Could not write program to file: %s", err)
+			os.Exit(2)
 		}
 
 		var known bool
 		for _, arch := range archs {
 			timeout := time.AfterFunc(
 				60*time.Second,
-				func() { lg.Fatalf("Program took more than 60s to compile\n") },
+				func() {
+					gp.MoveCrasher()
+					fmt.Printf("%v took more than 60s to compile [GOARCH=%v]\n", gp.Name(), arch)
+					os.Exit(2)
+				},
 			)
 			out, err := gp.Compile(*toolchainF, arch, *nooptF, *raceF, *ssacheckF)
 			timeout.Stop()
@@ -204,7 +204,8 @@ func installDeps(goarch string) {
 
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		lg.Fatalf("Installing dependencies failed with error:\n  ----\n  %s\n  %s\n  ----\n", out, err)
+		fmt.Printf("Installing dependencies failed with error:\n  ----\n  %s\n  %s\n  ----\n", out, err)
+		os.Exit(2)
 	}
 }
 

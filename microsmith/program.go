@@ -230,6 +230,10 @@ func (gp Program) MoveCrasher() {
 	}
 }
 
-func (gp Program) String() string {
-	return string(gp.source)
+func (p Program) String() string {
+	return string(p.source)
+}
+
+func (p Program) Name() string {
+	return p.fileName
 }
