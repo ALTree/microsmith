@@ -38,7 +38,7 @@ type StmtConf struct {
 var InitialScope Scope
 
 func init() {
-	InitialScope := make(Scope, 0, 16)
+	InitialScope = make(Scope, 0, 16)
 	for _, f := range PredeclaredFuncs {
 		InitialScope = append(InitialScope, Variable{f, &ast.Ident{Name: f.Name()}})
 	}
