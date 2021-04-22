@@ -449,13 +449,12 @@ func (eb *ExprBuilder) BinaryExpr(t Type) *ast.BinaryExpr {
 	case "byte", "uint", "int8", "int16", "int32", "int64":
 		ue.Op = eb.chooseToken([]token.Token{
 			token.ADD, token.AND, token.AND_NOT, token.MUL,
-			token.OR, token.QUO, token.REM, token.SHR,
+			token.OR, token.QUO, token.REM, token.SHL, token.SHR,
 			token.SUB, token.XOR,
 		})
 	case "int":
-		// We can't generate token.SHR for ints, because int
-		// expressions are used as args for float64() conversions, and
-		// in this:
+		// We can't generate shifts for ints, because int expressions
+		// are used as args for float64() conversions, and in this:
 		//
 		//   var i int = 2
 		// 	 float64(8 >> i)
@@ -476,12 +475,12 @@ func (eb *ExprBuilder) BinaryExpr(t Type) *ast.BinaryExpr {
 		//   invalid operation: 8 >> i (shift of type float64)
 		ue.Op = eb.chooseToken([]token.Token{
 			token.ADD, token.AND, token.AND_NOT, token.MUL,
-			token.OR /*token.SHR,*/, token.SUB, token.XOR,
+			token.OR /*token.SHL, token.SHR,*/, token.SUB, token.XOR,
 		})
 	case "rune":
 		ue.Op = eb.chooseToken([]token.Token{
 			token.ADD, token.AND, token.AND_NOT,
-			token.OR, token.SUB, token.XOR,
+			token.OR, token.SHR, token.SUB, token.XOR,
 		})
 	case "float32", "float64", "complex128":
 		ue.Op = eb.chooseToken([]token.Token{token.ADD, token.SUB, token.MUL})

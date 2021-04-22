@@ -20,7 +20,7 @@ func (v Variable) String() string {
 type Scope []Variable
 
 // Returns a random Addressable variable in scope, that can be used in
-// the LHS of an AssignStmt. If nofunc is TRUE, it ignored FuncType
+// the LHS of an AssignStmt. If nofunc is TRUE, ignore FuncType
 // variables.
 func (s Scope) RandomVar(nofunc bool) Variable {
 
