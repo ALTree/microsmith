@@ -350,7 +350,7 @@ func (eb *ExprBuilder) StructFieldExpr(v Variable, t Type) *ast.SelectorExpr {
 		}
 	}
 
-	panic("Could find a field of type " + t.Name() + " in struct " + v.String())
+	panic("Could not find a field of type " + t.Name() + " in struct " + v.String())
 }
 
 // Returns an ast.UnaryExpr which receive from the channel v.

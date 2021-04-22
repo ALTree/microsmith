@@ -300,7 +300,7 @@ func (ls Scope) GetRandomVarOfSubtype(t Type, rs *rand.Rand) (Variable, bool) {
 
 // return a chan (of any subtype). Useful as a replacement of
 // GetRandomVarOfType when we want a channel to receive on and the
-// underluing type doesn't matter.
+// underlying type doesn't matter.
 func (ls Scope) GetRandomVarChan(rs *rand.Rand) (Variable, bool) {
 	cnt := 0
 	for _, v := range ls {

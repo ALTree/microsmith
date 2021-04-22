@@ -226,15 +226,17 @@ func RandStructType(EnabledTypes []Type) StructType {
 		[]string{},
 	}
 
-	nfields := 2 + rand.Intn(MaxStructFields-1)
+	nfields := 1 + rand.Intn(MaxStructFields)
 	for i := 0; i < nfields; i++ {
-		typ := RandType(EnabledTypes)
-		if t, ok := typ.(BasicType); !ok {
-			panic("RandStructType: non basic type " + typ.Name())
-		} else {
-			st.Ftypes = append(st.Ftypes, t)
-			st.Fnames = append(st.Fnames, Ident(t)+strconv.Itoa(i))
+		t := RandType(EnabledTypes)
+		if rand.Intn(3) == 0 {
+			t = PointerOf(t)
 		}
+		if rand.Intn(5) == 0 {
+			t = ArrayOf(t)
+		}
+		st.Ftypes = append(st.Ftypes, t)
+		st.Fnames = append(st.Fnames, Ident(t)+strconv.Itoa(i))
 	}
 
 	return st
@@ -301,10 +303,10 @@ func RandFuncType(EnabledTypes []Type) FuncType {
 			panic("RandFuncType: non basic type " + typ.Name())
 		}
 		t := typ
-		if rand.Intn(2) == 0 {
+		if rand.Intn(3) == 0 {
 			t = PointerOf(t)
 		}
-		if rand.Intn(4) == 0 {
+		if rand.Intn(5) == 0 {
 			t = ArrayOf(t)
 		}
 		args = append(args, t)
@@ -312,10 +314,10 @@ func RandFuncType(EnabledTypes []Type) FuncType {
 
 	// choose return type
 	ret := RandType(EnabledTypes)
-	if rand.Intn(2) == 0 {
+	if rand.Intn(3) == 0 {
 		ret = PointerOf(ret)
 	}
-	if rand.Intn(4) == 0 {
+	if rand.Intn(5) == 0 {
 		ret = ArrayOf(ret)
 	}
 
