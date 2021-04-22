@@ -483,7 +483,9 @@ func (eb *ExprBuilder) BinaryExpr(t Type) *ast.BinaryExpr {
 			token.ADD, token.AND, token.AND_NOT,
 			token.OR, token.SHR, token.SUB, token.XOR,
 		})
-	case "float32", "float64", "complex128":
+	case "float32", "float64":
+		ue.Op = eb.chooseToken([]token.Token{token.ADD, token.SUB, token.MUL, token.QUO})
+	case "complex128":
 		ue.Op = eb.chooseToken([]token.Token{token.ADD, token.SUB, token.MUL})
 	case "bool":
 		if eb.rs.Intn(2) == 0 {
@@ -515,7 +517,7 @@ func (eb *ExprBuilder) BinaryExpr(t Type) *ast.BinaryExpr {
 	// "constant overflows uint" on Exprs that end up being all
 	// literals (and thus computable at compile time), and outside the
 	// type's range.
-	if IsInt(t) || IsUint(t) || t.Name() == "float32" {
+	if IsInt(t) || IsUint(t) || t.Name() == "float32" || t.Name() == "float64" {
 
 		// LHS can be whatever
 		if eb.Deepen() {
