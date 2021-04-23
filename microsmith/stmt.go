@@ -377,6 +377,8 @@ func (sb *StmtBuilder) DeclStmt(nVars int, t Type) (*ast.DeclStmt, []*ast.Ident)
 		//                             return <int expr>
 		//                           }
 		//
+		// But 20% of the times we don't (and the func variable will
+		// be nil).
 
 		// First off all, remove all the labels currently in scope.
 		// The Go Specification says:
@@ -395,56 +397,56 @@ func (sb *StmtBuilder) DeclStmt(nVars int, t Type) (*ast.DeclStmt, []*ast.Ident)
 		p, r := t2.MakeFieldLists(false, 0)
 		typ = &ast.FuncType{Params: p, Results: r}
 
-		// RHS
+		// RHS (which chance 0.8)
 
-		// Func type specifier again, but this time with parameter
-		// names
-		p, r = t2.MakeFieldLists(true, sb.funcp)
-		fl := &ast.FuncLit{
-			Type: &ast.FuncType{Params: p, Results: r},
-			Body: &ast.BlockStmt{},
-		}
-
-		// add the parameters to the scope
-		for i, param := range fl.Type.Params.List {
-			sb.scope.AddVariable(param.Names[0], t2.Args[i])
-			sb.funcp++
-		}
-
-		// generate a function body
-		sb.depth++
-		if sb.depth < sb.conf.MaxStmtDepth {
-			oil := sb.inloop
-			sb.inloop = false
-			fl.Body = sb.BlockStmt()
-			sb.inloop = oil
-		} else {
-			n := 2 + sb.rs.Intn(3) // 2 to 4 stmts
-			stl := make([]ast.Stmt, 0, n)
-			for i := 0; i < n; i++ {
-				stl = append(stl, sb.AssignStmt())
+		if sb.rs.Intn(5) != 0 {
+			// Func type specifier again, but this time with parameter
+			// names
+			p, r = t2.MakeFieldLists(true, sb.funcp)
+			fl := &ast.FuncLit{
+				Type: &ast.FuncType{Params: p, Results: r},
+				Body: &ast.BlockStmt{},
 			}
-			fl.Body = &ast.BlockStmt{List: stl}
-		}
-		sb.depth--
 
-		// Finally, append a closing return statement
-		retStmt := &ast.ReturnStmt{Results: []ast.Expr{}}
-		for _, ret := range t2.Ret {
-			retStmt.Results = append(retStmt.Results, sb.eb.Expr(ret))
-		}
-		fl.Body.List = append(fl.Body.List, retStmt)
-		rhs = append(rhs, fl)
+			// add the parameters to the scope
+			for i, param := range fl.Type.Params.List {
+				sb.scope.AddVariable(param.Names[0], t2.Args[i])
+				sb.funcp++
+			}
 
-		// remove the function parameters from scope...
-		for _, param := range fl.Type.Params.List {
-			sb.scope.DeleteIdentByName(param.Names[0])
-			sb.funcp--
-		}
+			// generate a function body
+			sb.depth++
+			if sb.depth < sb.conf.MaxStmtDepth {
+				oil := sb.inloop
+				sb.inloop = false
+				fl.Body = sb.BlockStmt()
+				sb.inloop = oil
+			} else {
+				n := 2 + sb.rs.Intn(3) // 2 to 4 stmts
+				stl := make([]ast.Stmt, 0, n)
+				for i := 0; i < n; i++ {
+					stl = append(stl, sb.AssignStmt())
+				}
+				fl.Body = &ast.BlockStmt{List: stl}
+			}
+			sb.depth--
 
+			// Finally, append a closing return statement
+			retStmt := &ast.ReturnStmt{Results: []ast.Expr{}}
+			for _, ret := range t2.Ret {
+				retStmt.Results = append(retStmt.Results, sb.eb.Expr(ret))
+			}
+			fl.Body.List = append(fl.Body.List, retStmt)
+			rhs = append(rhs, fl)
+
+			// remove the function parameters from scope...
+			for _, param := range fl.Type.Params.List {
+				sb.scope.DeleteIdentByName(param.Names[0])
+				sb.funcp--
+			}
+		}
 		// and restore the labels.
 		sb.labels = oldLabels
-
 	default:
 		panic("DeclStmt: bad type " + t.Name())
 	}
