@@ -216,13 +216,18 @@ func (sb *StmtBuilder) BranchStmt() *ast.BranchStmt {
 		bs.Tok = token.BREAK
 	}
 
-	// chose a random label to break/continue/goto to
-	if len(sb.labels) > 0 {
+	// break/continue/goto to a label with chance 0.25
+	if len(sb.labels) > 0 && sb.rs.Intn(4) == 0 {
 		li := sb.rs.Intn(len(sb.labels))
 		bs.Label = &ast.Ident{Name: sb.labels[li]}
 		sb.labels = append(sb.labels[:li], sb.labels[li+1:]...)
 	} else {
-		bs.Tok = token.BREAK
+		// If we didn't add a label, GOTO is not allowed.
+		if sb.rs.Intn(2) == 0 {
+			bs.Tok = token.BREAK
+		} else {
+			bs.Tok = token.CONTINUE
+		}
 	}
 
 	return &bs
@@ -272,7 +277,6 @@ func (sb *StmtBuilder) BlockStmt() *ast.BlockStmt {
 		stmts = append(stmts, sb.UseVars(newVars))
 	}
 
-	// ...and then remove them from scope.
 	for _, v := range newVars {
 		sb.scope.DeleteIdentByName(v)
 	}
@@ -281,7 +285,7 @@ func (sb *StmtBuilder) BlockStmt() *ast.BlockStmt {
 	return bs
 }
 
-// Returns an arrays of n random Types. That can include basic types,
+// Returns an array of n random Types. That can include basic types,
 // arrays, chans, and randomly generated struct and func types. It's
 // guaranteed to have at least one addressable/assignable type.
 func (sb *StmtBuilder) RandomTypes(n int) []Type {
@@ -447,6 +451,7 @@ func (sb *StmtBuilder) DeclStmt(nVars int, t Type) (*ast.DeclStmt, []*ast.Ident)
 		}
 		// and restore the labels.
 		sb.labels = oldLabels
+
 	default:
 		panic("DeclStmt: bad type " + t.Name())
 	}
@@ -484,10 +489,10 @@ func (sb *StmtBuilder) ForStmt() *ast.ForStmt {
 	if sb.rs.Intn(16) > 0 {
 		fs.Cond = sb.eb.Expr(BasicType{"bool"})
 	}
-	if sb.rs.Intn(2) == 0 {
+	if sb.rs.Intn(2) > 0 {
 		fs.Init = sb.AssignStmt()
 	}
-	if sb.rs.Intn(2) == 0 {
+	if sb.rs.Intn(2) > 0 {
 		fs.Post = sb.AssignStmt()
 	}
 	if sb.rs.Intn(32) > 0 {
@@ -571,7 +576,7 @@ func (sb *StmtBuilder) IfStmt() *ast.IfStmt {
 		Body: sb.BlockStmt(),
 	}
 
-	// optionally attach an 'else'
+	// optionally attach an else
 	if sb.rs.Intn(2) == 0 {
 		is.Else = sb.BlockStmt()
 	}
@@ -598,7 +603,7 @@ func (sb *StmtBuilder) SwitchStmt() *ast.SwitchStmt {
 				// only generate one normal and one default case to
 				// avoid 'duplicate case' compilation errors
 				sb.CaseClause(t, false),
-				sb.CaseClause(t, true), // 'default:'
+				sb.CaseClause(t, true), // default:
 			},
 		},
 	}
