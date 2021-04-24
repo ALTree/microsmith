@@ -11,10 +11,12 @@ package main
 
 import "fmt"
 
-var i int = 33 + 1
-
 func main() {
   j := 1 + i
+  f := func(i int) int {
+    return i+1
+  }
+  defer f(7)
 }
 `
 

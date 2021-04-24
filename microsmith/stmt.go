@@ -63,7 +63,7 @@ func (sb *StmtBuilder) Stmt() ast.Stmt {
 		return sb.AssignStmt()
 	}
 
-	switch sb.rs.Intn(8) {
+	switch sb.rs.Intn(9) {
 	case 0:
 		return sb.AssignStmt()
 	case 1:
@@ -110,6 +110,11 @@ func (sb *StmtBuilder) Stmt() ast.Stmt {
 	case 7:
 		if sb.inloop {
 			return sb.BranchStmt()
+		}
+		return sb.AssignStmt()
+	case 8:
+		if v, ok := sb.eb.scope.GetRandomFuncAnyType(); ok {
+			return sb.DeferStmt(v)
 		}
 		return sb.AssignStmt()
 	default:
@@ -558,6 +563,12 @@ func (sb *StmtBuilder) RangeStmt(arr Variable) *ast.RangeStmt {
 	sb.labels = []string{}
 
 	return rs
+}
+
+func (sb *StmtBuilder) DeferStmt(v Variable) *ast.DeferStmt {
+	return &ast.DeferStmt{
+		Call: sb.eb.CallExpr(v),
+	}
 }
 
 func (sb *StmtBuilder) IfStmt() *ast.IfStmt {
