@@ -284,17 +284,14 @@ func (sb *StmtBuilder) BlockStmt() *ast.BlockStmt {
 }
 
 // Returns an array of n random Types. That can include basic types,
-// arrays, chans, and randomly generated struct and func types. It's
-// guaranteed to have at least one addressable/assignable type.
+// arrays, chans, and randomly generated struct and func types.
 func (sb *StmtBuilder) RandomTypes(n int) []Type {
 	if n < 1 {
 		panic("n < 1")
 	}
 
 	types := make([]Type, 0, n)
-	types = append(types, BasicType{"int"}) // Mandatory assignable type
-
-	for i := 0; i < n-1; i++ {
+	for i := 0; i < n; i++ {
 		types = append(types, sb.RandomType())
 	}
 

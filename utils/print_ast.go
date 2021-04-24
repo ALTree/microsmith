@@ -11,9 +11,10 @@ package main
 
 import "fmt"
 
+var i int = 33 + 1
+
 func main() {
-  var m map[int]string
-  m = map[int]string{1: "hi"}
+  j := 1 + i
 }
 `
 

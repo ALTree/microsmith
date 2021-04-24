@@ -81,13 +81,31 @@ func (db *DeclBuilder) File(n int) *ast.File {
 	// (to avoid "unused package" errors)
 	af.Decls = append(af.Decls, MakeUsePakage(`"math"`))
 
-	// now, a few functions
+	// In the global scope:
+	//   var i int
+	// So we always have an int available
+	af.Decls = append(af.Decls, db.MakeInt())
+	db.sb.scope.AddVariable(&ast.Ident{Name: "i"}, BasicType{"int"})
+
+	// Now half a dozen top-level variables
+	for i := 1; i <= 6; i++ {
+		t := RandType(db.sb.conf.SupportedTypes)
+		if db.sb.rs.Intn(3) == 0 {
+			t = PointerOf(t)
+		}
+		if db.sb.rs.Intn(5) == 0 {
+			t = ArrayOf(t)
+		}
+		af.Decls = append(af.Decls, db.MakeVar(t, i))
+		db.sb.scope.AddVariable(&ast.Ident{Name: fmt.Sprintf("V%v", i)}, t)
+	}
+
+	// A few functions
 	for i := 0; i < n; i++ {
 		af.Decls = append(af.Decls, db.FuncDecl(i))
 	}
 
 	// finally, the main function
-
 	mainF := &ast.FuncDecl{
 		Name: &ast.Ident{Name: "main"},
 		Type: &ast.FuncType{Params: &ast.FieldList{}},
@@ -133,6 +151,37 @@ func MakeUsePakage(p string) *ast.GenDecl {
 			&ast.ValueSpec{
 				Names:  []*ast.Ident{&ast.Ident{Name: "_"}},
 				Values: []ast.Expr{se},
+			},
+		},
+	}
+}
+
+func (db *DeclBuilder) MakeInt() *ast.GenDecl {
+	return &ast.GenDecl{
+		Tok: token.VAR,
+		Specs: []ast.Spec{
+			&ast.ValueSpec{
+				Names: []*ast.Ident{
+					&ast.Ident{Name: "i"},
+				},
+				Type: &ast.Ident{Name: "int"},
+			},
+		},
+	}
+}
+
+func (db *DeclBuilder) MakeVar(t Type, i int) *ast.GenDecl {
+	return &ast.GenDecl{
+		Tok: token.VAR,
+		Specs: []ast.Spec{
+			&ast.ValueSpec{
+				Names: []*ast.Ident{
+					&ast.Ident{Name: fmt.Sprintf("V%v", i)},
+				},
+				Type: TypeIdent(t.Name()),
+				Values: []ast.Expr{
+					db.sb.eb.Expr(t),
+				},
 			},
 		},
 	}
