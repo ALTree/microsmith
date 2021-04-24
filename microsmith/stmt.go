@@ -62,17 +62,10 @@ func (sb *StmtBuilder) Stmt() ast.Stmt {
 	if sb.depth > sb.conf.MaxStmtDepth {
 		return sb.AssignStmt()
 	}
-	// sb.depth < sb.conf.MaxStmtDepth
 
-	switch sb.rs.Intn(7) {
+	switch sb.rs.Intn(8) {
 	case 0:
-		// Generate a BranchStmt (break/continue) instead of an
-		// assignment, with chance 0.25, but only if inside a loop.
-		if sb.inloop && sb.rs.Intn(4) == 0 {
-			return sb.BranchStmt()
-		} else {
-			return sb.AssignStmt()
-		}
+		return sb.AssignStmt()
 	case 1:
 		return sb.BlockStmt()
 	case 2:
@@ -114,8 +107,13 @@ func (sb *StmtBuilder) Stmt() ast.Stmt {
 		return sb.SendStmt()
 	case 6:
 		return sb.SelectStmt()
+	case 7:
+		if sb.inloop {
+			return sb.BranchStmt()
+		}
+		return sb.AssignStmt()
 	default:
-		panic("Stmt: bad index")
+		panic("bad Stmt index")
 	}
 }
 
