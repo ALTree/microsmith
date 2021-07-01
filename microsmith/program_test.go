@@ -61,14 +61,14 @@ var TestConfigurations = map[string]microsmith.ProgramConf{
 // check n generated programs with go/types (in-memory)
 func testProgramGoTypes(t *testing.T, n int, conf microsmith.ProgramConf) {
 	for i := 0; i < n; i++ {
-		gp := microsmith.NewProgram(rand.New(rand.NewSource(42)), conf)
+		gp := microsmith.NewProgram(rand.New(rand.NewSource(42)), conf, true)
 		err := gp.Check()
 		if err != nil {
 			tmpfile, _ := ioutil.TempFile("", "fail*.go")
 			if _, err := tmpfile.Write([]byte(gp.String())); err != nil {
 				t.Fatal(err)
 			}
-			t.Fatalf("Program failed typechecking with error:\n%s", err)
+			t.Fatalf("Program failed typechecking:\n%s", err)
 		}
 
 		checkStats(t, gp)
@@ -133,7 +133,7 @@ func TestSingleType(t *testing.T) {
 func TestStmtStats(t *testing.T) {
 	for i := 0; i < 50; i++ {
 		rs := rand.New(rand.NewSource(444))
-		gp := microsmith.NewProgram(rs, microsmith.RandConf(rs))
+		gp := microsmith.NewProgram(rs, microsmith.RandConf(rs), true)
 		checkStats(t, gp)
 	}
 }
@@ -180,8 +180,8 @@ func TestProgramGc(t *testing.T) {
 	rand := rand.New(rand.NewSource(42))
 	keepdir := false
 	for i := 0; i < 50; i++ {
-		gp := microsmith.NewProgram(rand, microsmith.RandConf(rand))
-		err := gp.WriteToFile(WorkDir)
+		gp := microsmith.NewProgram(rand, microsmith.RandConf(rand), false)
+		err := gp.WriteToDisk(WorkDir)
 		if err != nil {
 			t.Fatalf("Could not write to file: %s", err)
 		}
@@ -224,6 +224,6 @@ func BenchmarkProgram(b *testing.B) {
 	rand := rand.New(rand.NewSource(19))
 	for i := 0; i < b.N; i++ {
 		db := microsmith.NewDeclBuilder(rand, BenchConf)
-		gp = db.File(1)
+		gp = db.File(1, "main", 0)
 	}
 }

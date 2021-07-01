@@ -131,13 +131,13 @@ func Fuzz(workerID uint64, fz microsmith.FuzzOptions) {
 
 		gp := microsmith.NewProgram(rs, conf)
 
-		err := gp.Check()
-		if err != nil {
-			fmt.Printf("Program failed typechecking: %s\n%s", err, gp)
-			os.Exit(2)
-		}
+		// err := gp.Check()
+		// if err != nil {
+		// 	fmt.Printf("Program failed typechecking: %s\n%s", err, gp)
+		// 	os.Exit(2)
+		// }
 
-		err = gp.WriteToFile(*workdirF)
+		err = gp.WriteToDisk(*workdirF)
 		if err != nil {
 			fmt.Printf("Could not write program to file: %s", err)
 			os.Exit(2)

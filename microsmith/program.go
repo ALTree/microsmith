@@ -18,18 +18,18 @@ import (
 	"time"
 )
 
-// Program holds a Go program (both it source and the reference to the
-// file it was possibly written to).
-//
-// TODO: split to source/seed and filesystem stuff(?)
 type Program struct {
-	id       uint64
-	source   []byte
-	fileName string
-	file     *os.File
-	workdir  string
+	id      uint64  // random id used in the names of the Program files
+	workdir string  // directory where the Program files are written
+	files   []*File // the program's files
+	Stats   ProgramStats
+}
 
-	Stats ProgramStats
+type File struct {
+	pack   string // the package name
+	source []byte
+	name   string // TODO(alb): remove?
+	path   *os.File
 }
 
 type ProgramStats struct {
@@ -50,60 +50,61 @@ func init() {
 	CheckSeed = rs.Int() % 1e5
 }
 
-// NewProgram uses a DeclBuilder to generate a new random Go program
-// with the given seed.
-func NewProgram(rs *rand.Rand, conf ProgramConf) *Program {
-
-	db := NewDeclBuilder(rs, conf)
-	var buf bytes.Buffer
-	printer.Fprint(&buf, token.NewFileSet(), db.File(FuncCount))
-
-	gp := &Program{id: rs.Uint64(), source: buf.Bytes()}
-	gp.Stats.Stmt = db.sb.stats
-
-	// Insert a newline between each function to make the generated
-	// program easier to navigate.
-	gp.source = bytes.ReplaceAll(
-		gp.source,
-		[]byte("func "),
-		[]byte("\nfunc "),
-	)
-
-	return gp
-}
-
-// WriteToFile writes gp's source in a file named prog<gp.seed>.go, in
-// the folder passed in the path parameter.
-func (gp *Program) WriteToFile(path string) error {
-	fileName := fmt.Sprintf("prog%v.go", gp.id)
-	fh, err := os.Create(path + "/" + fileName)
-	defer fh.Close()
-	if err != nil {
-		return err
+func NewProgram(rs *rand.Rand, conf ProgramConf, singlePkg bool) *Program {
+	id := rs.Uint64()
+	// TODO(alb): refactor
+	if singlePkg {
+		return &Program{id: id, files: []*File{NewFile(NewDeclBuilder(rs, conf), "main", id)}}
+	} else {
+		fm, fa := NewFile(NewDeclBuilder(rs, conf), "a", id), NewFile(NewDeclBuilder(rs, conf), "main", id)
+		return &Program{id: id, files: []*File{fm, fa}}
 	}
 
-	fh.Write(gp.source)
-	gp.fileName = fileName
-	gp.file = fh
+}
+
+func NewFile(db *DeclBuilder, pack string, id uint64) *File {
+	var buf bytes.Buffer
+	printer.Fprint(&buf, token.NewFileSet(), db.File(FuncCount, pack, id))
+
+	src := buf.Bytes()
+	src = bytes.ReplaceAll(src, []byte("func "), []byte("\nfunc "))
+	return &File{pack: pack, source: src}
+}
+
+func (gp *Program) WriteToDisk(path string) error {
 	gp.workdir = path
+
+	for i, f := range gp.files {
+		fileName := fmt.Sprintf("prog%v_%v.go", gp.id, f.pack)
+		fh, err := os.Create(path + "/" + fileName)
+		defer fh.Close()
+		if err != nil {
+			return err
+		}
+
+		fh.Write(f.source)
+		gp.files[i].name = fileName
+		gp.files[i].path = fh
+	}
+
 	return nil
 }
 
 // Check uses go/parser and go/types to parse and typecheck gp
-// in-memory. If the parsing fails, it returns the parse error. If the
-// typechecking fails, it returns the typechecking error. Otherwise,
-// returns nil.
+// in-memory.
 func (gp *Program) Check() error {
 	fset := token.NewFileSet()
-	f, err := parser.ParseFile(fset, gp.fileName, gp.source, 0)
-	if err != nil {
-		return err // parse error
-	}
+	for _, file := range gp.files {
+		f, err := parser.ParseFile(fset, file.name, file.source, 0)
+		if err != nil {
+			return err // parse error
+		}
 
-	conf := types.Config{Importer: importer.Default()}
-	_, err = conf.Check(gp.fileName, fset, []*ast.File{f}, nil)
-	if err != nil {
-		return err // typecheck error
+		conf := types.Config{Importer: importer.Default()}
+		_, err = conf.Check(file.name, fset, []*ast.File{f}, nil)
+		if err != nil {
+			return err // typecheck error
+		}
 	}
 
 	return nil
@@ -116,12 +117,12 @@ func (gp *Program) Check() error {
 // returns the error message printed by the toolchain and the
 // subprocess error code.
 func (gp *Program) Compile(arch string, fz FuzzOptions) (string, error) {
-	if gp.file == nil {
+	if gp.files[0].path == nil {
 		return "", errors.New("cannot compile program with no *File")
 	}
 
-	arcName := strings.TrimSuffix(gp.fileName, ".go") + ".o"
-	binName := strings.TrimSuffix(gp.fileName, ".go")
+	arcName := strings.TrimSuffix(gp.files[0].name, "_a.go") + "_main.o"
+	binName := strings.TrimSuffix(gp.files[0].name, "_a.go")
 
 	switch {
 
@@ -130,7 +131,7 @@ func (gp *Program) Compile(arch string, fz FuzzOptions) (string, error) {
 		if fz.Noopt {
 			oFlag = "-Og"
 		}
-		cmd := exec.Command(fz.Toolchain, oFlag, "-o", arcName, gp.fileName)
+		cmd := exec.Command(fz.Toolchain, oFlag, "-o", arcName, gp.files[0].name)
 		cmd.Dir = gp.workdir
 		out, err := cmd.CombinedOutput()
 		if err != nil {
@@ -140,9 +141,9 @@ func (gp *Program) Compile(arch string, fz FuzzOptions) (string, error) {
 	case strings.Contains(fz.Toolchain, "tinygo"):
 		var cmd *exec.Cmd
 		if fz.Noopt {
-			cmd = exec.Command(fz.Toolchain, "build", "-opt", "z", "-o", arcName, gp.fileName)
+			cmd = exec.Command(fz.Toolchain, "build", "-opt", "z", "-o", arcName, gp.files[0].name)
 		} else {
-			cmd = exec.Command(fz.Toolchain, "build", "-o", arcName, gp.fileName)
+			cmd = exec.Command(fz.Toolchain, "build", "-o", arcName, gp.files[0].name)
 		}
 		cmd.Dir = gp.workdir
 		out, err := cmd.CombinedOutput()
@@ -151,6 +152,8 @@ func (gp *Program) Compile(arch string, fz FuzzOptions) (string, error) {
 		}
 
 	default:
+
+		// Setup build args
 		buildArgs := []string{"tool", "compile"}
 		if fz.Race {
 			buildArgs = append(buildArgs, "-race")
@@ -162,8 +165,8 @@ func (gp *Program) Compile(arch string, fz FuzzOptions) (string, error) {
 			cs := fmt.Sprintf("-d=ssa/check/seed=%v", CheckSeed)
 			buildArgs = append(buildArgs, cs)
 		}
-		buildArgs = append(buildArgs, gp.fileName)
 
+		// Setup env variables
 		env := os.Environ()
 		if arch == "wasm" {
 			env = append(env, "GOOS=js")
@@ -176,27 +179,35 @@ func (gp *Program) Compile(arch string, fz FuzzOptions) (string, error) {
 			env = append(env, "GOARCH="+arch)
 		}
 
-		// compile
-		cmd := exec.Command(fz.Toolchain, buildArgs...)
+		for _, file := range gp.files {
+			var cmdArgs []string
+			if file.pack == "main" {
+				cmdArgs = append(buildArgs, "-I=.")
+				cmdArgs = append(cmdArgs, file.name)
+			} else {
+				cmdArgs = append(buildArgs, file.name)
+			}
+
+			cmd := exec.Command(fz.Toolchain, cmdArgs...)
+			cmd.Dir, cmd.Env = gp.workdir, env
+			out, err := cmd.CombinedOutput()
+			if err != nil {
+				return string(out), err
+			}
+		}
+
+		// link
+		linkArgs := []string{"tool", "link", "-L=."}
+		if fz.Race {
+			linkArgs = append(linkArgs, "-race")
+		}
+		linkArgs = append(linkArgs, "-o", binName, arcName)
+		cmd := exec.Command(fz.Toolchain, linkArgs...)
 		cmd.Dir, cmd.Env = gp.workdir, env
 		out, err := cmd.CombinedOutput()
 		if err != nil {
 			return string(out), err
 		}
-
-		// link
-		linkArgs := []string{"tool", "link"}
-		if fz.Race {
-			linkArgs = append(linkArgs, "-race")
-		}
-		linkArgs = append(linkArgs, "-o", binName, arcName)
-		cmd = exec.Command(fz.Toolchain, linkArgs...)
-		cmd.Dir, cmd.Env = gp.workdir, env
-		out, err = cmd.CombinedOutput()
-		if err != nil {
-			return string(out), err
-		}
-
 	}
 
 	gp.DeleteBinaries()
@@ -205,21 +216,24 @@ func (gp *Program) Compile(arch string, fz FuzzOptions) (string, error) {
 
 // DeleteBinaries deletes any binary file written on disk.
 func (gp Program) DeleteBinaries() {
-	binPath := strings.TrimSuffix(gp.file.Name(), ".go")
-	err := os.Remove(binPath + ".o")
-	if err != nil {
-		log.Printf("could not remove %s: %s", binPath+".o", err)
-	}
+	binPath := strings.TrimSuffix(gp.files[0].path.Name(), "_a.go")
+	for _, file := range gp.files {
+		err := os.Remove(binPath + "_" + file.pack + ".o")
+		if err != nil {
+			log.Printf("could not remove %s: %s", binPath+".o", err)
+		}
 
-	// ignore error since some toolchains don't write a binary
-	_ = os.Remove(binPath)
+		// ignore error since some toolchains don't write a binary
+		_ = os.Remove(binPath)
+	}
 }
 
 // DeleteSource deletes the file containing the source code of gp, as
 // written to disk from gp.WriteTofdFile.
 func (gp Program) DeleteSource() {
-	fn := gp.file.Name()
-	_ = os.Remove(fn)
+	for _, file := range gp.files {
+		_ = os.Remove(file.path.Name())
+	}
 }
 
 // Move gp in a workdir subfolder named "crash".
@@ -233,7 +247,7 @@ func (gp Program) MoveCrasher() {
 		}
 	}
 
-	err := os.Rename(gp.file.Name(), fld+"/"+gp.fileName)
+	err := os.Rename(gp.files[0].path.Name(), fld+"/"+gp.files[0].name)
 	if err != nil {
 		fmt.Printf("Move crasher to folder failed: %v", err)
 		os.Exit(2)
@@ -241,9 +255,11 @@ func (gp Program) MoveCrasher() {
 }
 
 func (p Program) String() string {
-	return string(p.source)
+	// TODO(alb): fix
+	return string(p.files[0].source)
 }
 
 func (p Program) Name() string {
-	return p.fileName
+	// TODO(alb): fix
+	return p.files[0].name
 }

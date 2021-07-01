@@ -60,19 +60,23 @@ func (db *DeclBuilder) FuncIdent(i int) *ast.Ident {
 	id := new(ast.Ident)
 	id.Obj = &ast.Object{
 		Kind: ast.Fun,
-		Name: fmt.Sprintf("f%v", i),
+		Name: fmt.Sprintf("F%v", i),
 	}
 	id.Name = id.Obj.Name
 
 	return id
 }
 
-// returns *ast.File containing a package 'pName' and its source code,
-// containing fCount functions.
-func (db *DeclBuilder) File(n int) *ast.File {
+// returns *ast.File containing a package p and its source code, with
+// n functions.
+func (db *DeclBuilder) File(n int, p string, id uint64) *ast.File {
 	af := new(ast.File)
-	af.Name = &ast.Ident{0, "main", nil}
+	af.Name = &ast.Ident{0, p, nil}
 	af.Decls = []ast.Decl{}
+
+	if p == "main" {
+		af.Decls = append(af.Decls, MakeImport(fmt.Sprintf(`"prog%v_a"`, id)))
+	}
 
 	af.Decls = append(af.Decls, MakeImport(`"math"`))
 
@@ -106,17 +110,29 @@ func (db *DeclBuilder) File(n int) *ast.File {
 	}
 
 	// finally, the main function
-	mainF := &ast.FuncDecl{
-		Name: &ast.Ident{Name: "main"},
-		Type: &ast.FuncType{Params: &ast.FieldList{}},
-		Body: &ast.BlockStmt{},
+	if p == "main" {
+		mainF := &ast.FuncDecl{
+			Name: &ast.Ident{Name: "main"},
+			Type: &ast.FuncType{Params: &ast.FieldList{}},
+			Body: &ast.BlockStmt{},
+		}
+		for i := 0; i < n; i++ {
+			// call all local functions
+			mainF.Body.List = append(
+				mainF.Body.List,
+				&ast.ExprStmt{&ast.CallExpr{Fun: db.FuncIdent(i)}})
+			// call functions in package a
+			mainF.Body.List = append(
+				mainF.Body.List,
+				&ast.ExprStmt{&ast.CallExpr{
+					Fun: &ast.SelectorExpr{
+						X:   &ast.Ident{Name: "a"},
+						Sel: db.FuncIdent(i),
+					},
+				}})
+		}
+		af.Decls = append(af.Decls, mainF)
 	}
-	for i := 0; i < n; i++ {
-		mainF.Body.List = append(
-			mainF.Body.List,
-			&ast.ExprStmt{&ast.CallExpr{Fun: db.FuncIdent(i)}})
-	}
-	af.Decls = append(af.Decls, mainF)
 
 	return af
 }
