@@ -195,10 +195,6 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 // When returning an expression, simple one are always preferred. A
 // derived expression is only returned when there are not variables of
 // type t in scope.
-//
-// TODO(alb): we never call SliceExpr, i.e. if the requested type is
-// []int we always return any []int in scope, but we should instead
-// sometimes return an expr that slices into one of the []ints
 func (eb *ExprBuilder) VarOrLit(t Type) interface{} {
 
 	vt, typeInScope := eb.scope.GetRandomVarOfType(t, eb.rs)
@@ -367,7 +363,7 @@ func (eb *ExprBuilder) ChanReceiveExpr(v Variable) *ast.UnaryExpr {
 
 func (eb *ExprBuilder) SliceExpr(v Variable) *ast.SliceExpr {
 	if !v.Type.Sliceable() {
-		panic("SliceExpr: un-sliceable type " + v.Type.Name())
+		panic("Cannot slice type " + v.Type.Name())
 	}
 
 	var low, high ast.Expr

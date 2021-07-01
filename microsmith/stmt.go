@@ -189,10 +189,6 @@ func (sb *StmtBuilder) AssignStmt() *ast.AssignStmt {
 		}
 
 	case FuncType:
-		// TODO(alb): re-enable assigning to FuncType variables? We
-		// don't do that now since we already give them a body in
-		// their DeclStmt, but it could be interesting to re-assign
-		// then a new body in the program.
 		panic("AssignStmt: not for functions")
 
 	default:
