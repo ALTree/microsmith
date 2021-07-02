@@ -35,6 +35,7 @@ var TestConfigurations = map[string]microsmith.ProgramConf{
 			MaxStmtDepth: 1,
 		},
 		allTypes,
+		false,
 	},
 
 	"medium": {
@@ -42,6 +43,7 @@ var TestConfigurations = map[string]microsmith.ProgramConf{
 			MaxStmtDepth: 2,
 		},
 		allTypes,
+		false,
 	},
 
 	"big": {
@@ -49,19 +51,21 @@ var TestConfigurations = map[string]microsmith.ProgramConf{
 			MaxStmtDepth: 3,
 		},
 		allTypes,
+		false,
 	},
 	"huge": {
 		microsmith.StmtConf{
 			MaxStmtDepth: 5,
 		},
 		allTypes,
+		false,
 	},
 }
 
 // check n generated programs with go/types (in-memory)
 func testProgramGoTypes(t *testing.T, n int, conf microsmith.ProgramConf) {
 	for i := 0; i < n; i++ {
-		gp := microsmith.NewProgram(rand.New(rand.NewSource(42)), conf, true)
+		gp := microsmith.NewProgram(rand.New(rand.NewSource(42)), conf)
 		err := gp.Check()
 		if err != nil {
 			tmpfile, _ := ioutil.TempFile("", "fail*.go")
@@ -133,7 +137,7 @@ func TestSingleType(t *testing.T) {
 func TestStmtStats(t *testing.T) {
 	for i := 0; i < 50; i++ {
 		rs := rand.New(rand.NewSource(444))
-		gp := microsmith.NewProgram(rs, microsmith.RandConf(rs), true)
+		gp := microsmith.NewProgram(rs, microsmith.RandConf(rs))
 		checkStats(t, gp)
 	}
 }
@@ -180,7 +184,7 @@ func TestProgramGc(t *testing.T) {
 	rand := rand.New(rand.NewSource(42))
 	keepdir := false
 	for i := 0; i < 50; i++ {
-		gp := microsmith.NewProgram(rand, microsmith.RandConf(rand), false)
+		gp := microsmith.NewProgram(rand, microsmith.RandConf(rand))
 		err := gp.WriteToDisk(WorkDir)
 		if err != nil {
 			t.Fatalf("Could not write to file: %s", err)
@@ -215,6 +219,7 @@ var BenchConf = microsmith.ProgramConf{
 		microsmith.BasicType{"rune"},
 		microsmith.BasicType{"string"},
 	},
+	false,
 }
 
 var gp *ast.File
@@ -224,6 +229,6 @@ func BenchmarkProgram(b *testing.B) {
 	rand := rand.New(rand.NewSource(19))
 	for i := 0; i < b.N; i++ {
 		db := microsmith.NewDeclBuilder(rand, BenchConf)
-		gp = db.File(1, "main", 0)
+		gp = db.File(1, "main", 0, false)
 	}
 }

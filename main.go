@@ -131,11 +131,11 @@ func Fuzz(workerID uint64, fz microsmith.FuzzOptions) {
 
 		gp := microsmith.NewProgram(rs, conf)
 
-		// err := gp.Check()
-		// if err != nil {
-		// 	fmt.Printf("Program failed typechecking: %s\n%s", err, gp)
-		// 	os.Exit(2)
-		// }
+		err := gp.Check()
+		if err != nil {
+			fmt.Printf("Program failed typechecking: %s\n%s", err, gp)
+			os.Exit(2)
+		}
 
 		err = gp.WriteToDisk(*workdirF)
 		if err != nil {
@@ -189,6 +189,7 @@ func Fuzz(workerID uint64, fz microsmith.FuzzOptions) {
 func debugRun() {
 	rs := rand.New(rand.NewSource(int64(uint64(time.Now().UnixNano()))))
 	conf := microsmith.RandConf(rs)
+	conf.MultiPkg = false
 
 	microsmith.FuncCount = 1
 	gp := microsmith.NewProgram(rs, conf)
@@ -196,7 +197,7 @@ func debugRun() {
 	err := gp.Check()
 	fmt.Println(gp)
 	if err != nil {
-		fmt.Printf("Program failed typechecking with error:\n%s\n", err)
+		fmt.Printf("Program failed typechecking\n%s\n", err)
 		os.Exit(2)
 	}
 }

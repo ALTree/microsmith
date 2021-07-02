@@ -50,24 +50,22 @@ func init() {
 	CheckSeed = rs.Int() % 1e5
 }
 
-func NewProgram(rs *rand.Rand, conf ProgramConf, singlePkg bool) *Program {
+func NewProgram(rs *rand.Rand, conf ProgramConf) *Program {
 	id := rs.Uint64()
-	// TODO(alb): refactor
-	if singlePkg {
-		return &Program{id: id, files: []*File{NewFile(NewDeclBuilder(rs, conf), "main", id)}}
-	} else {
-		fm, fa := NewFile(NewDeclBuilder(rs, conf), "a", id), NewFile(NewDeclBuilder(rs, conf), "main", id)
-		return &Program{id: id, files: []*File{fm, fa}}
-	}
 
+	var files []*File = make([]*File, 0)
+	if conf.MultiPkg {
+		files = append(files, NewFile(NewDeclBuilder(rs, conf), "a", id, conf.MultiPkg))
+	}
+	files = append(files, NewFile(NewDeclBuilder(rs, conf), "main", id, conf.MultiPkg))
+
+	return &Program{id: id, files: files}
 }
 
-func NewFile(db *DeclBuilder, pack string, id uint64) *File {
+func NewFile(db *DeclBuilder, pack string, id uint64, MultiPkg bool) *File {
 	var buf bytes.Buffer
-	printer.Fprint(&buf, token.NewFileSet(), db.File(FuncCount, pack, id))
-
-	src := buf.Bytes()
-	src = bytes.ReplaceAll(src, []byte("func "), []byte("\nfunc "))
+	printer.Fprint(&buf, token.NewFileSet(), db.File(FuncCount, pack, id, MultiPkg))
+	src := bytes.ReplaceAll(buf.Bytes(), []byte("func "), []byte("\nfunc "))
 	return &File{pack: pack, source: src}
 }
 
@@ -93,18 +91,23 @@ func (gp *Program) WriteToDisk(path string) error {
 // Check uses go/parser and go/types to parse and typecheck gp
 // in-memory.
 func (gp *Program) Check() error {
-	fset := token.NewFileSet()
-	for _, file := range gp.files {
-		f, err := parser.ParseFile(fset, file.name, file.source, 0)
-		if err != nil {
-			return err // parse error
-		}
+	if len(gp.files) > 1 {
+		return nil
+	}
 
-		conf := types.Config{Importer: importer.Default()}
-		_, err = conf.Check(file.name, fset, []*ast.File{f}, nil)
-		if err != nil {
-			return err // typecheck error
-		}
+	file := gp.files[0]
+
+	fset := token.NewFileSet()
+
+	f, err := parser.ParseFile(fset, file.name, file.source, 0)
+	if err != nil {
+		return err // parse error
+	}
+
+	conf := types.Config{Importer: importer.Default()}
+	_, err = conf.Check(file.name, fset, []*ast.File{f}, nil)
+	if err != nil {
+		return err // typecheck error
 	}
 
 	return nil
@@ -247,10 +250,12 @@ func (gp Program) MoveCrasher() {
 		}
 	}
 
-	err := os.Rename(gp.files[0].path.Name(), fld+"/"+gp.files[0].name)
-	if err != nil {
-		fmt.Printf("Move crasher to folder failed: %v", err)
-		os.Exit(2)
+	for _, file := range gp.files {
+		err := os.Rename(file.path.Name(), fld+"/"+file.name)
+		if err != nil {
+			fmt.Printf("Move crasher to folder failed: %v", err)
+			os.Exit(2)
+		}
 	}
 }
 

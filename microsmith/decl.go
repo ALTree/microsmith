@@ -26,6 +26,7 @@ var AllTypes = []Type{
 type ProgramConf struct {
 	StmtConf       // defined in stmt.go
 	SupportedTypes []Type
+	MultiPkg       bool
 }
 
 func RandConf(rs *rand.Rand) ProgramConf {
@@ -37,6 +38,7 @@ func RandConf(rs *rand.Rand) ProgramConf {
 			pc.SupportedTypes = append(pc.SupportedTypes, t)
 		}
 	}
+	pc.MultiPkg = true
 	return pc
 }
 
@@ -67,14 +69,12 @@ func (db *DeclBuilder) FuncIdent(i int) *ast.Ident {
 	return id
 }
 
-// returns *ast.File containing a package p and its source code, with
-// n functions.
-func (db *DeclBuilder) File(n int, p string, id uint64) *ast.File {
+func (db *DeclBuilder) File(n int, p string, id uint64, multiPkg bool) *ast.File {
 	af := new(ast.File)
 	af.Name = &ast.Ident{0, p, nil}
 	af.Decls = []ast.Decl{}
 
-	if p == "main" {
+	if p == "main" && multiPkg {
 		af.Decls = append(af.Decls, MakeImport(fmt.Sprintf(`"prog%v_a"`, id)))
 	}
 
@@ -116,21 +116,29 @@ func (db *DeclBuilder) File(n int, p string, id uint64) *ast.File {
 			Type: &ast.FuncType{Params: &ast.FieldList{}},
 			Body: &ast.BlockStmt{},
 		}
+
+		// call all local functions
 		for i := 0; i < n; i++ {
-			// call all local functions
 			mainF.Body.List = append(
 				mainF.Body.List,
-				&ast.ExprStmt{&ast.CallExpr{Fun: db.FuncIdent(i)}})
-			// call functions in package a
-			mainF.Body.List = append(
-				mainF.Body.List,
-				&ast.ExprStmt{&ast.CallExpr{
-					Fun: &ast.SelectorExpr{
-						X:   &ast.Ident{Name: "a"},
-						Sel: db.FuncIdent(i),
-					},
-				}})
+				&ast.ExprStmt{&ast.CallExpr{Fun: db.FuncIdent(i)}},
+			)
 		}
+
+		// call all functions in package a
+		if multiPkg {
+			for i := 0; i < n; i++ {
+				mainF.Body.List = append(
+					mainF.Body.List,
+					&ast.ExprStmt{&ast.CallExpr{
+						Fun: &ast.SelectorExpr{
+							X:   &ast.Ident{Name: "a"},
+							Sel: db.FuncIdent(i),
+						}}},
+				)
+			}
+		}
+
 		af.Decls = append(af.Decls, mainF)
 	}
 
@@ -139,7 +147,7 @@ func (db *DeclBuilder) File(n int, p string, id uint64) *ast.File {
 
 // Builds this:
 //   import "<p>"
-// p must be include a " char in the 1st and last position.
+// p must be include a " char in the fist and last position.
 func MakeImport(p string) *ast.GenDecl {
 	return &ast.GenDecl{
 		Tok: token.IMPORT,
