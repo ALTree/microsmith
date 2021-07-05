@@ -38,7 +38,6 @@ func RandConf(rs *rand.Rand) ProgramConf {
 			pc.SupportedTypes = append(pc.SupportedTypes, t)
 		}
 	}
-	pc.MultiPkg = true
 	return pc
 }
 
@@ -127,16 +126,14 @@ func (db *DeclBuilder) File(n int, p string, id uint64, multiPkg bool) *ast.File
 
 		// call all functions in package a
 		if multiPkg {
-			for i := 0; i < n; i++ {
-				mainF.Body.List = append(
-					mainF.Body.List,
-					&ast.ExprStmt{&ast.CallExpr{
-						Fun: &ast.SelectorExpr{
-							X:   &ast.Ident{Name: "a"},
-							Sel: db.FuncIdent(i),
-						}}},
-				)
-			}
+			mainF.Body.List = append(
+				mainF.Body.List,
+				&ast.ExprStmt{&ast.CallExpr{
+					Fun: &ast.SelectorExpr{
+						X:   &ast.Ident{Name: "a"},
+						Sel: db.FuncIdent(0),
+					}}},
+			)
 		}
 
 		af.Decls = append(af.Decls, mainF)

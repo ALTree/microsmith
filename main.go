@@ -22,6 +22,7 @@ var KnownCount int64
 var (
 	archF      = flag.String("arch", "", "GOARCHs to fuzz (comma separated list)")
 	debugF     = flag.Bool("debug", false, "Run in debug mode")
+	multiPkgF  = flag.Bool("multipkg", false, "Generate multipkg programs")
 	nooptF     = flag.Bool("noopt", false, "Compile with optimizations disabled")
 	pF         = flag.Uint64("p", 1, "Number of workers")
 	raceF      = flag.Bool("race", false, "Compile with -race")
@@ -120,12 +121,14 @@ func Fuzz(workerID uint64, fz microsmith.FuzzOptions) {
 		rand.NewSource(int64(0xfaff0011 * workerID * uint64(time.Now().UnixNano()))),
 	)
 	conf := microsmith.RandConf(rs)
+	conf.MultiPkg = *multiPkgF
 
 	counter := 0
 	for {
 		counter++
 		if counter == 30 {
 			conf = microsmith.RandConf(rs)
+			conf.MultiPkg = *multiPkgF
 			counter = 0
 		}
 
@@ -189,7 +192,7 @@ func Fuzz(workerID uint64, fz microsmith.FuzzOptions) {
 func debugRun() {
 	rs := rand.New(rand.NewSource(int64(uint64(time.Now().UnixNano()))))
 	conf := microsmith.RandConf(rs)
-	conf.MultiPkg = false
+	conf.MultiPkg = *multiPkgF
 
 	microsmith.FuncCount = 1
 	gp := microsmith.NewProgram(rs, conf)

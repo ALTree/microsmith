@@ -26,9 +26,9 @@ type Program struct {
 }
 
 type File struct {
-	pack   string // the package name
+	pkg    string // the package name
 	source []byte
-	name   string // TODO(alb): remove?
+	name   string
 	path   *os.File
 }
 
@@ -62,18 +62,22 @@ func NewProgram(rs *rand.Rand, conf ProgramConf) *Program {
 	return &Program{id: id, files: files}
 }
 
-func NewFile(db *DeclBuilder, pack string, id uint64, MultiPkg bool) *File {
+func NewFile(db *DeclBuilder, pkg string, id uint64, MultiPkg bool) *File {
 	var buf bytes.Buffer
-	printer.Fprint(&buf, token.NewFileSet(), db.File(FuncCount, pack, id, MultiPkg))
+	fncnt := FuncCount
+	if pkg != "main" {
+		fncnt = 1
+	}
+	printer.Fprint(&buf, token.NewFileSet(), db.File(fncnt, pkg, id, MultiPkg))
 	src := bytes.ReplaceAll(buf.Bytes(), []byte("func "), []byte("\nfunc "))
-	return &File{pack: pack, source: src}
+	return &File{pkg: pkg, source: src}
 }
 
 func (gp *Program) WriteToDisk(path string) error {
 	gp.workdir = path
 
 	for i, f := range gp.files {
-		fileName := fmt.Sprintf("prog%v_%v.go", gp.id, f.pack)
+		fileName := fmt.Sprintf("prog%v_%v.go", gp.id, f.pkg)
 		fh, err := os.Create(path + "/" + fileName)
 		defer fh.Close()
 		if err != nil {
@@ -92,13 +96,11 @@ func (gp *Program) WriteToDisk(path string) error {
 // in-memory.
 func (gp *Program) Check() error {
 	if len(gp.files) > 1 {
+		// multi-package program, skip typechecking
 		return nil
 	}
 
-	file := gp.files[0]
-
-	fset := token.NewFileSet()
-
+	file, fset := gp.files[0], token.NewFileSet()
 	f, err := parser.ParseFile(fset, file.name, file.source, 0)
 	if err != nil {
 		return err // parse error
@@ -120,12 +122,12 @@ func (gp *Program) Check() error {
 // returns the error message printed by the toolchain and the
 // subprocess error code.
 func (gp *Program) Compile(arch string, fz FuzzOptions) (string, error) {
-	if gp.files[0].path == nil {
-		return "", errors.New("cannot compile program with no *File")
+	if len(gp.files) == 0 {
+		return "", errors.New("cannot compile program with no files")
 	}
 
-	arcName := strings.TrimSuffix(gp.files[0].name, "_a.go") + "_main.o"
-	binName := strings.TrimSuffix(gp.files[0].name, "_a.go")
+	baseName := fmt.Sprintf("prog%v", gp.id)
+	arcName := baseName + "_main.o"
 
 	switch {
 
@@ -134,7 +136,7 @@ func (gp *Program) Compile(arch string, fz FuzzOptions) (string, error) {
 		if fz.Noopt {
 			oFlag = "-Og"
 		}
-		cmd := exec.Command(fz.Toolchain, oFlag, "-o", arcName, gp.files[0].name)
+		cmd := exec.Command(fz.Toolchain, oFlag, "-o", arcName, baseName+".go")
 		cmd.Dir = gp.workdir
 		out, err := cmd.CombinedOutput()
 		if err != nil {
@@ -144,9 +146,9 @@ func (gp *Program) Compile(arch string, fz FuzzOptions) (string, error) {
 	case strings.Contains(fz.Toolchain, "tinygo"):
 		var cmd *exec.Cmd
 		if fz.Noopt {
-			cmd = exec.Command(fz.Toolchain, "build", "-opt", "z", "-o", arcName, gp.files[0].name)
+			cmd = exec.Command(fz.Toolchain, "build", "-opt", "z", "-o", arcName, baseName+".go")
 		} else {
-			cmd = exec.Command(fz.Toolchain, "build", "-o", arcName, gp.files[0].name)
+			cmd = exec.Command(fz.Toolchain, "build", "-o", arcName, baseName+".go")
 		}
 		cmd.Dir = gp.workdir
 		out, err := cmd.CombinedOutput()
@@ -184,7 +186,7 @@ func (gp *Program) Compile(arch string, fz FuzzOptions) (string, error) {
 
 		for _, file := range gp.files {
 			var cmdArgs []string
-			if file.pack == "main" {
+			if file.pkg == "main" {
 				cmdArgs = append(buildArgs, "-I=.")
 				cmdArgs = append(cmdArgs, file.name)
 			} else {
@@ -204,7 +206,7 @@ func (gp *Program) Compile(arch string, fz FuzzOptions) (string, error) {
 		if fz.Race {
 			linkArgs = append(linkArgs, "-race")
 		}
-		linkArgs = append(linkArgs, "-o", binName, arcName)
+		linkArgs = append(linkArgs, "-o", baseName, arcName)
 		cmd := exec.Command(fz.Toolchain, linkArgs...)
 		cmd.Dir, cmd.Env = gp.workdir, env
 		out, err := cmd.CombinedOutput()
@@ -219,20 +221,21 @@ func (gp *Program) Compile(arch string, fz FuzzOptions) (string, error) {
 
 // DeleteBinaries deletes any binary file written on disk.
 func (gp Program) DeleteBinaries() {
-	binPath := strings.TrimSuffix(gp.files[0].path.Name(), "_a.go")
+	basePath := gp.workdir + fmt.Sprintf("/prog%v", gp.id)
 	for _, file := range gp.files {
-		err := os.Remove(binPath + "_" + file.pack + ".o")
+		err := os.Remove(basePath + "_" + file.pkg + ".o")
 		if err != nil {
-			log.Printf("could not remove %s: %s", binPath+".o", err)
+			log.Printf("could not remove %s: %s", basePath+"_"+file.pkg+".o", err)
 		}
 
-		// ignore error since some toolchains don't write a binary
-		_ = os.Remove(binPath)
 	}
+
+	// ignore error since some toolchains don't write a binary
+	_ = os.Remove(basePath)
 }
 
 // DeleteSource deletes the file containing the source code of gp, as
-// written to disk from gp.WriteTofdFile.
+// written to disk from gp.WriteTfdFile.
 func (gp Program) DeleteSource() {
 	for _, file := range gp.files {
 		_ = os.Remove(file.path.Name())
@@ -245,7 +248,7 @@ func (gp Program) MoveCrasher() {
 	if _, err := os.Stat(fld); os.IsNotExist(err) {
 		err := os.Mkdir(fld, os.ModePerm)
 		if err != nil {
-			fmt.Printf("Create crash subfolder failed: %v", err)
+			fmt.Printf("Could not create crash folder: %v", err)
 			os.Exit(2)
 		}
 	}
@@ -253,18 +256,23 @@ func (gp Program) MoveCrasher() {
 	for _, file := range gp.files {
 		err := os.Rename(file.path.Name(), fld+"/"+file.name)
 		if err != nil {
-			fmt.Printf("Move crasher to folder failed: %v", err)
+			fmt.Printf("Could not move crasher: %v", err)
 			os.Exit(2)
 		}
 	}
 }
 
 func (p Program) String() string {
-	// TODO(alb): fix
-	return string(p.files[0].source)
+	var res string
+	for _, file := range p.files {
+		res += string(file.source)
+		if len(p.files) > 1 {
+			res += "\n--------\n"
+		}
+	}
+	return res
 }
 
 func (p Program) Name() string {
-	// TODO(alb): fix
-	return p.files[0].name
+	return fmt.Sprintf("prog%v", p.id)
 }
