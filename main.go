@@ -116,9 +116,9 @@ var crashWhitelist = []*regexp.Regexp{
 	// regexp.MustCompile("illegal combination SRA"),
 }
 
-func Fuzz(workerID uint64, fz microsmith.FuzzOptions) {
+func Fuzz(id uint64, fz microsmith.FuzzOptions) {
 	rs := rand.New(
-		rand.NewSource(int64(0xfaff0011 * workerID * uint64(time.Now().UnixNano()))),
+		rand.NewSource(int64(0xfaff0011 * id * uint64(time.Now().UnixNano()))),
 	)
 	conf := microsmith.RandConf(rs)
 	conf.MultiPkg = *multiPkgF
@@ -193,10 +193,8 @@ func debugRun() {
 	rs := rand.New(rand.NewSource(int64(uint64(time.Now().UnixNano()))))
 	conf := microsmith.RandConf(rs)
 	conf.MultiPkg = *multiPkgF
-
-	microsmith.FuncCount = 1
+	conf.FuncNum = 1
 	gp := microsmith.NewProgram(rs, conf)
-
 	err := gp.Check()
 	fmt.Println(gp)
 	if err != nil {

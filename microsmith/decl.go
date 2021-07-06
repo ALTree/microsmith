@@ -24,9 +24,10 @@ var AllTypes = []Type{
 }
 
 type ProgramConf struct {
-	StmtConf       // defined in stmt.go
+	StmtConf
 	SupportedTypes []Type
 	MultiPkg       bool
+	FuncNum        int
 }
 
 func RandConf(rs *rand.Rand) ProgramConf {
@@ -38,6 +39,7 @@ func RandConf(rs *rand.Rand) ProgramConf {
 			pc.SupportedTypes = append(pc.SupportedTypes, t)
 		}
 	}
+	pc.FuncNum = 8
 	return pc
 }
 
@@ -68,12 +70,16 @@ func (db *DeclBuilder) FuncIdent(i int) *ast.Ident {
 	return id
 }
 
-func (db *DeclBuilder) File(n int, p string, id uint64, multiPkg bool) *ast.File {
+func (db *DeclBuilder) Conf() ProgramConf {
+	return db.sb.conf
+}
+
+func (db *DeclBuilder) File(pkg string, id uint64) *ast.File {
 	af := new(ast.File)
-	af.Name = &ast.Ident{0, p, nil}
+	af.Name = &ast.Ident{0, pkg, nil}
 	af.Decls = []ast.Decl{}
 
-	if p == "main" && multiPkg {
+	if pkg == "main" && db.Conf().MultiPkg {
 		af.Decls = append(af.Decls, MakeImport(fmt.Sprintf(`"prog%v_a"`, id)))
 	}
 
@@ -92,7 +98,7 @@ func (db *DeclBuilder) File(n int, p string, id uint64, multiPkg bool) *ast.File
 
 	// Now half a dozen top-level variables
 	for i := 1; i <= 6; i++ {
-		t := RandType(db.sb.conf.SupportedTypes)
+		t := RandType(db.Conf().SupportedTypes)
 		if db.sb.rs.Intn(3) == 0 {
 			t = PointerOf(t)
 		}
@@ -103,42 +109,49 @@ func (db *DeclBuilder) File(n int, p string, id uint64, multiPkg bool) *ast.File
 		db.sb.scope.AddVariable(&ast.Ident{Name: fmt.Sprintf("V%v", i)}, t)
 	}
 
-	// A few functions
-	for i := 0; i < n; i++ {
+	fcnt := db.Conf().FuncNum
+	if pkg != "main" {
+		fcnt = 1
+	}
+
+	// Declare fcnt top-level functions
+	for i := 0; i < fcnt; i++ {
 		af.Decls = append(af.Decls, db.FuncDecl(i))
 	}
 
-	// finally, the main function
-	if p == "main" {
-		mainF := &ast.FuncDecl{
-			Name: &ast.Ident{Name: "main"},
-			Type: &ast.FuncType{Params: &ast.FieldList{}},
-			Body: &ast.BlockStmt{},
-		}
-
-		// call all local functions
-		for i := 0; i < n; i++ {
-			mainF.Body.List = append(
-				mainF.Body.List,
-				&ast.ExprStmt{&ast.CallExpr{Fun: db.FuncIdent(i)}},
-			)
-		}
-
-		// call all functions in package a
-		if multiPkg {
-			mainF.Body.List = append(
-				mainF.Body.List,
-				&ast.ExprStmt{&ast.CallExpr{
-					Fun: &ast.SelectorExpr{
-						X:   &ast.Ident{Name: "a"},
-						Sel: db.FuncIdent(0),
-					}}},
-			)
-		}
-
-		af.Decls = append(af.Decls, mainF)
+	// If we're not building a main package, we're done. Otherwise,
+	// add a main func.
+	if pkg != "main" {
+		return af
 	}
 
+	mainF := &ast.FuncDecl{
+		Name: &ast.Ident{Name: "main"},
+		Type: &ast.FuncType{Params: &ast.FieldList{}},
+		Body: &ast.BlockStmt{},
+	}
+
+	// call all local functions
+	for i := 0; i < fcnt; i++ {
+		mainF.Body.List = append(
+			mainF.Body.List,
+			&ast.ExprStmt{&ast.CallExpr{Fun: db.FuncIdent(i)}},
+		)
+	}
+
+	// call the func in package a
+	if db.Conf().MultiPkg {
+		mainF.Body.List = append(
+			mainF.Body.List,
+			&ast.ExprStmt{&ast.CallExpr{
+				Fun: &ast.SelectorExpr{
+					X:   &ast.Ident{Name: "a"},
+					Sel: db.FuncIdent(0),
+				}}},
+		)
+	}
+
+	af.Decls = append(af.Decls, mainF)
 	return af
 }
 

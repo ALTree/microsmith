@@ -19,13 +19,14 @@ import (
 )
 
 type Program struct {
-	id      uint64  // random id used in the names of the Program files
-	workdir string  // directory where the Program files are written
-	files   []*File // the program's files
+	id      uint64      // random id used in the names of the Program files
+	workdir string      // directory where the Program files are written
+	files   []*File     // the program's files
+	conf    ProgramConf // settings driving what kind of program is generated
 }
 
 type File struct {
-	pkg    string // the package name
+	pkg    string
 	source []byte
 	name   string
 	path   *os.File
@@ -36,7 +37,6 @@ type FuzzOptions struct {
 	Noopt, Race, Ssacheck bool
 }
 
-var FuncCount = 8
 var CheckSeed int
 
 func init() {
@@ -45,24 +45,24 @@ func init() {
 }
 
 func NewProgram(rs *rand.Rand, conf ProgramConf) *Program {
-	id := rs.Uint64()
-
-	var files []*File = make([]*File, 0)
-	if conf.MultiPkg {
-		files = append(files, NewFile(NewDeclBuilder(rs, conf), "a", id, conf.MultiPkg))
+	pg := &Program{
+		id:    rs.Uint64(),
+		conf:  conf,
+		files: make([]*File, 0),
 	}
-	files = append(files, NewFile(NewDeclBuilder(rs, conf), "main", id, conf.MultiPkg))
 
-	return &Program{id: id, files: files}
+	if pg.conf.MultiPkg {
+		pg.files = append(pg.files, pg.NewFile(rs, "a"))
+	}
+	pg.files = append(pg.files, pg.NewFile(rs, "main"))
+
+	return pg
 }
 
-func NewFile(db *DeclBuilder, pkg string, id uint64, MultiPkg bool) *File {
+func (gp *Program) NewFile(rs *rand.Rand, pkg string) *File {
+	db := NewDeclBuilder(rs, gp.conf)
 	var buf bytes.Buffer
-	fncnt := FuncCount
-	if pkg != "main" {
-		fncnt = 1
-	}
-	printer.Fprint(&buf, token.NewFileSet(), db.File(fncnt, pkg, id, MultiPkg))
+	printer.Fprint(&buf, token.NewFileSet(), db.File(pkg, gp.id))
 	src := bytes.ReplaceAll(buf.Bytes(), []byte("func "), []byte("\nfunc "))
 	return &File{pkg: pkg, source: src}
 }

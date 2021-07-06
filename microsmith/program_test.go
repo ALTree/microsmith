@@ -31,34 +31,38 @@ var allTypes = []microsmith.Type{
 
 var TestConfigurations = map[string]microsmith.ProgramConf{
 	"small": {
-		microsmith.StmtConf{
+		StmtConf: microsmith.StmtConf{
 			MaxStmtDepth: 1,
 		},
-		allTypes,
-		false,
+		SupportedTypes: allTypes,
+		MultiPkg:       false,
+		FuncNum:        2,
 	},
 
 	"medium": {
-		microsmith.StmtConf{
+		StmtConf: microsmith.StmtConf{
 			MaxStmtDepth: 2,
 		},
-		allTypes,
-		false,
+		SupportedTypes: allTypes,
+		MultiPkg:       false,
+		FuncNum:        4,
 	},
 
 	"big": {
-		microsmith.StmtConf{
+		StmtConf: microsmith.StmtConf{
 			MaxStmtDepth: 3,
 		},
-		allTypes,
-		false,
+		SupportedTypes: allTypes,
+		MultiPkg:       false,
+		FuncNum:        8,
 	},
 	"huge": {
-		microsmith.StmtConf{
+		StmtConf: microsmith.StmtConf{
 			MaxStmtDepth: 5,
 		},
-		allTypes,
-		false,
+		SupportedTypes: allTypes,
+		MultiPkg:       false,
+		FuncNum:        4,
 	},
 }
 
@@ -169,10 +173,10 @@ func TestProgramGc(t *testing.T) {
 }
 
 var BenchConf = microsmith.ProgramConf{
-	microsmith.StmtConf{
+	StmtConf: microsmith.StmtConf{
 		MaxStmtDepth: 2,
 	},
-	[]microsmith.Type{
+	SupportedTypes: []microsmith.Type{
 		microsmith.BasicType{"bool"},
 		microsmith.BasicType{"int"},
 		microsmith.BasicType{"int16"},
@@ -182,7 +186,8 @@ var BenchConf = microsmith.ProgramConf{
 		microsmith.BasicType{"rune"},
 		microsmith.BasicType{"string"},
 	},
-	false,
+	MultiPkg: false,
+	FuncNum:  4,
 }
 
 var gp *ast.File
@@ -192,6 +197,6 @@ func BenchmarkProgram(b *testing.B) {
 	rand := rand.New(rand.NewSource(19))
 	for i := 0; i < b.N; i++ {
 		db := microsmith.NewDeclBuilder(rand, BenchConf)
-		gp = db.File(1, "main", 0, false)
+		gp = db.File("a", 0)
 	}
 }
