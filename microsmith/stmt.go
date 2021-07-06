@@ -508,9 +508,8 @@ func (sb *StmtBuilder) ForStmt() *ast.ForStmt {
 func (sb *StmtBuilder) RangeStmt(arr Variable) *ast.RangeStmt {
 
 	sb.depth++
-	defer func() { sb.depth-- }()
 	sb.inloop = true
-	defer func() { sb.inloop = false }() // TODO(alb): unify
+	defer func() { sb.depth--; sb.inloop = false }()
 
 	i := sb.scope.NewIdent(BasicType{"int"})
 	var v *ast.Ident
