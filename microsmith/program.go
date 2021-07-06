@@ -22,7 +22,6 @@ type Program struct {
 	id      uint64  // random id used in the names of the Program files
 	workdir string  // directory where the Program files are written
 	files   []*File // the program's files
-	Stats   ProgramStats
 }
 
 type File struct {
@@ -30,11 +29,6 @@ type File struct {
 	source []byte
 	name   string
 	path   *os.File
-}
-
-type ProgramStats struct {
-	Stmt StmtStats
-	// TODO: expr stats
 }
 
 type FuzzOptions struct {

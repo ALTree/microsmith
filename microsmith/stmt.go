@@ -16,7 +16,6 @@ type StmtBuilder struct {
 	inloop bool     // are we inside a loop?
 	labels []string //
 	funcp  int      // counter for function param names
-	stats  StmtStats
 	label  int
 }
 
@@ -125,8 +124,6 @@ func (sb *StmtBuilder) Stmt() ast.Stmt {
 // gets a random variable currently in scope (that we can assign to),
 // and builds an AssignStmt with a random Expr of its type on the RHS
 func (sb *StmtBuilder) AssignStmt() *ast.AssignStmt {
-	sb.stats.Assign++
-
 	v := sb.scope.RandomVar(true)
 
 	switch t := v.Type.(type) {
@@ -202,8 +199,6 @@ func (sb *StmtBuilder) AssignStmt() *ast.AssignStmt {
 
 // returns a continue/break statement
 func (sb *StmtBuilder) BranchStmt() *ast.BranchStmt {
-	sb.stats.Branch++
-
 	var bs ast.BranchStmt
 
 	switch sb.rs.Intn(3) {
@@ -240,8 +235,6 @@ func (sb *StmtBuilder) BlockStmt() *ast.BlockStmt {
 
 	sb.depth++
 	defer func() { sb.depth-- }()
-
-	sb.stats.Block++
 
 	bs := new(ast.BlockStmt)
 	stmts := []ast.Stmt{}
@@ -476,7 +469,6 @@ func (sb *StmtBuilder) ForStmt() *ast.ForStmt {
 
 	sb.depth++
 	defer func() { sb.depth-- }()
-	sb.stats.For++
 
 	var fs ast.ForStmt
 	// - Cond stmt with chance 0.94 (1-1/16)
@@ -518,8 +510,7 @@ func (sb *StmtBuilder) RangeStmt(arr Variable) *ast.RangeStmt {
 	sb.depth++
 	defer func() { sb.depth-- }()
 	sb.inloop = true
-	defer func() { sb.inloop = false }()
-	sb.stats.For++
+	defer func() { sb.inloop = false }() // TODO(alb): unify
 
 	i := sb.scope.NewIdent(BasicType{"int"})
 	var v *ast.Ident
@@ -571,7 +562,6 @@ func (sb *StmtBuilder) IfStmt() *ast.IfStmt {
 
 	sb.depth++
 	defer func() { sb.depth-- }()
-	sb.stats.If++
 
 	is := &ast.IfStmt{
 		Cond: sb.eb.Expr(BasicType{"bool"}),
@@ -590,7 +580,6 @@ func (sb *StmtBuilder) SwitchStmt() *ast.SwitchStmt {
 
 	sb.depth++
 	defer func() { sb.depth-- }()
-	sb.stats.Switch++
 
 	t := RandType(sb.conf.SupportedTypes)
 	if sb.rs.Intn(2) == 0 && sb.scope.HasType(PointerOf(t)) {
@@ -629,10 +618,8 @@ func (sb *StmtBuilder) IncDecStmt(t Type) *ast.IncDecStmt {
 }
 
 func (sb *StmtBuilder) SendStmt() *ast.SendStmt {
-
-	sb.stats.Send++
-
 	st := new(ast.SendStmt)
+
 	ch, ok := sb.scope.GetRandomVarChan(sb.rs)
 	if !ok {
 		// no channels in scope, but we can send to a brand new one,
@@ -660,7 +647,6 @@ func (sb *StmtBuilder) SendStmt() *ast.SendStmt {
 func (sb *StmtBuilder) SelectStmt() *ast.SelectStmt {
 	sb.depth++
 	defer func() { sb.depth-- }()
-	sb.stats.Select++
 
 	return &ast.SelectStmt{
 		Body: &ast.BlockStmt{List: []ast.Stmt{

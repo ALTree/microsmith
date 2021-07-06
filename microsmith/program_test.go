@@ -74,8 +74,6 @@ func testProgramGoTypes(t *testing.T, n int, conf microsmith.ProgramConf) {
 			}
 			t.Fatalf("Program failed typechecking:\n%s", err)
 		}
-
-		checkStats(t, gp)
 	}
 }
 
@@ -134,42 +132,7 @@ func TestSingleType(t *testing.T) {
 	}
 }
 
-func TestStmtStats(t *testing.T) {
-	for i := 0; i < 50; i++ {
-		rs := rand.New(rand.NewSource(444))
-		gp := microsmith.NewProgram(rs, microsmith.RandConf(rs))
-		checkStats(t, gp)
-	}
-}
-
-func checkStats(t *testing.T, p *microsmith.Program) {
-	ss := p.Stats.Stmt
-	sum := float64(ss.Branch +
-		ss.Block +
-		ss.For +
-		ss.If +
-		ss.Switch +
-		ss.Select)
-
-	// not enough statements to do a statistical check
-	if sum < 100 {
-		return
-	}
-
-	c := 0.01
-	if (float64(ss.Assign)/sum < c) ||
-		(float64(ss.Block)/sum < c) ||
-		(float64(ss.For)/sum < c) ||
-		(float64(ss.If)/sum < c) ||
-		(float64(ss.Switch)/sum < c) ||
-		(float64(ss.Select)/sum < c) {
-		t.Logf("At least one Stmt has low count\n%+v\n", ss)
-	}
-
-}
-
-// Check generated programs with go tool compile (from file). This is
-// much slower than using go/types.
+// Check generated programs with gc (from file).
 func TestProgramGc(t *testing.T) {
 	if testing.Short() || runtime.GOOS == "windows" {
 		t.Skip()
