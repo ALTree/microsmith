@@ -69,7 +69,6 @@ func (gp *Program) NewFile(rs *rand.Rand, pkg string) *File {
 
 func (gp *Program) WriteToDisk(path string) error {
 	gp.workdir = path
-
 	for i, f := range gp.files {
 		fileName := fmt.Sprintf("prog%v_%v.go", gp.id, f.pkg)
 		fh, err := os.Create(path + "/" + fileName)
@@ -82,7 +81,6 @@ func (gp *Program) WriteToDisk(path string) error {
 		gp.files[i].name = fileName
 		gp.files[i].path = fh
 	}
-
 	return nil
 }
 
@@ -152,19 +150,6 @@ func (gp *Program) Compile(arch string, fz FuzzOptions) (string, error) {
 
 	default:
 
-		// Setup build args
-		buildArgs := []string{"tool", "compile"}
-		if fz.Race {
-			buildArgs = append(buildArgs, "-race")
-		}
-		if fz.Noopt {
-			buildArgs = append(buildArgs, "-N", "-l")
-		}
-		if fz.Ssacheck {
-			cs := fmt.Sprintf("-d=ssa/check/seed=%v", CheckSeed)
-			buildArgs = append(buildArgs, cs)
-		}
-
 		// Setup env variables
 		env := os.Environ()
 		if arch == "wasm" {
@@ -178,6 +163,20 @@ func (gp *Program) Compile(arch string, fz FuzzOptions) (string, error) {
 			env = append(env, "GOARCH="+arch)
 		}
 
+		// Setup compile args
+		buildArgs := []string{"tool", "compile"}
+		if fz.Race {
+			buildArgs = append(buildArgs, "-race")
+		}
+		if fz.Noopt {
+			buildArgs = append(buildArgs, "-N", "-l")
+		}
+		if fz.Ssacheck {
+			cs := fmt.Sprintf("-d=ssa/check/seed=%v", CheckSeed)
+			buildArgs = append(buildArgs, cs)
+		}
+
+		// Compile
 		for _, file := range gp.files {
 			var cmdArgs []string
 			if file.pkg == "main" {
@@ -195,12 +194,14 @@ func (gp *Program) Compile(arch string, fz FuzzOptions) (string, error) {
 			}
 		}
 
-		// link
+		// Setup link args
 		linkArgs := []string{"tool", "link", "-L=."}
 		if fz.Race {
 			linkArgs = append(linkArgs, "-race")
 		}
 		linkArgs = append(linkArgs, "-o", baseName, arcName)
+
+		// Link
 		cmd := exec.Command(fz.Toolchain, linkArgs...)
 		cmd.Dir, cmd.Env = gp.workdir, env
 		out, err := cmd.CombinedOutput()
@@ -228,15 +229,14 @@ func (gp Program) DeleteBinaries() {
 	_ = os.Remove(basePath)
 }
 
-// DeleteSource deletes the file containing the source code of gp, as
-// written to disk from gp.WriteTfdFile.
+// DeleteSource deletes all gp files.
 func (gp Program) DeleteSource() {
 	for _, file := range gp.files {
 		_ = os.Remove(file.path.Name())
 	}
 }
 
-// Move gp in a workdir subfolder named "crash".
+// Move gp's files in a workdir subfolder named "crash".
 func (gp Program) MoveCrasher() {
 	fld := gp.workdir + "/crash"
 	if _, err := os.Stat(fld); os.IsNotExist(err) {

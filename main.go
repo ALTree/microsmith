@@ -169,18 +169,19 @@ func Fuzz(id uint64, fz microsmith.FuzzOptions) {
 
 				if known {
 					atomic.AddInt64(&KnownCount, 1)
-				} else {
-					atomic.AddInt64(&CrashCount, 1)
-					if arch != "" {
-						fmt.Printf("-- CRASH (%v) ----------------------------------------------\n", arch)
-					} else {
-						fmt.Printf("-- CRASH ---------------------------------------------------\n")
-					}
-					fmt.Println(fiveLines(out))
-					fmt.Println("------------------------------------------------------------")
-					gp.MoveCrasher()
 					break
 				}
+
+				atomic.AddInt64(&CrashCount, 1)
+				if arch != "" {
+					fmt.Printf("-- CRASH (%v) ----------------------------------------------\n", arch)
+				} else {
+					fmt.Printf("-- CRASH ---------------------------------------------------\n")
+				}
+				fmt.Println(fiveLines(out))
+				fmt.Println("------------------------------------------------------------")
+				gp.MoveCrasher()
+				break
 			}
 		}
 
@@ -191,9 +192,12 @@ func Fuzz(id uint64, fz microsmith.FuzzOptions) {
 
 func debugRun() {
 	rs := rand.New(rand.NewSource(int64(uint64(time.Now().UnixNano()))))
-	conf := microsmith.RandConf(rs)
-	conf.MultiPkg = *multiPkgF
-	conf.FuncNum = 1
+	conf := microsmith.ProgramConf{
+		StmtConf:       microsmith.StmtConf{MaxStmtDepth: 2},
+		SupportedTypes: microsmith.AllTypes,
+		MultiPkg:       *multiPkgF,
+		FuncNum:        2,
+	}
 	gp := microsmith.NewProgram(rs, conf)
 	err := gp.Check()
 	fmt.Println(gp)
