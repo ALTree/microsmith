@@ -45,8 +45,7 @@ func init() {
 
 func NewStmtBuilder(rs *rand.Rand, conf ProgramConf) *StmtBuilder {
 	sb := new(StmtBuilder)
-	sb.rs = rs
-	sb.conf = conf
+	sb.rs, sb.conf = rs, conf
 	scope := make(Scope, 0, 32)
 	scope = append(scope, InitialScope...)
 	sb.scope = &scope

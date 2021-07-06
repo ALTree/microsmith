@@ -262,7 +262,7 @@ func (ft FuncType) Sliceable() bool {
 }
 
 // Build two ast.FieldList object (one for params, the other for
-// resultss) from a FuncType, to use in function declarations and
+// results) from a FuncType, to use in function declarations and
 // function literals. If named is true, it gives the function
 // parameters names (p<s>, p<s+1>, ...)
 func (ft FuncType) MakeFieldLists(named bool, s int) (*ast.FieldList, *ast.FieldList) {

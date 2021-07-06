@@ -147,8 +147,7 @@ func (db *DeclBuilder) File(pkg string, id uint64) *ast.File {
 				Fun: &ast.SelectorExpr{
 					X:   &ast.Ident{Name: "a"},
 					Sel: db.FuncIdent(0),
-				}}},
-		)
+				}}})
 	}
 
 	af.Decls = append(af.Decls, mainF)
