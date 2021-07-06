@@ -296,7 +296,7 @@ func (sb *StmtBuilder) RandomType() Type {
 	var t Type
 	switch sb.rs.Intn(6) {
 	case 0:
-		t = RandStructType(st)
+		t = RandStructType(st, false)
 	case 1:
 		t = RandFuncType(st)
 	default:
@@ -304,10 +304,14 @@ func (sb *StmtBuilder) RandomType() Type {
 		if sb.rs.Intn(3) == 0 {
 			t = PointerOf(t)
 		}
+		// TODO(alb): support struct arrays
 		switch sb.rs.Intn(6) {
 		case 0:
 			t = ArrayOf(t)
 		case 1:
+			if sb.rs.Intn(4) == 0 {
+				t = RandStructType(st, true)
+			}
 			t2 := RandType(st)
 			if sb.rs.Intn(3) == 0 {
 				t2 = PointerOf(t2)
@@ -355,10 +359,18 @@ func (sb *StmtBuilder) DeclStmt(nVars int, t Type) (*ast.DeclStmt, []*ast.Ident)
 	case ChanType:
 		typ = &ast.ChanType{Dir: 3, Value: TypeIdent(t2.Base().Name())}
 	case MapType:
-		typ = &ast.MapType{
-			Key:   TypeIdent(t2.KeyT.Name()),
-			Value: TypeIdent(t2.ValueT.Name()),
+		if st, ok := t2.KeyT.(StructType); ok {
+			typ = &ast.MapType{
+				Key:   st.TypeAst(),
+				Value: TypeIdent(t2.ValueT.Name()),
+			}
+		} else {
+			typ = &ast.MapType{
+				Key:   TypeIdent(t2.KeyT.Name()),
+				Value: TypeIdent(t2.ValueT.Name()),
+			}
 		}
+
 	case FuncType:
 		// For function we don't just declare the variable, we also
 		// assign to it (so we can give the function a body):

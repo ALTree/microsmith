@@ -12,6 +12,7 @@ type Type interface {
 	// types.
 	Name() string
 	Sliceable() bool
+	Equal(Type) bool
 }
 
 // Name to use for variable of type t
@@ -100,6 +101,10 @@ func (bt BasicType) Sliceable() bool {
 	return bt.N == "string"
 }
 
+func (bt BasicType) Equal(t Type) bool {
+	return bt == t
+}
+
 func IsInt(t Type) bool {
 	switch t.Name() {
 	case "int", "int8", "int16", "int32", "int64":
@@ -138,6 +143,10 @@ func (pt PointerType) Sliceable() bool {
 	return false
 }
 
+func (pt PointerType) Equal(t Type) bool {
+	return pt == t
+}
+
 func PointerOf(t Type) PointerType {
 	return PointerType{t}
 }
@@ -161,6 +170,10 @@ func (at ArrayType) Base() Type {
 
 func (at ArrayType) Sliceable() bool {
 	return true
+}
+
+func (at ArrayType) Equal(t Type) bool {
+	return at == t
 }
 
 func ArrayOf(t Type) ArrayType {
@@ -188,6 +201,7 @@ type StructType struct {
 func (st StructType) Name() string {
 	return st.N
 }
+
 func (st StructType) Sliceable() bool {
 	return false
 }
@@ -219,7 +233,7 @@ func (st StructType) TypeAst() *ast.StructType {
 	}
 }
 
-func RandStructType(EnabledTypes []Type) StructType {
+func RandStructType(EnabledTypes []Type, comparable bool) StructType {
 	st := StructType{
 		"ST",
 		[]Type{},
@@ -232,7 +246,7 @@ func RandStructType(EnabledTypes []Type) StructType {
 		if rand.Intn(3) == 0 {
 			t = PointerOf(t)
 		}
-		if rand.Intn(5) == 0 {
+		if !comparable && rand.Intn(5) == 0 {
 			t = ArrayOf(t)
 		}
 		st.Ftypes = append(st.Ftypes, t)
@@ -240,6 +254,23 @@ func RandStructType(EnabledTypes []Type) StructType {
 	}
 
 	return st
+}
+
+func (st StructType) Equal(t Type) bool {
+	if t2, ok := t.(StructType); !ok {
+		return false
+	} else {
+		if len(st.Ftypes) != len(t2.Ftypes) {
+			return false
+		}
+
+		for i := range st.Ftypes {
+			if st.Ftypes[i] != t2.Ftypes[i] {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 // -------------------------------- //
@@ -255,6 +286,10 @@ type FuncType struct {
 
 func (ft FuncType) Name() string {
 	return ft.N
+}
+
+func (ft FuncType) Equal(t Type) bool {
+	return false // TODO(alb): fix?
 }
 
 func (ft FuncType) Sliceable() bool {
@@ -446,6 +481,10 @@ func (ct ChanType) Sliceable() bool {
 	return false
 }
 
+func (ct ChanType) Equal(t Type) bool {
+	return ct == t
+}
+
 func ChanOf(t Type) ChanType {
 	return ChanType{t}
 }
@@ -466,14 +505,26 @@ func (mt MapType) Sliceable() bool {
 	return true
 }
 
+func (mt MapType) Equal(t Type) bool {
+	return mt == t
+}
+
 func MapOf(kt, vt Type) MapType {
 	return MapType{kt, vt}
 }
 
 func (mp MapType) TypeAst() *ast.MapType {
-	return &ast.MapType{
-		Key:   &ast.Ident{Name: mp.KeyT.Name()},
-		Value: &ast.Ident{Name: mp.ValueT.Name()},
+
+	if st, ok := mp.KeyT.(StructType); ok {
+		return &ast.MapType{
+			Key:   st.TypeAst(),
+			Value: &ast.Ident{Name: mp.ValueT.Name()},
+		}
+	} else {
+		return &ast.MapType{
+			Key:   &ast.Ident{Name: mp.KeyT.Name()},
+			Value: &ast.Ident{Name: mp.ValueT.Name()},
+		}
 	}
 }
 

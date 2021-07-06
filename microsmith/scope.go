@@ -208,7 +208,7 @@ func (ls Scope) GetRandomFuncAnyType() (Variable, bool) {
 func (ls Scope) GetRandomVarOfType(t Type, rs *rand.Rand) (Variable, bool) {
 	cnt := 0
 	for _, v := range ls {
-		if v.Type == t {
+		if t.Equal(v.Type) {
 			cnt++
 		}
 	}
@@ -220,7 +220,7 @@ func (ls Scope) GetRandomVarOfType(t Type, rs *rand.Rand) (Variable, bool) {
 	rand := 1 + rs.Intn(cnt)
 	cnt = 0
 	for _, v := range ls {
-		if v.Type == t {
+		if t.Equal(v.Type) {
 			cnt++
 		}
 		if cnt == rand {

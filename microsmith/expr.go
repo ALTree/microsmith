@@ -140,7 +140,7 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 			}
 		}
 
-	case ArrayType, MapType:
+	case ArrayType, MapType, StructType:
 		expr = eb.CompositeLit(t)
 
 	case PointerType:
@@ -198,7 +198,12 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 func (eb *ExprBuilder) VarOrLit(t Type) interface{} {
 
 	vt, typeInScope := eb.scope.GetRandomVarOfType(t, eb.rs)
-	vst, typeCanDerive := eb.scope.GetRandomVarOfSubtype(t, eb.rs)
+
+	var vst, typeCanDerive = Variable{}, false
+	if eb.Deepen() {
+		// Indexing in a map[struct] deepens the tree
+		vst, typeCanDerive = eb.scope.GetRandomVarOfSubtype(t, eb.rs)
+	}
 
 	// No variable of type t is in scope, and we cannot derive from
 	// another variable, so return a literal.
@@ -229,7 +234,7 @@ func (eb *ExprBuilder) VarOrLit(t Type) interface{} {
 			default:
 				return eb.BasicLit(t)
 			}
-		case ArrayType:
+		case ArrayType, StructType:
 			return eb.CompositeLit(t)
 		case PointerType:
 			if typeInScope {
