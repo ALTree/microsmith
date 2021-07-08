@@ -258,7 +258,7 @@ func RandStructType(EnabledTypes []Type, comparable bool) StructType {
 
 	nfields := 1 + rand.Intn(MaxStructFields)
 	for i := 0; i < nfields; i++ {
-		t := RandType(EnabledTypes)
+		t := EnabledTypes[rand.Intn(len(EnabledTypes))]
 		if rand.Intn(3) == 0 {
 			t = PointerOf(t)
 		}
@@ -336,7 +336,7 @@ func (ft FuncType) MakeFieldLists(named bool, s int) (*ast.FieldList, *ast.Field
 func RandFuncType(EnabledTypes []Type) FuncType {
 	args := make([]Type, 0, rand.Intn(8))
 	for i := 0; i < cap(args); i++ {
-		typ := RandType(EnabledTypes)
+		typ := EnabledTypes[rand.Intn(len(EnabledTypes))]
 		if _, ok := typ.(BasicType); !ok {
 			panic("RandFuncType: non basic type " + typ.Name())
 		}
@@ -351,7 +351,7 @@ func RandFuncType(EnabledTypes []Type) FuncType {
 	}
 
 	// choose return type
-	ret := RandType(EnabledTypes)
+	ret := EnabledTypes[rand.Intn(len(EnabledTypes))]
 	if rand.Intn(3) == 0 {
 		ret = PointerOf(ret)
 	}

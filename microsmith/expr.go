@@ -26,7 +26,7 @@ func NewExprBuilder(rs *rand.Rand, conf ProgramConf, s *Scope) *ExprBuilder {
 // Returns true if the expression tree currently being built is
 // allowed to become deeper.
 func (eb *ExprBuilder) Deepen() bool {
-	return (eb.depth <= 6) && (eb.rs.Float64() < 0.6)
+	return (eb.depth <= 6) && (eb.rs.Float64() < 0.65)
 }
 
 func (eb *ExprBuilder) chooseToken(tokens []token.Token) token.Token {
@@ -493,7 +493,7 @@ func (eb *ExprBuilder) BinaryExpr(t Type) *ast.BinaryExpr {
 		ue.Op = eb.chooseToken([]token.Token{token.ADD, token.SUB, token.MUL})
 	case "bool":
 		if eb.rs.Intn(2) == 0 {
-			t = RandType(eb.conf.SupportedTypes)
+			t = eb.conf.RandType()
 			ops := []token.Token{token.EQL, token.NEQ}
 			if name := t.Name(); name != "bool" && name != "complex128" {
 				ops = append(ops, []token.Token{
@@ -604,11 +604,9 @@ func (eb *ExprBuilder) MakeCast(f FuncType) *ast.CallExpr {
 func (eb *ExprBuilder) MakeLenCall() *ast.CallExpr {
 	// for a len call, we want a string or an array
 	var typ Type
-	if !IsEnabled("string", eb.conf) || eb.rs.Intn(2) == 0 {
-		// choose an array of random type
-		typ = ArrayType{RandType(eb.conf.SupportedTypes)}
+	if eb.rs.Intn(2) == 0 {
+		typ = ArrayType{eb.conf.RandType()}
 	} else {
-		// call len on string
 		typ = BasicType{"string"}
 	}
 

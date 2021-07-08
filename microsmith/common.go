@@ -45,16 +45,3 @@ func RandRune() string {
 		panic("unreachable")
 	}
 }
-
-func RandType(ts []Type) Type {
-	return ts[rand.Intn(len(ts))]
-}
-
-func IsEnabled(typ string, conf ProgramConf) bool {
-	for _, t := range conf.SupportedTypes {
-		if t.Name() == typ {
-			return true
-		}
-	}
-	return false
-}

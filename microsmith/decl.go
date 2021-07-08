@@ -43,6 +43,11 @@ func RandConf(rs *rand.Rand) ProgramConf {
 	return pc
 }
 
+func (pc *ProgramConf) RandType() Type {
+	et := pc.SupportedTypes
+	return et[rand.Intn(len(et))]
+}
+
 type DeclBuilder struct {
 	sb *StmtBuilder
 }
@@ -98,7 +103,7 @@ func (db *DeclBuilder) File(pkg string, id uint64) *ast.File {
 
 	// Now half a dozen top-level variables
 	for i := 1; i <= 6; i++ {
-		t := RandType(db.Conf().SupportedTypes)
+		t := db.sb.RandType()
 		if db.sb.rs.Intn(3) == 0 {
 			t = PointerOf(t)
 		}

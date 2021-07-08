@@ -53,6 +53,10 @@ func NewStmtBuilder(rs *rand.Rand, conf ProgramConf) *StmtBuilder {
 	return sb
 }
 
+func (sb *StmtBuilder) RandType() Type {
+	return sb.conf.RandType()
+}
+
 func (sb *StmtBuilder) Stmt() ast.Stmt {
 
 	// If the maximum allowed stmt depth has been reached, generate an
@@ -256,7 +260,7 @@ func (sb *StmtBuilder) BlockStmt() *ast.BlockStmt {
 		// them, to be sure not to generate almost-empty blocks.
 		nStmts = 8
 	} else {
-		nStmts = 4 + sb.rs.Intn(5)
+		nStmts = 6 + sb.rs.Intn(5)
 	}
 
 	// Fill the block's body.
@@ -305,7 +309,7 @@ func (sb *StmtBuilder) RandomType() Type {
 	if sb.rs.Intn(5) == 0 {
 		t = RandStructType(st, false)
 	} else {
-		t = RandType(st)
+		t = sb.RandType()
 	}
 
 	// Make it a pointer with chance 1 in 3.
@@ -328,7 +332,7 @@ func (sb *StmtBuilder) RandomType() Type {
 		if sb.rs.Intn(5) == 0 {
 			t2 = RandStructType(st, true)
 		} else {
-			t2 = RandType(st)
+			t2 = sb.RandType()
 		}
 		if sb.rs.Intn(3) == 0 {
 			t2 = PointerOf(t2)
@@ -588,7 +592,7 @@ func (sb *StmtBuilder) SwitchStmt() *ast.SwitchStmt {
 	sb.depth++
 	defer func() { sb.depth-- }()
 
-	t := RandType(sb.conf.SupportedTypes)
+	t := sb.RandType()
 	if sb.rs.Intn(2) == 0 && sb.scope.HasType(PointerOf(t)) {
 		// sometimes switch on a pointer value
 		t = PointerOf(t)
@@ -632,7 +636,7 @@ func (sb *StmtBuilder) SendStmt() *ast.SendStmt {
 		// no channels in scope, but we can send to a brand new one,
 		// i.e. generate
 		//   make(chan int) <- 1
-		t := RandType(sb.conf.SupportedTypes)
+		t := sb.RandType()
 		st.Chan = &ast.CallExpr{
 			Fun: &ast.Ident{Name: "make"},
 			Args: []ast.Expr{
@@ -681,7 +685,7 @@ func (sb *StmtBuilder) CommClause(def bool) *ast.CommClause {
 		// when no chan is in scope, we select from a newly made channel,
 		// i.e. we build and return
 		//    select <-make(chan <random type>)
-		t := RandType(sb.conf.SupportedTypes)
+		t := sb.RandType()
 		return &ast.CommClause{
 			Comm: &ast.ExprStmt{
 				X: &ast.UnaryExpr{

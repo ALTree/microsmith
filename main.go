@@ -193,7 +193,7 @@ func Fuzz(id uint64, fz microsmith.FuzzOptions) {
 func debugRun() {
 	rs := rand.New(rand.NewSource(int64(uint64(time.Now().UnixNano()))))
 	conf := microsmith.ProgramConf{
-		StmtConf:       microsmith.StmtConf{MaxStmtDepth: 2},
+		StmtConf:       microsmith.StmtConf{MaxStmtDepth: 3},
 		SupportedTypes: microsmith.AllTypes,
 		MultiPkg:       *multiPkgF,
 		FuncNum:        2,
