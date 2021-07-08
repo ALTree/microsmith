@@ -8,11 +8,10 @@ import (
 )
 
 type Type interface {
-	// The type name. This is what is used to actually differentiate
-	// types.
+	Ast() ast.Expr
+	Equal(Type) bool
 	Name() string
 	Sliceable() bool
-	Equal(Type) bool
 }
 
 // Name to use for variable of type t
@@ -93,16 +92,20 @@ type BasicType struct {
 	N string
 }
 
+func (t BasicType) Ast() ast.Expr {
+	return TypeIdent(t.Name())
+}
+
+func (bt BasicType) Equal(t Type) bool {
+	return bt == t
+}
+
 func (bt BasicType) Name() string {
 	return bt.N
 }
 
 func (bt BasicType) Sliceable() bool {
 	return bt.N == "string"
-}
-
-func (bt BasicType) Equal(t Type) bool {
-	return bt == t
 }
 
 func IsInt(t Type) bool {
@@ -131,20 +134,24 @@ type PointerType struct {
 	Btype Type
 }
 
-func (pt PointerType) Name() string {
-	return "*" + pt.Btype.Name()
+func (t PointerType) Ast() ast.Expr {
+	return &ast.StarExpr{X: t.Base().Ast()}
 }
 
 func (pt PointerType) Base() Type {
 	return pt.Btype
 }
 
-func (pt PointerType) Sliceable() bool {
-	return false
-}
-
 func (pt PointerType) Equal(t Type) bool {
 	return pt == t
+}
+
+func (pt PointerType) Name() string {
+	return "*" + pt.Btype.Name()
+}
+
+func (pt PointerType) Sliceable() bool {
+	return false
 }
 
 func PointerOf(t Type) PointerType {
@@ -159,31 +166,32 @@ type ArrayType struct {
 	Etype Type
 }
 
-func (at ArrayType) Name() string {
-	return "[]" + at.Etype.Name()
+func (t ArrayType) Ast() ast.Expr {
+	return &ast.ArrayType{Elt: t.Base().Ast()}
 }
 
-// given an array type, it returns the corresponding base type
 func (at ArrayType) Base() Type {
 	return at.Etype
+}
+
+func (at ArrayType) Equal(t Type) bool {
+	if t2, ok := t.(ArrayType); !ok {
+		return false
+	} else {
+		return at.Base().Equal(t2.Base())
+	}
+}
+
+func (at ArrayType) Name() string {
+	return "[]" + at.Etype.Name()
 }
 
 func (at ArrayType) Sliceable() bool {
 	return true
 }
 
-func (at ArrayType) Equal(t Type) bool {
-	return at == t
-}
-
 func ArrayOf(t Type) ArrayType {
 	return ArrayType{t}
-}
-
-func (at ArrayType) TypeAst() *ast.ArrayType {
-	return &ast.ArrayType{
-		Elt: &ast.Ident{Name: at.Base().Name()},
-	}
 }
 
 // -------------------------------- //
@@ -198,39 +206,43 @@ type StructType struct {
 	Fnames []string // field names
 }
 
+func (t StructType) Ast() ast.Expr {
+	fields := make([]*ast.Field, 0, len(t.Fnames))
+	for i := range t.Fnames {
+		field := &ast.Field{
+			Names: []*ast.Ident{&ast.Ident{Name: t.Fnames[i]}},
+			Type:  t.Ftypes[i].Ast(),
+		}
+		fields = append(fields, field)
+	}
+
+	return &ast.StructType{
+		Fields: &ast.FieldList{List: fields},
+	}
+}
+
+func (st StructType) Equal(t Type) bool {
+	if t2, ok := t.(StructType); !ok {
+		return false
+	} else {
+		if len(st.Ftypes) != len(t2.Ftypes) {
+			return false
+		}
+		for i := range st.Ftypes {
+			if st.Ftypes[i] != t2.Ftypes[i] {
+				return false
+			}
+		}
+	}
+	return true
+}
+
 func (st StructType) Name() string {
 	return st.N
 }
 
 func (st StructType) Sliceable() bool {
 	return false
-}
-
-func (st StructType) String() string {
-	s := st.N + "\n"
-	for i := 0; i < len(st.Ftypes); i++ {
-		s += "  " + st.Fnames[i] + " " + st.Ftypes[i].Name() + "\n"
-	}
-	return s
-}
-
-func (st StructType) TypeAst() *ast.StructType {
-
-	fields := make([]*ast.Field, 0, len(st.Fnames))
-
-	for i := range st.Fnames {
-		field := &ast.Field{
-			Names: []*ast.Ident{&ast.Ident{Name: st.Fnames[i]}},
-			Type:  TypeIdent(st.Ftypes[i].Name()),
-		}
-		fields = append(fields, field)
-	}
-
-	return &ast.StructType{
-		Fields: &ast.FieldList{
-			List: fields,
-		},
-	}
 }
 
 func RandStructType(EnabledTypes []Type, comparable bool) StructType {
@@ -256,23 +268,6 @@ func RandStructType(EnabledTypes []Type, comparable bool) StructType {
 	return st
 }
 
-func (st StructType) Equal(t Type) bool {
-	if t2, ok := t.(StructType); !ok {
-		return false
-	} else {
-		if len(st.Ftypes) != len(t2.Ftypes) {
-			return false
-		}
-
-		for i := range st.Ftypes {
-			if st.Ftypes[i] != t2.Ftypes[i] {
-				return false
-			}
-		}
-	}
-	return true
-}
-
 // -------------------------------- //
 //   func                           //
 // -------------------------------- //
@@ -284,12 +279,16 @@ type FuncType struct {
 	Local bool
 }
 
-func (ft FuncType) Name() string {
-	return ft.N
+func (t FuncType) Ast() ast.Expr {
+	panic("unimplemented")
 }
 
 func (ft FuncType) Equal(t Type) bool {
 	return false // TODO(alb): fix?
+}
+
+func (ft FuncType) Name() string {
+	return ft.N
 }
 
 func (ft FuncType) Sliceable() bool {
@@ -468,21 +467,27 @@ type ChanType struct {
 	T Type
 }
 
-func (ct ChanType) Name() string {
-	return "chan " + ct.T.Name()
+func (t ChanType) Ast() ast.Expr {
+	return &ast.ChanType{
+		Dir:   3,
+		Value: t.Base().Ast(),
+	}
 }
 
-// given a chan type, it returns the corresponding base type
 func (ct ChanType) Base() Type {
 	return ct.T
 }
 
-func (ct ChanType) Sliceable() bool {
-	return false
-}
-
 func (ct ChanType) Equal(t Type) bool {
 	return ct == t
+}
+
+func (ct ChanType) Name() string {
+	return "chan " + ct.T.Name()
+}
+
+func (ct ChanType) Sliceable() bool {
+	return false
 }
 
 func ChanOf(t Type) ChanType {
@@ -497,6 +502,17 @@ type MapType struct {
 	KeyT, ValueT Type
 }
 
+func (t MapType) Ast() ast.Expr {
+	return &ast.MapType{
+		Key:   t.KeyT.Ast(),
+		Value: t.ValueT.Ast(),
+	}
+}
+
+func (mt MapType) Equal(t Type) bool {
+	return mt == t
+}
+
 func (mt MapType) Name() string {
 	return "map[" + mt.KeyT.Name() + "]" + mt.ValueT.Name()
 }
@@ -505,27 +521,8 @@ func (mt MapType) Sliceable() bool {
 	return true
 }
 
-func (mt MapType) Equal(t Type) bool {
-	return mt == t
-}
-
 func MapOf(kt, vt Type) MapType {
 	return MapType{kt, vt}
-}
-
-func (mp MapType) TypeAst() *ast.MapType {
-
-	if st, ok := mp.KeyT.(StructType); ok {
-		return &ast.MapType{
-			Key:   st.TypeAst(),
-			Value: &ast.Ident{Name: mp.ValueT.Name()},
-		}
-	} else {
-		return &ast.MapType{
-			Key:   &ast.Ident{Name: mp.KeyT.Name()},
-			Value: &ast.Ident{Name: mp.ValueT.Name()},
-		}
-	}
 }
 
 // ------------------------------------ //

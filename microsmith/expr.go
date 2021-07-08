@@ -66,7 +66,7 @@ func (eb *ExprBuilder) CompositeLit(t Type) *ast.CompositeLit {
 	case BasicType:
 		panic("CompositeLit: basic type " + t.Name())
 	case ArrayType:
-		cl := &ast.CompositeLit{Type: t.TypeAst()}
+		cl := &ast.CompositeLit{Type: t.Ast()}
 		elems := []ast.Expr{}
 		for i := 0; i < eb.rs.Intn(5); i++ {
 			if eb.Deepen() {
@@ -78,7 +78,7 @@ func (eb *ExprBuilder) CompositeLit(t Type) *ast.CompositeLit {
 		cl.Elts = elems
 		return cl
 	case MapType:
-		cl := &ast.CompositeLit{Type: t.TypeAst()}
+		cl := &ast.CompositeLit{Type: t.Ast()}
 		var e *ast.KeyValueExpr
 		if eb.Deepen() {
 			e = &ast.KeyValueExpr{
@@ -96,7 +96,7 @@ func (eb *ExprBuilder) CompositeLit(t Type) *ast.CompositeLit {
 		cl.Elts = []ast.Expr{e}
 		return cl
 	case StructType:
-		cl := &ast.CompositeLit{Type: t.TypeAst()}
+		cl := &ast.CompositeLit{Type: t.Ast()}
 		elems := []ast.Expr{}
 		for _, t := range t.Ftypes {
 			if eb.Deepen() {
@@ -201,12 +201,14 @@ func (eb *ExprBuilder) VarOrLit(t Type) interface{} {
 
 	var vst, typeCanDerive = Variable{}, false
 	if eb.Deepen() {
-		// Indexing in a map[struct] deepens the tree
+		// Deriving from an existing variable could deepen the tree,
+		// so defensively only allow it when we're not at max depth.
 		vst, typeCanDerive = eb.scope.GetRandomVarOfSubtype(t, eb.rs)
 	}
 
-	// No variable of type t is in scope, and we cannot derive from
-	// another variable, so return a literal.
+	// If no variable of type t is in scope, and we cannot derive an
+	// expression of type t from another variable, return a literal.
+	// Also unconditionally with chance 0.5.
 	if (!typeInScope && !typeCanDerive) || eb.rs.Intn(2) == 0 {
 		switch t := t.(type) {
 		case BasicType:
@@ -263,6 +265,7 @@ func (eb *ExprBuilder) VarOrLit(t Type) interface{} {
 		}
 	}
 
+	// derive from an existing variable
 	switch vst.Type.(type) {
 	case ArrayType:
 		return eb.IndexExpr(vst)

@@ -68,10 +68,12 @@ func (s *Scope) NewIdent(t Type) *ast.Ident {
 				tc++
 			}
 		}
+
+	// StructType, ChanType, MapType, and ArrayType identifiers do not
+	// depend on the type contents (they are always named ST, CH, and
+	// M), so we increment the counter at each Struct or Chan Type.
+
 	case StructType:
-		// StructTypes, ChanTypes and MapType identifiers do not depend on
-		// the type contents (they are always named ST, CH, and M), so we
-		// increment the counter at each Struct or Chan Type.
 		for _, v := range *s {
 			if _, ok := v.Type.(StructType); ok {
 				tc++
@@ -89,9 +91,16 @@ func (s *Scope) NewIdent(t Type) *ast.Ident {
 				tc++
 			}
 		}
+	case ArrayType:
+		for _, v := range *s {
+			if _, ok := v.Type.(ArrayType); ok {
+				tc++
+			}
+		}
+
 	default:
 		for _, v := range *s {
-			if v.Type == t {
+			if v.Type.Equal(t) {
 				tc++
 			}
 		}
@@ -295,7 +304,7 @@ func (ls Scope) GetRandomVarOfSubtype(t Type, rs *rand.Rand) (Variable, bool) {
 
 		// for arrays and maps, we can index
 		case ArrayType:
-			if v.Type.(ArrayType).Base() == t {
+			if v.Type.(ArrayType).Base().Equal(t) {
 				vars = append(vars, v)
 			}
 		case MapType:

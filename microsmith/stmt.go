@@ -304,11 +304,14 @@ func (sb *StmtBuilder) RandomType() Type {
 		if sb.rs.Intn(3) == 0 {
 			t = PointerOf(t)
 		}
-		// TODO(alb): support struct arrays
 		switch sb.rs.Intn(6) {
-		case 0:
-			t = ArrayOf(t)
-		case 1:
+		case 0: // array
+			if sb.rs.Intn(4) == 0 {
+				t = ArrayOf(RandStructType(st, true))
+			} else {
+				t = ArrayOf(t)
+			}
+		case 1: // map
 			if sb.rs.Intn(4) == 0 {
 				t = RandStructType(st, true)
 			}
@@ -317,12 +320,11 @@ func (sb *StmtBuilder) RandomType() Type {
 				t2 = PointerOf(t2)
 			}
 			t = MapOf(t, t2)
-		case 2:
+		case 2: // pointer
 			t = PointerOf(t)
-		case 3:
+		case 3: // chan
 			t = ChanOf(t)
-		default: // 3 < n < 6
-			// 1/3 of keeping t as a plain variable
+		default: // plain type
 		}
 	}
 	return t
@@ -348,28 +350,8 @@ func (sb *StmtBuilder) DeclStmt(nVars int, t Type) (*ast.DeclStmt, []*ast.Ident)
 	var rhs []ast.Expr
 
 	switch t2 := t.(type) {
-	case BasicType:
-		typ = TypeIdent(t2.Name())
-	case ArrayType:
-		typ = &ast.ArrayType{Elt: TypeIdent(t2.Base().Name())}
-	case PointerType:
-		typ = &ast.StarExpr{X: TypeIdent(t2.Base().Name())}
-	case StructType:
-		typ = t2.TypeAst()
-	case ChanType:
-		typ = &ast.ChanType{Dir: 3, Value: TypeIdent(t2.Base().Name())}
-	case MapType:
-		if st, ok := t2.KeyT.(StructType); ok {
-			typ = &ast.MapType{
-				Key:   st.TypeAst(),
-				Value: TypeIdent(t2.ValueT.Name()),
-			}
-		} else {
-			typ = &ast.MapType{
-				Key:   TypeIdent(t2.KeyT.Name()),
-				Value: TypeIdent(t2.ValueT.Name()),
-			}
-		}
+	case BasicType, ArrayType, PointerType, StructType, ChanType, MapType:
+		typ = t2.Ast()
 
 	case FuncType:
 		// For function we don't just declare the variable, we also
@@ -453,7 +435,7 @@ func (sb *StmtBuilder) DeclStmt(nVars int, t Type) (*ast.DeclStmt, []*ast.Ident)
 		sb.labels = oldLabels
 
 	default:
-		panic("DeclStmt: bad type " + t.Name())
+		panic("DeclStmt bad type " + t.Name())
 	}
 
 	// generate nVars ast.Idents
@@ -465,7 +447,7 @@ func (sb *StmtBuilder) DeclStmt(nVars int, t Type) (*ast.DeclStmt, []*ast.Ident)
 	gd.Specs = []ast.Spec{
 		&ast.ValueSpec{
 			Names:  idents,
-			Type:   typ.(ast.Expr),
+			Type:   typ,
 			Values: rhs,
 		},
 	}
