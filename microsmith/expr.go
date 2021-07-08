@@ -66,13 +66,14 @@ func (eb *ExprBuilder) CompositeLit(t Type) *ast.CompositeLit {
 	case BasicType:
 		panic("CompositeLit: basic type " + t.Name())
 	case ArrayType:
+		// TODO(alb): also use []int{17: 999} syntax
 		cl := &ast.CompositeLit{Type: t.Ast()}
 		elems := []ast.Expr{}
 		for i := 0; i < eb.rs.Intn(5); i++ {
 			if eb.Deepen() {
 				elems = append(elems, eb.Expr(t.Base()))
 			} else {
-				elems = append(elems, eb.VarOrLit(t.Base()).(ast.Expr))
+				elems = append(elems, eb.VarOrLit(t.Base()))
 			}
 		}
 		cl.Elts = elems
@@ -87,8 +88,8 @@ func (eb *ExprBuilder) CompositeLit(t Type) *ast.CompositeLit {
 			}
 		} else {
 			e = &ast.KeyValueExpr{
-				Key:   eb.VarOrLit(t.KeyT).(ast.Expr),
-				Value: eb.VarOrLit(t.ValueT).(ast.Expr),
+				Key:   eb.VarOrLit(t.KeyT),
+				Value: eb.VarOrLit(t.ValueT),
 			}
 		}
 		// Duplicate map keys are a compile error, but avoiding them
@@ -102,7 +103,7 @@ func (eb *ExprBuilder) CompositeLit(t Type) *ast.CompositeLit {
 			if eb.Deepen() {
 				elems = append(elems, eb.Expr(t))
 			} else {
-				elems = append(elems, eb.VarOrLit(t).(ast.Expr))
+				elems = append(elems, eb.VarOrLit(t))
 			}
 		}
 		cl.Elts = elems
@@ -195,7 +196,7 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 // When returning an expression, simple one are always preferred. A
 // derived expression is only returned when there are not variables of
 // type t in scope.
-func (eb *ExprBuilder) VarOrLit(t Type) interface{} {
+func (eb *ExprBuilder) VarOrLit(t Type) ast.Expr {
 
 	vt, typeInScope := eb.scope.GetRandomVarOfType(t, eb.rs)
 
@@ -250,7 +251,7 @@ func (eb *ExprBuilder) VarOrLit(t Type) interface{} {
 				return &ast.Ident{Name: "nil"}
 			}
 		default:
-			panic("VarOrLit: unsupported type " + t.Name())
+			panic("unsupported type " + t.Name())
 		}
 	}
 
@@ -306,7 +307,7 @@ func (eb *ExprBuilder) IndexExpr(v Variable) *ast.IndexExpr {
 		// to be constant for ints.
 		index = eb.BinaryExpr(BasicType{"int"})
 	} else {
-		index = eb.VarOrLit(BasicType{"int"}).(ast.Expr)
+		index = eb.VarOrLit(BasicType{"int"})
 	}
 
 	return &ast.IndexExpr{
@@ -328,7 +329,7 @@ func (eb *ExprBuilder) MapIndexExpr(v Variable) *ast.IndexExpr {
 	if eb.Deepen() {
 		index = eb.Expr(mv.KeyT)
 	} else {
-		index = eb.VarOrLit(mv.KeyT).(ast.Expr)
+		index = eb.VarOrLit(mv.KeyT)
 	}
 
 	return &ast.IndexExpr{
@@ -440,7 +441,7 @@ func (eb *ExprBuilder) UnaryExpr(t Type) *ast.UnaryExpr {
 	if eb.Deepen() {
 		ue.X = eb.Expr(t)
 	} else {
-		ue.X = eb.VarOrLit(t).(ast.Expr)
+		ue.X = eb.VarOrLit(t)
 	}
 
 	return ue
@@ -527,7 +528,7 @@ func (eb *ExprBuilder) BinaryExpr(t Type) *ast.BinaryExpr {
 		if eb.Deepen() {
 			ue.X = eb.Expr(t)
 		} else {
-			ue.X = eb.VarOrLit(t).(ast.Expr)
+			ue.X = eb.VarOrLit(t)
 		}
 
 		// make sure the RHS is not a constant expression
@@ -557,11 +558,11 @@ func (eb *ExprBuilder) BinaryExpr(t Type) *ast.BinaryExpr {
 		} else {
 			// The compiler rejects stupid shifts, so we need control
 			// on the shift amount.
-			ue.Y = eb.VarOrLit(t2).(ast.Expr)
+			ue.Y = eb.VarOrLit(t2)
 		}
 	} else {
-		ue.X = eb.VarOrLit(t).(ast.Expr)
-		ue.Y = eb.VarOrLit(t2).(ast.Expr)
+		ue.X = eb.VarOrLit(t)
+		ue.Y = eb.VarOrLit(t2)
 	}
 
 	return ue
@@ -581,7 +582,7 @@ func (eb *ExprBuilder) CallExpr(fun Variable) *ast.CallExpr {
 	default:
 		args := make([]ast.Expr, 0, len(fun.Type.(FuncType).Args))
 		for _, arg := range fun.Type.(FuncType).Args {
-			args = append(args, eb.VarOrLit(arg).(ast.Expr))
+			args = append(args, eb.VarOrLit(arg))
 		}
 		return &ast.CallExpr{
 			Fun:  &ast.Ident{Name: name},
@@ -595,7 +596,7 @@ func (eb *ExprBuilder) MakeCast(f FuncType) *ast.CallExpr {
 	if eb.Deepen() {
 		ce.Args = []ast.Expr{eb.Expr(f.Args[0])}
 	} else {
-		ce.Args = []ast.Expr{eb.VarOrLit(f.Args[0]).(ast.Expr)}
+		ce.Args = []ast.Expr{eb.VarOrLit(f.Args[0])}
 	}
 	return ce
 
@@ -614,7 +615,7 @@ func (eb *ExprBuilder) MakeLenCall() *ast.CallExpr {
 	if eb.Deepen() {
 		ce.Args = []ast.Expr{eb.Expr(typ)}
 	} else {
-		ce.Args = []ast.Expr{eb.VarOrLit(typ).(ast.Expr)}
+		ce.Args = []ast.Expr{eb.VarOrLit(typ)}
 	}
 
 	return ce
@@ -633,7 +634,7 @@ func (eb *ExprBuilder) MakeMathCall(fun Variable) *ast.CallExpr {
 		if eb.Deepen() {
 			args = append(args, eb.Expr(arg))
 		} else {
-			args = append(args, eb.VarOrLit(arg).(ast.Expr))
+			args = append(args, eb.VarOrLit(arg))
 		}
 
 	}
