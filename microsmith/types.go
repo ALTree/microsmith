@@ -143,7 +143,11 @@ func (pt PointerType) Base() Type {
 }
 
 func (pt PointerType) Equal(t Type) bool {
-	return pt == t
+	if t2, ok := t.(PointerType); !ok {
+		return false
+	} else {
+		return pt.Base().Equal(t2)
+	}
 }
 
 func (pt PointerType) Name() string {

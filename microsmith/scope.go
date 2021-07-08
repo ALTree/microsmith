@@ -98,6 +98,13 @@ func (s *Scope) NewIdent(t Type) *ast.Ident {
 			}
 		}
 
+	case PointerType:
+		for _, v := range *s {
+			if _, ok := v.Type.(PointerType); ok {
+				tc++
+			}
+		}
+
 	default:
 		for _, v := range *s {
 			if v.Type.Equal(t) {
@@ -136,7 +143,7 @@ func (s *Scope) DeleteIdentByName(name *ast.Ident) {
 // variable which type matches exactly t.
 func (ls Scope) HasType(t Type) bool {
 	for _, v := range ls {
-		if v.Type == t {
+		if v.Type.Equal(t) {
 			return true
 		}
 	}
@@ -284,7 +291,7 @@ func (ls Scope) GetRandomVarOfSubtype(t Type, rs *rand.Rand) (Variable, bool) {
 		// for structs in scope, we look for fields of type t
 		case StructType:
 			for _, ft := range v.Type.(StructType).Ftypes {
-				if ft == t {
+				if ft.Equal(t) {
 					vars = append(vars, v)
 				}
 			}
@@ -292,13 +299,13 @@ func (ls Scope) GetRandomVarOfSubtype(t Type, rs *rand.Rand) (Variable, bool) {
 		// for pointers, we look for the ones having base type t, since we
 		// can dereference them to get a t Expr
 		case PointerType:
-			if v.Type.(PointerType).Base() == t {
+			if v.Type.(PointerType).Base().Equal(t) {
 				vars = append(vars, v)
 			}
 
 		// for channels, we can receive
 		case ChanType:
-			if v.Type.(ChanType).Base() == t {
+			if v.Type.(ChanType).Base().Equal(t) {
 				vars = append(vars, v)
 			}
 
@@ -308,7 +315,7 @@ func (ls Scope) GetRandomVarOfSubtype(t Type, rs *rand.Rand) (Variable, bool) {
 				vars = append(vars, v)
 			}
 		case MapType:
-			if v.Type.(MapType).ValueT == t {
+			if v.Type.(MapType).ValueT.Equal(t) {
 				vars = append(vars, v)
 			}
 		case BasicType:

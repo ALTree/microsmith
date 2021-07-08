@@ -293,40 +293,55 @@ func (sb *StmtBuilder) RandomTypes(n int) []Type {
 
 func (sb *StmtBuilder) RandomType() Type {
 	st := sb.conf.SupportedTypes
+
+	// 1 in 8 is a function
+	if sb.rs.Intn(8) == 0 {
+		return RandFuncType(st)
+	}
+
 	var t Type
+
+	// The base type.
+	if sb.rs.Intn(5) == 0 {
+		t = RandStructType(st, false)
+	} else {
+		t = RandType(st)
+	}
+
+	// Make it a pointer with chance 1 in 3.
+	if sb.rs.Intn(3) == 0 {
+		t = PointerOf(t)
+	}
+
+	// Turn it into an Array, Chan, or Map with chance 0.5, otherwise
+	// leave it plain.
 	switch sb.rs.Intn(6) {
 	case 0:
-		t = RandStructType(st, false)
+		t = ArrayOf(t)
 	case 1:
-		t = RandFuncType(st)
-	default:
-		t = RandType(st)
+		t = ChanOf(t)
+	case 2:
+		if _, ok := t.(StructType); ok {
+			t = RandStructType(st, true)
+		}
+		var t2 Type
+		if sb.rs.Intn(5) == 0 {
+			t2 = RandStructType(st, true)
+		} else {
+			t2 = RandType(st)
+		}
 		if sb.rs.Intn(3) == 0 {
-			t = PointerOf(t)
+			t2 = PointerOf(t2)
 		}
-		switch sb.rs.Intn(6) {
-		case 0: // array
-			if sb.rs.Intn(4) == 0 {
-				t = ArrayOf(RandStructType(st, true))
-			} else {
-				t = ArrayOf(t)
-			}
-		case 1: // map
-			if sb.rs.Intn(4) == 0 {
-				t = RandStructType(st, true)
-			}
-			t2 := RandType(st)
-			if sb.rs.Intn(3) == 0 {
-				t2 = PointerOf(t2)
-			}
-			t = MapOf(t, t2)
-		case 2: // pointer
-			t = PointerOf(t)
-		case 3: // chan
-			t = ChanOf(t)
-		default: // plain type
-		}
+		t = MapOf(t, t2)
+	default:
+		// plain type
 	}
+
+	if t == nil {
+		panic("nil type")
+	}
+
 	return t
 }
 
