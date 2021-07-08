@@ -19,17 +19,6 @@ type StmtBuilder struct {
 	label  int
 }
 
-type StmtStats struct {
-	Assign int
-	Branch int
-	Block  int
-	For    int
-	If     int
-	Switch int
-	Send   int
-	Select int
-}
-
 type StmtConf struct {
 	MaxStmtDepth int // max depth of block nesting
 }
@@ -296,7 +285,7 @@ func (sb *StmtBuilder) RandomTypes(n int) []Type {
 }
 
 func (sb *StmtBuilder) RandomType() Type {
-	st := sb.conf.SupportedTypes
+	st := sb.conf.Types
 
 	// 1 in 8 is a function
 	if sb.rs.Intn(8) == 0 {

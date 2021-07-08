@@ -34,35 +34,35 @@ var TestConfigurations = map[string]microsmith.ProgramConf{
 		StmtConf: microsmith.StmtConf{
 			MaxStmtDepth: 1,
 		},
-		SupportedTypes: allTypes,
-		MultiPkg:       false,
-		FuncNum:        2,
+		Types:    allTypes,
+		MultiPkg: false,
+		FuncNum:  2,
 	},
 
 	"medium": {
 		StmtConf: microsmith.StmtConf{
 			MaxStmtDepth: 2,
 		},
-		SupportedTypes: allTypes,
-		MultiPkg:       false,
-		FuncNum:        4,
+		Types:    allTypes,
+		MultiPkg: false,
+		FuncNum:  4,
 	},
 
 	"big": {
 		StmtConf: microsmith.StmtConf{
 			MaxStmtDepth: 3,
 		},
-		SupportedTypes: allTypes,
-		MultiPkg:       false,
-		FuncNum:        8,
+		Types:    allTypes,
+		MultiPkg: false,
+		FuncNum:  8,
 	},
 	"huge": {
 		StmtConf: microsmith.StmtConf{
 			MaxStmtDepth: 5,
 		},
-		SupportedTypes: allTypes,
-		MultiPkg:       false,
-		FuncNum:        4,
+		Types:    allTypes,
+		MultiPkg: false,
+		FuncNum:  4,
 	},
 }
 
@@ -126,16 +126,6 @@ func TestHuge(t *testing.T) {
 	testProgramGoTypes(t, lim, TestConfigurations["huge"])
 }
 
-func TestSingleType(t *testing.T) {
-	tc := TestConfigurations["medium"]
-	for _, typ := range microsmith.AllTypes {
-		t.Run(typ.Name(), func(t *testing.T) {
-			tc.SupportedTypes = []microsmith.Type{typ}
-			testProgramGoTypes(t, 10, tc)
-		})
-	}
-}
-
 // Check generated programs with gc (from file).
 func TestProgramGc(t *testing.T) {
 	if testing.Short() || runtime.GOOS == "windows" {
@@ -176,7 +166,7 @@ var BenchConf = microsmith.ProgramConf{
 	StmtConf: microsmith.StmtConf{
 		MaxStmtDepth: 2,
 	},
-	SupportedTypes: []microsmith.Type{
+	Types: []microsmith.Type{
 		microsmith.BasicType{"bool"},
 		microsmith.BasicType{"int"},
 		microsmith.BasicType{"int16"},

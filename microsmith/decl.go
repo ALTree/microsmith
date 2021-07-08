@@ -25,27 +25,22 @@ var AllTypes = []Type{
 
 type ProgramConf struct {
 	StmtConf
-	SupportedTypes []Type
-	MultiPkg       bool
-	FuncNum        int
+	Types    []Type
+	MultiPkg bool
+	FuncNum  int
 }
 
 func RandConf(rs *rand.Rand) ProgramConf {
-	var pc ProgramConf
-	pc.StmtConf = StmtConf{MaxStmtDepth: 1 + rand.Intn(3)}
-	pc.SupportedTypes = []Type{AllTypes[0]}
-	for _, t := range AllTypes[1:] {
-		if rs.Float64() < 0.70 { // each type has a 0.70 chance to be enabled
-			pc.SupportedTypes = append(pc.SupportedTypes, t)
-		}
+	return ProgramConf{
+		StmtConf: StmtConf{MaxStmtDepth: 1 + rand.Intn(3)},
+		Types:    AllTypes,
+		MultiPkg: false,
+		FuncNum:  8,
 	}
-	pc.FuncNum = 8
-	return pc
 }
 
 func (pc *ProgramConf) RandType() Type {
-	et := pc.SupportedTypes
-	return et[rand.Intn(len(et))]
+	return pc.Types[rand.Intn(len(pc.Types))]
 }
 
 type DeclBuilder struct {
