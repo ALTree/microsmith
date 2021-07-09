@@ -132,7 +132,7 @@ func (sb *StmtBuilder) AssignStmt() *ast.AssignStmt {
 		} else { // v.field = <expr>
 			fieldType := t.Ftypes[sb.rs.Intn(len(t.Fnames))]
 			return &ast.AssignStmt{
-				Lhs: []ast.Expr{sb.eb.StructFieldExpr(v, fieldType)},
+				Lhs: []ast.Expr{sb.eb.StructFieldExpr(v.Name, t, fieldType)},
 				Tok: token.ASSIGN,
 				Rhs: []ast.Expr{sb.eb.Expr(fieldType)},
 			}
@@ -144,7 +144,7 @@ func (sb *StmtBuilder) AssignStmt() *ast.AssignStmt {
 		//   2. A[<expr>] = <expr>
 		if sb.rs.Intn(2) == 0 {
 			return &ast.AssignStmt{
-				Lhs: []ast.Expr{sb.eb.IndexExpr(v)},
+				Lhs: []ast.Expr{sb.eb.IndexExpr(v.Name)},
 				Tok: token.ASSIGN,
 				Rhs: []ast.Expr{sb.eb.Expr(t.Base())},
 			}
@@ -165,7 +165,7 @@ func (sb *StmtBuilder) AssignStmt() *ast.AssignStmt {
 		//   2. M[<expr>] = <expr>
 		if sb.rs.Intn(2) == 0 {
 			return &ast.AssignStmt{
-				Lhs: []ast.Expr{sb.eb.MapIndexExpr(v)},
+				Lhs: []ast.Expr{sb.eb.MapIndexExpr(v.Name, v.Type.(MapType).KeyT)},
 				Tok: token.ASSIGN,
 				Rhs: []ast.Expr{sb.eb.Expr(v.Type.(MapType).ValueT)},
 			}
@@ -697,7 +697,7 @@ func (sb *StmtBuilder) CommClause(def bool) *ast.CommClause {
 	// otherwise, we receive from one of the channels in scope
 	return &ast.CommClause{
 		Comm: &ast.ExprStmt{
-			X: sb.eb.ChanReceiveExpr(ch),
+			X: sb.eb.ChanReceiveExpr(ch.Name),
 		},
 		Body: stmtList,
 	}

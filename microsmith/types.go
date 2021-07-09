@@ -12,6 +12,7 @@ type Type interface {
 	Equal(Type) bool
 	Name() string
 	Sliceable() bool
+	Contains(t Type) bool
 }
 
 // Name to use for variable of type t
@@ -96,8 +97,16 @@ func (t BasicType) Ast() ast.Expr {
 	return TypeIdent(t.Name())
 }
 
-func (bt BasicType) Equal(t Type) bool {
-	return bt == t
+func (t BasicType) Contains(t2 Type) bool {
+	return t.Equal(t2)
+}
+
+func (t BasicType) Equal(t2 Type) bool {
+	if t2, ok := t2.(BasicType); !ok {
+		return false
+	} else {
+		return t.Name() == t2.Name()
+	}
 }
 
 func (bt BasicType) Name() string {
@@ -138,15 +147,23 @@ func (t PointerType) Ast() ast.Expr {
 	return &ast.StarExpr{X: t.Base().Ast()}
 }
 
-func (pt PointerType) Base() Type {
-	return pt.Btype
+func (t PointerType) Base() Type {
+	return t.Btype
+}
+
+func (t PointerType) Contains(t2 Type) bool {
+	if t.Equal(t2) {
+		return true
+	} else {
+		return t.Base().Contains(t2)
+	}
 }
 
 func (pt PointerType) Equal(t Type) bool {
 	if t2, ok := t.(PointerType); !ok {
 		return false
 	} else {
-		return pt.Base().Equal(t2)
+		return pt.Base().Equal(t2.Base())
 	}
 }
 
@@ -176,6 +193,14 @@ func (t ArrayType) Ast() ast.Expr {
 
 func (at ArrayType) Base() Type {
 	return at.Etype
+}
+
+func (t ArrayType) Contains(t2 Type) bool {
+	if t.Equal(t2) {
+		return true
+	} else {
+		return t.Base().Contains(t2)
+	}
 }
 
 func (at ArrayType) Equal(t Type) bool {
@@ -223,6 +248,19 @@ func (t StructType) Ast() ast.Expr {
 	return &ast.StructType{
 		Fields: &ast.FieldList{List: fields},
 	}
+}
+
+func (t StructType) Contains(t2 Type) bool {
+	if t.Equal(t2) {
+		return true
+	}
+
+	for _, ft := range t.Ftypes {
+		if ft.Contains(t2) {
+			return true
+		}
+	}
+	return false
 }
 
 func (st StructType) Equal(t Type) bool {
@@ -289,6 +327,10 @@ func (t FuncType) Ast() ast.Expr {
 
 func (ft FuncType) Equal(t Type) bool {
 	return false // TODO(alb): fix?
+}
+
+func (f FuncType) Contains(t Type) bool {
+	return false
 }
 
 func (ft FuncType) Name() string {
@@ -482,8 +524,20 @@ func (ct ChanType) Base() Type {
 	return ct.T
 }
 
-func (ct ChanType) Equal(t Type) bool {
-	return ct == t
+func (t ChanType) Contains(t2 Type) bool {
+	if t.Equal(t2) {
+		return true
+	} else {
+		return t.Base().Contains(t2)
+	}
+}
+
+func (t ChanType) Equal(t2 Type) bool {
+	if t2, ok := t2.(ChanType); !ok {
+		return false
+	} else {
+		return t.Base().Equal(t2)
+	}
 }
 
 func (ct ChanType) Name() string {
@@ -513,8 +567,20 @@ func (t MapType) Ast() ast.Expr {
 	}
 }
 
-func (mt MapType) Equal(t Type) bool {
-	return mt == t
+func (t MapType) Contains(t2 Type) bool {
+	if t.Equal(t2) {
+		return true
+	}
+
+	return t.ValueT.Contains(t2)
+}
+
+func (t MapType) Equal(t2 Type) bool {
+	if t2, ok := t2.(MapType); !ok {
+		return false
+	} else {
+		return t.KeyT.Equal(t2.KeyT) && t.ValueT.Equal(t2.ValueT)
+	}
 }
 
 func (mt MapType) Name() string {

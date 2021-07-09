@@ -150,41 +150,13 @@ func (ls Scope) HasType(t Type) bool {
 	return false
 }
 
-// InScopeTypes returns a list of Types that have at least one
-// variable currently in scope
-func (ls Scope) InScopeTypes() []Type {
-	tMap := make(map[Type]struct{})
-	for _, v := range ls {
-		switch v.Type.(type) {
-		case FuncType:
-			// functions are handled differently
-			continue
-		case StructType:
-			for _, t := range v.Type.(StructType).Ftypes {
-				tMap[t] = struct{}{}
-			}
-		case ChanType:
-			tMap[v.Type.(ChanType).Base()] = struct{}{}
-		default:
-			tMap[v.Type] = struct{}{}
-		}
-	}
-
-	tArr := make([]Type, 0, len(tMap))
-	for t := range tMap {
-		tArr = append(tArr, t)
-	}
-
-	return tArr
-}
-
 // Returns a function with return type t
 func (ls Scope) GetRandomFunc(t Type) (Variable, bool) {
 	funcs := make([]Variable, 0, 32)
 	for _, v := range ls {
 		switch v.Type.(type) {
 		case FuncType:
-			if v.Type.(FuncType).Ret[0] == t {
+			if v.Type.(FuncType).Ret[0].Equal(t) {
 				funcs = append(funcs, v)
 			}
 		default:
@@ -220,7 +192,7 @@ func (ls Scope) GetRandomFuncAnyType() (Variable, bool) {
 	return funcs[rand.Intn(len(funcs))], true
 }
 
-// Return a random Ident of type t (exact match)
+// Return a random Variable of type t (exact match)
 func (ls Scope) GetRandomVarOfType(t Type, rs *rand.Rand) (Variable, bool) {
 	cnt := 0
 	for _, v := range ls {
@@ -325,6 +297,22 @@ func (ls Scope) GetRandomVarOfSubtype(t Type, rs *rand.Rand) (Variable, bool) {
 			if v.Type.Name() == "string" {
 				vars = append(vars, v)
 			}
+		}
+	}
+
+	if len(vars) == 0 {
+		return Variable{}, false
+	}
+
+	return vars[rs.Intn(len(vars))], true
+}
+
+func (s Scope) RandVarSubType(t Type, rs *rand.Rand) (Variable, bool) {
+	vars := make([]Variable, 0, 32) // TODO(alb): bigger
+
+	for _, v := range s {
+		if v.Type.Contains(t) {
+			vars = append(vars, v)
 		}
 	}
 

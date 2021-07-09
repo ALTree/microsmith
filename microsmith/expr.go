@@ -204,7 +204,7 @@ func (eb *ExprBuilder) VarOrLit(t Type) ast.Expr {
 	if eb.Deepen() {
 		// Deriving from an existing variable could deepen the tree,
 		// so defensively only allow it when we're not at max depth.
-		vst, typeCanDerive = eb.scope.GetRandomVarOfSubtype(t, eb.rs)
+		vst, typeCanDerive = eb.scope.RandVarSubType(t, eb.rs)
 	}
 
 	// If no variable of type t is in scope, and we cannot derive an
@@ -267,107 +267,80 @@ func (eb *ExprBuilder) VarOrLit(t Type) ast.Expr {
 	}
 
 	// derive from an existing variable
-	switch vst.Type.(type) {
-	case ArrayType:
-		return eb.IndexExpr(vst)
-	case MapType:
-		return eb.MapIndexExpr(vst)
-	case StructType:
-		return eb.StructFieldExpr(vst, t)
-	case ChanType:
-		return eb.ChanReceiveExpr(vst)
-	case PointerType:
-		return &ast.UnaryExpr{
-			Op: token.MUL,
-			X:  &ast.Ident{Name: vst.Name.Name},
-		}
-	case BasicType:
-		if vst.Type.Name() == "string" {
-			return eb.IndexExpr(vst)
-		}
+	return eb.SubTypeExpr(vst.Name, vst.Type, t)
+}
+
+// e: the Expr being built
+// t: the current type of e
+// target: the target type of e
+func (eb *ExprBuilder) SubTypeExpr(e ast.Expr, t, target Type) ast.Expr {
+	if t.Equal(target) {
+		return e
 	}
 
+	switch t := t.(type) {
+	case ArrayType:
+		return eb.SubTypeExpr(eb.IndexExpr(e), t.Base(), target)
+	case BasicType:
+		panic("basic types should not get here")
+	case ChanType:
+		return eb.SubTypeExpr(eb.ChanReceiveExpr(e), t.Base(), target)
+	case MapType:
+		return eb.SubTypeExpr(eb.MapIndexExpr(e, t.KeyT), t.ValueT, target)
+	case PointerType:
+		return eb.SubTypeExpr(eb.StarExpr(e), t.Base(), target)
+	case StructType:
+		return eb.SubTypeExpr(eb.StructFieldExpr(e, t, target), target, target)
+	default:
+		panic("unreachable")
+	}
+}
+
+// Returns e[...]
+func (eb *ExprBuilder) IndexExpr(e ast.Expr) *ast.IndexExpr {
+	var i ast.Expr
+	if eb.rs.Intn(2) == 0 && eb.Deepen() {
+		i = eb.BinaryExpr(BasicType{"int"})
+	} else {
+		i = eb.VarOrLit(BasicType{"int"})
+	}
+
+	return &ast.IndexExpr{X: e, Index: i}
+}
+
+// Returns *e
+func (eb *ExprBuilder) StarExpr(e ast.Expr) *ast.UnaryExpr {
+	return &ast.UnaryExpr{Op: token.MUL, X: e}
+}
+
+// Returns e[k] with e map and k of type t
+func (eb *ExprBuilder) MapIndexExpr(e ast.Expr, t Type) *ast.IndexExpr {
+	var i ast.Expr
+	if eb.Deepen() {
+		i = eb.Expr(t)
+	} else {
+		i = eb.VarOrLit(t)
+	}
+
+	return &ast.IndexExpr{X: e, Index: i}
+}
+
+// Returns < e.<...> > where the whole expression has type target.
+func (eb *ExprBuilder) StructFieldExpr(e ast.Expr, t StructType, target Type) ast.Expr {
+	for i, ft := range t.Ftypes {
+		if ft.Contains(target) {
+			sl := &ast.SelectorExpr{
+				X:   e,
+				Sel: &ast.Ident{Name: t.Fnames[i]},
+			}
+			return eb.SubTypeExpr(sl, t.Ftypes[i], target)
+		}
+	}
 	panic("unreachable")
 }
 
-// Returns an ast.IndexExpr which index into v (of type Array) either
-// using an int literal or an int Expr.
-func (eb *ExprBuilder) IndexExpr(v Variable) *ast.IndexExpr {
-	_, oka := v.Type.(ArrayType)
-	_, oks := v.Type.(BasicType)
-	if !(oka || (oks && v.Type.Name() == "string")) {
-		panic("ArrayIndexExpr: not an array: " + v.String())
-	}
-
-	var index ast.Expr
-	if eb.rs.Intn(2) == 0 && eb.Deepen() {
-		// Expr() could be UnaryExpr(), which is not allowed since if
-		// it ends up negative and constant it'll trigger a
-		// compilation error. Use BinaryExpr() which is guaranteed not
-		// to be constant for ints.
-		index = eb.BinaryExpr(BasicType{"int"})
-	} else {
-		index = eb.VarOrLit(BasicType{"int"})
-	}
-
-	return &ast.IndexExpr{
-		X:     v.Name,
-		Index: index,
-	}
-
-}
-
-// Returns an ast.IndexExpr which index into v (of type Map) either
-// using a keyT literal or a KeyT Expr.
-func (eb *ExprBuilder) MapIndexExpr(v Variable) *ast.IndexExpr {
-	mv, ok := v.Type.(MapType)
-	if !ok {
-		panic("not an array: " + v.String())
-	}
-
-	var index ast.Expr
-	if eb.Deepen() {
-		index = eb.Expr(mv.KeyT)
-	} else {
-		index = eb.VarOrLit(mv.KeyT)
-	}
-
-	return &ast.IndexExpr{
-		X:     v.Name,
-		Index: index,
-	}
-}
-
-// Returns an ast.SelectorExpr which select into a field of type t in
-// v (of type Struct).
-func (eb *ExprBuilder) StructFieldExpr(v Variable, t Type) *ast.SelectorExpr {
-	sv, ok := v.Type.(StructType)
-	if !ok {
-		panic("not a struct: " + v.String())
-	}
-
-	for i, ft := range sv.Ftypes {
-		if ft == t {
-			return &ast.SelectorExpr{
-				X:   v.Name,
-				Sel: &ast.Ident{Name: sv.Fnames[i]},
-			}
-		}
-	}
-
-	panic("Could not find a field of type " + t.Name() + " in struct " + v.String())
-}
-
-// Returns an ast.UnaryExpr which receive from the channel v.
-func (eb *ExprBuilder) ChanReceiveExpr(v Variable) *ast.UnaryExpr {
-	if _, ok := v.Type.(ChanType); !ok {
-		panic("not a chan - " + v.String())
-	}
-
-	return &ast.UnaryExpr{
-		Op: token.ARROW,
-		X:  &ast.Ident{Name: v.Name.Name},
-	}
+func (eb *ExprBuilder) ChanReceiveExpr(e ast.Expr) *ast.UnaryExpr {
+	return &ast.UnaryExpr{Op: token.ARROW, X: e}
 }
 
 func (eb *ExprBuilder) SliceExpr(v Variable) *ast.SliceExpr {
