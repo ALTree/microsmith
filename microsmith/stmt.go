@@ -278,64 +278,86 @@ func (sb *StmtBuilder) RandomTypes(n int) []Type {
 
 	types := make([]Type, 0, n)
 	for i := 0; i < n; i++ {
-		types = append(types, sb.RandomType())
+		types = append(types, sb.RandomType(false))
 	}
 
 	return types
 }
 
-func (sb *StmtBuilder) RandomType() Type {
+func (sb *StmtBuilder) RandomType(comp bool) Type {
 	st := sb.conf.Types
 
 	// 1 in 8 is a function
-	if sb.rs.Intn(8) == 0 {
+	if !comp && sb.rs.Intn(8) == 0 {
 		return RandFuncType(st)
 	}
 
 	var t Type
 
-	// The base type.
-	if sb.rs.Intn(5) == 0 {
-		t = RandStructType(st, false)
-	} else {
+	switch sb.rs.Intn(8) {
+	case 0:
+		t = ArrayOf(sb.RandomType(true))
+	case 99:
+		// TODO(alb)
+		// t = ChanOf(sb.RandType()) // TODO(alb): sb.RandomType()
+	case 2:
+		t = PointerOf(sb.RandomType(true))
+	case 3:
+		t = MapOf(sb.RandType(), sb.RandomType(true))
+	case 4:
+		t = RandStructType(st, comp)
+	default:
 		t = sb.RandType()
 	}
 
-	// Make it a pointer with chance 1 in 3.
-	if sb.rs.Intn(3) == 0 {
-		t = PointerOf(t)
-	}
-
-	// Turn it into an Array, Chan, or Map with chance 0.5, otherwise
-	// leave it plain.
-	switch sb.rs.Intn(6) {
-	case 0:
-		t = ArrayOf(t)
-	case 1:
-		t = ChanOf(t)
-	case 2:
-		if _, ok := t.(StructType); ok {
-			t = RandStructType(st, true)
-		}
-		var t2 Type
-		if sb.rs.Intn(5) == 0 {
-			t2 = RandStructType(st, true)
-		} else {
-			t2 = sb.RandType()
-		}
-		if sb.rs.Intn(3) == 0 {
-			t2 = PointerOf(t2)
-		}
-		t = MapOf(t, t2)
-	default:
-		// plain type
-	}
-
-	if t == nil {
-		panic("nil type")
-	}
-
 	return t
+
+	/*
+
+		// The base type.
+		if sb.rs.Intn(5) == 0 {
+			t = RandStructType(st, false)
+		} else {
+			t = sb.RandType()
+		}
+
+		// Make it a pointer with chance 1 in 3.
+		if sb.rs.Intn(3) == 0 {
+			t = PointerOf(t)
+		}
+
+		// Turn it into an Array, Chan, or Map with chance 0.5, otherwise
+		// leave it plain.
+		switch sb.rs.Intn(6) {
+		case 0:
+			t = ArrayOf(t)
+		case 1:
+			t = ChanOf(t)
+		case 2:
+			if _, ok := t.(StructType); ok {
+				t = RandStructType(st, true)
+			}
+			var t2 Type
+			if sb.rs.Intn(5) == 0 {
+				t2 = RandStructType(st, true)
+			} else {
+				t2 = sb.RandType()
+			}
+			if sb.rs.Intn(3) == 0 {
+				t2 = PointerOf(t2)
+			}
+			t = MapOf(t, t2)
+		default:
+			// plain type
+		}
+
+		if t == nil {
+			panic("nil type")
+		}
+
+		return t
+	*/
+
 }
 
 // DeclStmt returns a DeclStmt where nVars new variables of type kind

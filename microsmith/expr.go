@@ -166,6 +166,26 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 				X:  vst.Name,
 			}
 		} else {
+			// TODO(alb): this is not correct because Expr's contract
+			// says it returns an ast.Expr of type t, but here we may
+			// return a non-typed nil. This nil is fine in
+			//
+			//   var p *int
+			//   p = nil
+			//
+			// but it cannot be used as a general type t expr, for
+			// example this doesn't compile:
+			//
+			//   var i int
+			//   i = *nil
+			//
+			// That nil was returned by Expr() when requested an *int
+			// expr, but it's actually untyped.
+			//
+			// For now this works because we only dereference a
+			// pointer returned by Expr() in UnaryExpr(), and there we
+			// only do that when there's a pointer of that type in
+			// scope, so above we'll always enter the if typeInScope.
 			expr = &ast.Ident{Name: "nil"}
 		}
 
@@ -198,19 +218,9 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 // type t in scope.
 func (eb *ExprBuilder) VarOrLit(t Type) ast.Expr {
 
-	vt, typeInScope := eb.scope.GetRandomVarOfType(t, eb.rs)
+	vst, typeCanDerive := eb.scope.RandVarSubType(t, eb.rs)
 
-	var vst, typeCanDerive = Variable{}, false
-	if eb.Deepen() {
-		// Deriving from an existing variable could deepen the tree,
-		// so defensively only allow it when we're not at max depth.
-		vst, typeCanDerive = eb.scope.RandVarSubType(t, eb.rs)
-	}
-
-	// If no variable of type t is in scope, and we cannot derive an
-	// expression of type t from another variable, return a literal.
-	// Also unconditionally with chance 0.5.
-	if (!typeInScope && !typeCanDerive) || eb.rs.Intn(2) == 0 {
+	if !typeCanDerive || !eb.Deepen() {
 		switch t := t.(type) {
 		case BasicType:
 			switch t.Name() {
@@ -237,36 +247,17 @@ func (eb *ExprBuilder) VarOrLit(t Type) ast.Expr {
 			default:
 				return eb.BasicLit(t)
 			}
-		case ArrayType, StructType:
+		case ArrayType, StructType, MapType:
 			return eb.CompositeLit(t)
 		case PointerType:
-			if typeInScope {
-				return vt.Name
-			} else if vt, ok := eb.scope.GetRandomVarOfType(t.Base(), eb.rs); ok {
-				return &ast.UnaryExpr{
-					Op: token.AND,
-					X:  &ast.Ident{Name: vt.Name.Name},
-				}
-			} else {
-				return &ast.Ident{Name: "nil"}
-			}
+			return &ast.Ident{Name: "nil"}
 		default:
 			panic("unsupported type " + t.Name())
 		}
 	}
 
-	// If we can't derive, return a variable (possibly by slicing). If
-	// we can, 50/50 between deriving and returning a variable.
-	if !typeCanDerive || (typeInScope && eb.rs.Intn(2) == 0) {
-		// If it's sliceable, slice it with chance 0.5
-		if vt.Type.Sliceable() && eb.rs.Intn(2) == 0 {
-			return eb.SliceExpr(vt)
-		} else {
-			return vt.Name
-		}
-	}
+	// TODO(alb): Call SliceExpr
 
-	// derive from an existing variable
 	return eb.SubTypeExpr(vst.Name, vst.Type, t)
 }
 
@@ -277,6 +268,11 @@ func (eb *ExprBuilder) SubTypeExpr(e ast.Expr, t, target Type) ast.Expr {
 	if t.Equal(target) {
 		return e
 	}
+
+	eb.depth++
+	defer func() { eb.depth-- }()
+
+	//fmt.Printf("SubTypeExpr(%v, %v, %v)\n", e, t.Name(), target.Name())
 
 	switch t := t.(type) {
 	case ArrayType:
@@ -333,7 +329,7 @@ func (eb *ExprBuilder) StructFieldExpr(e ast.Expr, t StructType, target Type) as
 				X:   e,
 				Sel: &ast.Ident{Name: t.Fnames[i]},
 			}
-			return eb.SubTypeExpr(sl, t.Ftypes[i], target)
+			return eb.SubTypeExpr(sl, ft, target)
 		}
 	}
 	panic("unreachable")
@@ -394,7 +390,14 @@ func (eb *ExprBuilder) UnaryExpr(t Type) *ast.UnaryExpr {
 	// dereferencing it with chance 0.5
 	if eb.rs.Intn(2) == 0 && eb.scope.HasType(PointerOf(t)) {
 		ue.Op = token.MUL
-		ue.X = eb.Expr(PointerOf(t))
+		if true || eb.Deepen() {
+			// See comment in Expr() for PointerType for why we can
+			// only rely on Expr() here.
+			ue.X = eb.Expr(PointerOf(t))
+		} else {
+			ue.X = eb.VarOrLit(PointerOf(t))
+		}
+
 		return ue
 	}
 
@@ -505,12 +508,9 @@ func (eb *ExprBuilder) BinaryExpr(t Type) *ast.BinaryExpr {
 		}
 
 		// make sure the RHS is not a constant expression
-		vi, ok := eb.scope.GetRandomVarOfType(BasicType{t2.Name()}, eb.rs)
-		if ok {
-			// a variable of the required type is in scope, use that
-			ue.Y = vi.Name
-		} else {
-			// otherwise, cast from an int (there's always one in scope)
+		if vi, ok := eb.scope.RandVarSubType(BasicType{t2.Name()}, eb.rs); ok {
+			ue.Y = eb.SubTypeExpr(vi.Name, vi.Type, t2)
+		} else { // otherwise, cast from an int
 			vi, ok := eb.scope.GetRandomVarOfType(BasicType{"int"}, eb.rs)
 			if !ok {
 				panic("BinaryExpr: no int in scope")

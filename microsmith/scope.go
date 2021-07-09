@@ -249,64 +249,6 @@ func (ls Scope) GetRandomRangeable(rs *rand.Rand) (Variable, bool) {
 	panic("unreachable")
 }
 
-// Like GetExprOfType, but it's *required* to return a variable from
-// which we can derive an expression of type t (by indexing into
-// arrays and maps, selecting into structs, receiving from a chan and
-// dereferencing pointers).
-func (ls Scope) GetRandomVarOfSubtype(t Type, rs *rand.Rand) (Variable, bool) {
-
-	vars := make([]Variable, 0, 32)
-
-	for _, v := range ls {
-		switch v.Type.(type) {
-
-		// for structs in scope, we look for fields of type t
-		case StructType:
-			for _, ft := range v.Type.(StructType).Ftypes {
-				if ft.Equal(t) {
-					vars = append(vars, v)
-				}
-			}
-
-		// for pointers, we look for the ones having base type t, since we
-		// can dereference them to get a t Expr
-		case PointerType:
-			if v.Type.(PointerType).Base().Equal(t) {
-				vars = append(vars, v)
-			}
-
-		// for channels, we can receive
-		case ChanType:
-			if v.Type.(ChanType).Base().Equal(t) {
-				vars = append(vars, v)
-			}
-
-		// for arrays and maps, we can index
-		case ArrayType:
-			if v.Type.(ArrayType).Base().Equal(t) {
-				vars = append(vars, v)
-			}
-		case MapType:
-			if v.Type.(MapType).ValueT.Equal(t) {
-				vars = append(vars, v)
-			}
-		case BasicType:
-			if t.Name() != "byte" {
-				continue
-			}
-			if v.Type.Name() == "string" {
-				vars = append(vars, v)
-			}
-		}
-	}
-
-	if len(vars) == 0 {
-		return Variable{}, false
-	}
-
-	return vars[rs.Intn(len(vars))], true
-}
-
 func (s Scope) RandVarSubType(t Type, rs *rand.Rand) (Variable, bool) {
 	vars := make([]Variable, 0, 32) // TODO(alb): bigger
 

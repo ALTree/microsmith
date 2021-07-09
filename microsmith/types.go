@@ -280,7 +280,12 @@ func (st StructType) Equal(t Type) bool {
 }
 
 func (st StructType) Name() string {
-	return st.N
+	s := "struct{"
+	for _, t := range st.Ftypes {
+		s += " " + t.Name() + ","
+	}
+	s += " }"
+	return s
 }
 
 func (st StructType) Sliceable() bool {
