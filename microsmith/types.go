@@ -357,7 +357,7 @@ func (ft FuncType) MakeFieldLists(named bool, s int) (*ast.FieldList, *ast.Field
 	}
 	for i, arg := range ft.Args {
 		p := ast.Field{
-			Type: &ast.Ident{Name: arg.Name()},
+			Type: arg.Ast(),
 		}
 		if named {
 			p.Names = []*ast.Ident{
@@ -373,7 +373,7 @@ func (ft FuncType) MakeFieldLists(named bool, s int) (*ast.FieldList, *ast.Field
 	for _, arg := range ft.Ret {
 		results.List = append(
 			results.List,
-			&ast.Field{Type: &ast.Ident{Name: arg.Name()}},
+			&ast.Field{Type: arg.Ast()},
 		)
 	}
 

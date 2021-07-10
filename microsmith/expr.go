@@ -64,7 +64,7 @@ func (eb *ExprBuilder) BasicLit(t BasicType) *ast.BasicLit {
 func (eb *ExprBuilder) CompositeLit(t Type) *ast.CompositeLit {
 	switch t := t.(type) {
 	case BasicType:
-		panic("CompositeLit: basic type " + t.Name())
+		panic("No CompositeLit of type " + t.Name())
 	case ArrayType:
 		// TODO(alb): also use []int{17: 999} syntax
 		cl := &ast.CompositeLit{Type: t.Ast()}
@@ -78,6 +78,8 @@ func (eb *ExprBuilder) CompositeLit(t Type) *ast.CompositeLit {
 		}
 		cl.Elts = elems
 		return cl
+	case ChanType:
+		panic("No CompositeLit of type chan")
 	case MapType:
 		cl := &ast.CompositeLit{Type: t.Ast()}
 		var e *ast.KeyValueExpr
@@ -143,6 +145,9 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 
 	case ArrayType, MapType, StructType:
 		expr = eb.CompositeLit(t)
+
+	case ChanType:
+		expr = eb.VarOrLit(t)
 
 	case PointerType:
 		// Either return a literal of the requested pointer type, &x
@@ -249,6 +254,18 @@ func (eb *ExprBuilder) VarOrLit(t Type) ast.Expr {
 			}
 		case ArrayType, StructType, MapType:
 			return eb.CompositeLit(t)
+		case ChanType:
+			// No literal of type Chan, but can be emulated by a
+			// make(chan t.Base()) expression.
+			return &ast.CallExpr{
+				Fun: &ast.Ident{Name: "make"},
+				Args: []ast.Expr{
+					&ast.ChanType{
+						Dir:   3,
+						Value: t.Base().Ast(),
+					},
+				},
+			}
 		case PointerType:
 			return &ast.Ident{Name: "nil"}
 		default:
@@ -579,7 +596,7 @@ func (eb *ExprBuilder) MakeLenCall() *ast.CallExpr {
 	// for a len call, we want a string or an array
 	var typ Type
 	if eb.rs.Intn(2) == 0 {
-		typ = ArrayType{eb.conf.RandType()}
+		typ = ArrayOf(eb.conf.RandType())
 	} else {
 		typ = BasicType{"string"}
 	}

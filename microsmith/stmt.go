@@ -140,8 +140,8 @@ func (sb *StmtBuilder) AssignStmt() *ast.AssignStmt {
 
 	case ArrayType:
 		// For arrays, 50/50 between
-		//   1. A = { <exprs> }
-		//   2. A[<expr>] = <expr>
+		//   A[<expr>] = <expr>
+		//   A = { <expr>, <expr>, ... }
 		if sb.rs.Intn(2) == 0 {
 			return &ast.AssignStmt{
 				Lhs: []ast.Expr{sb.eb.IndexExpr(v.Name)},
@@ -161,8 +161,8 @@ func (sb *StmtBuilder) AssignStmt() *ast.AssignStmt {
 
 	case MapType:
 		// For maps, 50/50 between
-		//   1. M = { <expr>: <expr> }
-		//   2. M[<expr>] = <expr>
+		//   M[<expr>] = <expr>
+		//   M = { <expr>: <expr> }
 		if sb.rs.Intn(2) == 0 {
 			return &ast.AssignStmt{
 				Lhs: []ast.Expr{sb.eb.MapIndexExpr(v.Name, v.Type.(MapType).KeyT)},
@@ -285,79 +285,32 @@ func (sb *StmtBuilder) RandomTypes(n int) []Type {
 }
 
 func (sb *StmtBuilder) RandomType(comp bool) Type {
-	st := sb.conf.Types
-
 	// 1 in 8 is a function
+	// TODO(alb): remove. Funcs can be in arrays, maps, etc.
 	if !comp && sb.rs.Intn(8) == 0 {
-		return RandFuncType(st)
+		return RandFuncType(sb.conf.Types)
 	}
 
 	var t Type
-
-	switch sb.rs.Intn(8) {
+	switch sb.rs.Intn(10) {
 	case 0:
 		t = ArrayOf(sb.RandomType(true))
-	case 99:
-		// TODO(alb)
-		// t = ChanOf(sb.RandType()) // TODO(alb): sb.RandomType()
+	case 1:
+		t = ChanOf(sb.RandomType(true))
 	case 2:
-		t = PointerOf(sb.RandomType(true))
+		t = MapOf(
+			sb.RandType(), // map keys need to be comparable, slices aren't
+			sb.RandomType(true),
+		)
 	case 3:
-		t = MapOf(sb.RandType(), sb.RandomType(true))
+		t = PointerOf(sb.RandomType(true))
 	case 4:
-		t = RandStructType(st, comp)
+		t = RandStructType(sb.conf.Types, comp)
 	default:
 		t = sb.RandType()
 	}
 
 	return t
-
-	/*
-
-		// The base type.
-		if sb.rs.Intn(5) == 0 {
-			t = RandStructType(st, false)
-		} else {
-			t = sb.RandType()
-		}
-
-		// Make it a pointer with chance 1 in 3.
-		if sb.rs.Intn(3) == 0 {
-			t = PointerOf(t)
-		}
-
-		// Turn it into an Array, Chan, or Map with chance 0.5, otherwise
-		// leave it plain.
-		switch sb.rs.Intn(6) {
-		case 0:
-			t = ArrayOf(t)
-		case 1:
-			t = ChanOf(t)
-		case 2:
-			if _, ok := t.(StructType); ok {
-				t = RandStructType(st, true)
-			}
-			var t2 Type
-			if sb.rs.Intn(5) == 0 {
-				t2 = RandStructType(st, true)
-			} else {
-				t2 = sb.RandType()
-			}
-			if sb.rs.Intn(3) == 0 {
-				t2 = PointerOf(t2)
-			}
-			t = MapOf(t, t2)
-		default:
-			// plain type
-		}
-
-		if t == nil {
-			panic("nil type")
-		}
-
-		return t
-	*/
-
 }
 
 // DeclStmt returns a DeclStmt where nVars new variables of type kind
@@ -648,15 +601,7 @@ func (sb *StmtBuilder) SendStmt() *ast.SendStmt {
 		// i.e. generate
 		//   make(chan int) <- 1
 		t := sb.RandType()
-		st.Chan = &ast.CallExpr{
-			Fun: &ast.Ident{Name: "make"},
-			Args: []ast.Expr{
-				&ast.ChanType{
-					Dir:   3,
-					Value: TypeIdent(t.Name()),
-				},
-			},
-		}
+		st.Chan = sb.eb.VarOrLit(ChanType{T: t})
 		st.Value = sb.eb.Expr(t)
 	} else {
 		st.Chan = ch.Name
@@ -706,7 +651,7 @@ func (sb *StmtBuilder) CommClause(def bool) *ast.CommClause {
 						Args: []ast.Expr{
 							&ast.ChanType{
 								Dir:   3,
-								Value: TypeIdent(t.Name()),
+								Value: t.Ast(),
 							},
 						},
 					},

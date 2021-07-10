@@ -211,7 +211,7 @@ func (db *DeclBuilder) MakeVar(t Type, i int) *ast.GenDecl {
 				Names: []*ast.Ident{
 					&ast.Ident{Name: fmt.Sprintf("V%v", i)},
 				},
-				Type: TypeIdent(t.Name()),
+				Type: t.Ast(),
 				Values: []ast.Expr{
 					db.sb.eb.Expr(t),
 				},

@@ -9,10 +9,8 @@ import (
 var src string = `
 package main
 
-import "fmt"
-
 func main() {
-  a.F1()
+  var x [4]int
 }
 `
 
