@@ -154,20 +154,13 @@ func (ls Scope) HasType(t Type) bool {
 func (ls Scope) GetRandomFunc(t Type) (Variable, bool) {
 	funcs := make([]Variable, 0, 32)
 	for _, v := range ls {
-		switch v.Type.(type) {
-		case FuncType:
-			if v.Type.(FuncType).Ret[0].Equal(t) {
-				funcs = append(funcs, v)
-			}
-		default:
-			continue
+		if t, ok := v.Type.(FuncType); ok && t.Ret[0].Equal(t) {
+			funcs = append(funcs, v)
 		}
 	}
-
 	if len(funcs) == 0 {
 		return Variable{}, false
 	}
-
 	return funcs[rand.Intn(len(funcs))], true
 }
 
@@ -175,20 +168,13 @@ func (ls Scope) GetRandomFunc(t Type) (Variable, bool) {
 func (ls Scope) GetRandomFuncAnyType() (Variable, bool) {
 	funcs := make([]Variable, 0, 32)
 	for _, v := range ls {
-		switch v.Type.(type) {
-		case FuncType:
-			if v.Type.(FuncType).Local {
-				funcs = append(funcs, v)
-			}
-		default:
-			continue
+		if t, ok := v.Type.(FuncType); ok && t.Local {
+			funcs = append(funcs, v)
 		}
 	}
-
 	if len(funcs) == 0 {
 		return Variable{}, false
 	}
-
 	return funcs[rand.Intn(len(funcs))], true
 }
 
@@ -250,18 +236,15 @@ func (ls Scope) GetRandomRangeable(rs *rand.Rand) (Variable, bool) {
 }
 
 func (s Scope) RandVarSubType(t Type, rs *rand.Rand) (Variable, bool) {
-	vars := make([]Variable, 0, 32) // TODO(alb): bigger
-
+	vars := make([]Variable, 0, 32)
 	for _, v := range s {
 		if v.Type.Contains(t) {
 			vars = append(vars, v)
 		}
 	}
-
 	if len(vars) == 0 {
 		return Variable{}, false
 	}
-
 	return vars[rs.Intn(len(vars))], true
 }
 

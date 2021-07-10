@@ -269,8 +269,6 @@ func (sb *StmtBuilder) BlockStmt() *ast.BlockStmt {
 	return bs
 }
 
-// Returns an array of n random Types. That can include basic types,
-// arrays, chans, and randomly generated struct and func types.
 func (sb *StmtBuilder) RandomTypes(n int) []Type {
 	if n < 1 {
 		panic("n < 1")
@@ -299,7 +297,7 @@ func (sb *StmtBuilder) RandomType(comp bool) Type {
 		t = ChanOf(sb.RandomType(true))
 	case 2:
 		t = MapOf(
-			sb.RandType(), // map keys need to be comparable, slices aren't
+			sb.RandType(), // map keys need to be comparable
 			sb.RandomType(true),
 		)
 	case 3:
@@ -318,7 +316,7 @@ func (sb *StmtBuilder) RandomType(comp bool) Type {
 // entered the scope.
 func (sb *StmtBuilder) DeclStmt(nVars int, t Type) (*ast.DeclStmt, []*ast.Ident) {
 	if nVars < 1 {
-		panic("DeclStmt: nVars < 1")
+		panic("nVars < 1")
 	}
 
 	if _, ok := t.(FuncType); ok {
@@ -346,7 +344,7 @@ func (sb *StmtBuilder) DeclStmt(nVars int, t Type) (*ast.DeclStmt, []*ast.Ident)
 		//                             return <int expr>
 		//                           }
 		//
-		// But 20% of the times we don't (and the func variable will
+		// But 10% of the times we don't (and the func variable will
 		// be nil).
 
 		// First off all, remove all the labels currently in scope.
@@ -366,9 +364,9 @@ func (sb *StmtBuilder) DeclStmt(nVars int, t Type) (*ast.DeclStmt, []*ast.Ident)
 		p, r := t2.MakeFieldLists(false, 0)
 		typ = &ast.FuncType{Params: p, Results: r}
 
-		// RHS (which chance 0.8)
+		// RHS (which chance 0.9)
 
-		if sb.rs.Intn(5) != 0 {
+		if sb.rs.Intn(10) != 0 {
 			// Func type specifier again, but this time with parameter
 			// names
 			p, r = t2.MakeFieldLists(true, sb.funcp)
@@ -566,10 +564,10 @@ func (sb *StmtBuilder) SwitchStmt() *ast.SwitchStmt {
 		Tag: sb.eb.Expr(t),
 		Body: &ast.BlockStmt{
 			List: []ast.Stmt{
-				// only generate one normal and one default case to
-				// avoid 'duplicate case' compilation errors
+				// Only generate one normal and one default case to
+				// avoid 'duplicate case' compilation errors.
 				sb.CaseClause(t, false),
-				sb.CaseClause(t, true), // default:
+				sb.CaseClause(t, true),
 			},
 		},
 	}
@@ -685,7 +683,7 @@ var noName = ast.Ident{Name: "_"}
 
 // build and return a statement of form
 //   _, _, ... _ = var1, var2, ..., varN
-// for each ident in idents
+// for each i in idents
 func (sb *StmtBuilder) UseVars(idents []*ast.Ident) ast.Stmt {
 	useStmt := &ast.AssignStmt{Tok: token.ASSIGN}
 	for _, name := range idents {
