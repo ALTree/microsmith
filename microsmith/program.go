@@ -128,7 +128,7 @@ func (gp *Program) Compile(arch string, fz FuzzOptions) (string, error) {
 		if fz.Noopt {
 			oFlag = "-Og"
 		}
-		cmd := exec.Command(fz.Toolchain, oFlag, "-o", arcName, baseName+".go")
+		cmd := exec.Command(fz.Toolchain, oFlag, "-o", arcName, baseName+"_main.go")
 		cmd.Dir = gp.workdir
 		out, err := cmd.CombinedOutput()
 		if err != nil {
