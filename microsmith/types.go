@@ -3,7 +3,6 @@ package microsmith
 import (
 	"fmt"
 	"go/ast"
-	"math/rand"
 )
 
 type Type interface {
@@ -312,18 +311,42 @@ func (t FuncType) Addressable() bool {
 }
 
 func (t FuncType) Ast() ast.Expr {
-	panic("unimplemented")
+	p, r := t.MakeFieldLists(false, 0)
+	return &ast.FuncType{Params: p, Results: r}
 }
 
 func (ft FuncType) Equal(t Type) bool {
-	return false // TODO(alb): fix?
+	if t, ok := t.(FuncType); !ok {
+		return false
+	} else {
+		if ft.Local != t.Local {
+			return false
+		}
+
+		if !ft.Ret[0].Equal(t.Ret[0]) {
+			return false
+		}
+
+		if len(ft.Args) != len(t.Args) {
+			return false
+		}
+		for i := range ft.Args {
+			if !ft.Args[i].Equal(t.Args[i]) {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 func (f FuncType) Contains(t Type) bool {
-	return false
+	return f.Equal(t)
 }
 
 func (ft FuncType) Name() string {
+	if ft.N == "FU" {
+		panic("hi")
+	}
 	return ft.N
 }
 
@@ -336,14 +359,11 @@ func (ft FuncType) Sliceable() bool {
 // function literals. If named is true, it gives the function
 // parameters names (p<s>, p<s+1>, ...)
 func (ft FuncType) MakeFieldLists(named bool, s int) (*ast.FieldList, *ast.FieldList) {
-
 	params := &ast.FieldList{
 		List: make([]*ast.Field, 0, len(ft.Args)),
 	}
 	for i, arg := range ft.Args {
-		p := ast.Field{
-			Type: arg.Ast(),
-		}
+		p := ast.Field{Type: arg.Ast()}
 		if named {
 			p.Names = []*ast.Ident{
 				&ast.Ident{Name: fmt.Sprintf("p%d", s+i)},
@@ -363,35 +383,6 @@ func (ft FuncType) MakeFieldLists(named bool, s int) (*ast.FieldList, *ast.Field
 	}
 
 	return params, results
-}
-
-func RandFuncType(EnabledTypes []Type) FuncType {
-	args := make([]Type, 0, rand.Intn(8))
-	for i := 0; i < cap(args); i++ {
-		typ := EnabledTypes[rand.Intn(len(EnabledTypes))]
-		if _, ok := typ.(BasicType); !ok {
-			panic("RandFuncType: non basic type " + typ.Name())
-		}
-		t := typ
-		if rand.Intn(3) == 0 {
-			t = PointerOf(t)
-		}
-		if rand.Intn(5) == 0 {
-			t = ArrayOf(t)
-		}
-		args = append(args, t)
-	}
-
-	// choose return type
-	ret := EnabledTypes[rand.Intn(len(EnabledTypes))]
-	if rand.Intn(3) == 0 {
-		ret = PointerOf(ret)
-	}
-	if rand.Intn(5) == 0 {
-		ret = ArrayOf(ret)
-	}
-
-	return FuncType{"FU", args, []Type{ret}, true}
 }
 
 var LenFun FuncType = FuncType{

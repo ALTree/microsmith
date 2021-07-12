@@ -146,7 +146,7 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 	case ArrayType, MapType, StructType:
 		expr = eb.CompositeLit(t)
 
-	case ChanType:
+	case ChanType, FuncType:
 		expr = eb.VarOrLit(t)
 
 	case PointerType:
@@ -266,7 +266,7 @@ func (eb *ExprBuilder) VarOrLit(t Type) ast.Expr {
 					},
 				},
 			}
-		case PointerType:
+		case PointerType, FuncType:
 			return &ast.Ident{Name: "nil"}
 		default:
 			panic("unsupported type " + t.Name())

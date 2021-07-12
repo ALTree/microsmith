@@ -76,7 +76,7 @@ func testProgramGoTypes(t *testing.T, n int, conf microsmith.ProgramConf) {
 			if _, err := tmpfile.Write([]byte(gp.String())); err != nil {
 				t.Fatal(err)
 			}
-			t.Fatalf("Program failed typechecking:\n%s", err)
+			t.Fatalf("Program failed typechecking:\n%s\n%v", err, gp)
 		}
 	}
 }

@@ -284,31 +284,27 @@ func (sb *StmtBuilder) RandomTypes(n int) []Type {
 }
 
 func (sb *StmtBuilder) RandomType(comp bool) Type {
-	// 1 in 8 is a function
-	// TODO(alb): remove. Funcs can be in arrays, maps, etc.
-	if !comp && sb.rs.Intn(8) == 0 {
-		return RandFuncType(sb.conf.Types)
-	}
-
 	var t Type
-	switch sb.rs.Intn(10) {
-	case 0:
-		if !comp {
-			t = ArrayOf(sb.RandomType(true))
-		} else {
+	switch sb.rs.Intn(14) {
+	case 0, 1:
+		if comp {
 			t = sb.RandType()
+		} else {
+			t = ArrayOf(sb.RandomType(true))
 		}
-	case 1:
-		t = ChanOf(sb.RandomType(true))
 	case 2:
+		t = ChanOf(sb.RandomType(true))
+	case 3, 4:
 		t = MapOf(
 			sb.RandType(), // map keys need to be comparable
 			sb.RandomType(true),
 		)
-	case 3:
+	case 5, 6:
 		t = PointerOf(sb.RandomType(true))
-	case 4:
+	case 7:
 		t = sb.RandStructType(comp)
+	case 8:
+		return sb.RandFuncType()
 	default:
 		t = sb.RandType()
 	}
@@ -323,7 +319,7 @@ func (sb *StmtBuilder) RandStructType(comparable bool) StructType {
 		[]string{},
 	}
 
-	nfields := 1 + rand.Intn(5)
+	nfields := 1 + sb.rs.Intn(5)
 	for i := 0; i < nfields; i++ {
 		t := sb.RandomType(true)
 		st.Ftypes = append(st.Ftypes, t)
@@ -331,6 +327,20 @@ func (sb *StmtBuilder) RandStructType(comparable bool) StructType {
 	}
 
 	return st
+}
+
+func (sb *StmtBuilder) RandFuncType() FuncType {
+	args := make([]Type, 0, sb.rs.Intn(8))
+
+	// arguments
+	for i := 0; i < cap(args); i++ {
+		args = append(args, sb.RandomType(true))
+	}
+
+	// return type
+	ret := []Type{sb.RandomType(true)}
+
+	return FuncType{"FU", args, ret, true}
 }
 
 // DeclStmt returns a DeclStmt where nVars new variables of type kind
