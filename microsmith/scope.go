@@ -23,10 +23,17 @@ type Scope []Variable
 // the LHS of an AssignStmt. If nofunc is TRUE, ignore FuncType
 // variables.
 func (s Scope) RandomVar(nofunc bool) Variable {
-
 	vs := make([]Variable, 0, 16)
 	for _, v := range s {
-		if Addressable(v.Type) {
+		// Maps are NOT addressable, but it doesn't matter here
+		// because the only RandomVar caller (AssignStmt), always
+		// assigns to maps as m[...] = , and that is allowed. What is
+		// not allowed is m[...].i =.
+		if _, ok := v.Type.(MapType); ok {
+			vs = append(vs, v)
+			continue
+		}
+		if v.Type.Addressable() {
 			if nofunc {
 				if _, ok := v.Type.(FuncType); !ok {
 					vs = append(vs, v)

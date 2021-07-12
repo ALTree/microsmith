@@ -5,6 +5,7 @@ import (
 	"go/ast"
 	"go/token"
 	"math/rand"
+	"strconv"
 )
 
 type StmtBuilder struct {
@@ -292,7 +293,11 @@ func (sb *StmtBuilder) RandomType(comp bool) Type {
 	var t Type
 	switch sb.rs.Intn(10) {
 	case 0:
-		t = ArrayOf(sb.RandomType(true))
+		if !comp {
+			t = ArrayOf(sb.RandomType(true))
+		} else {
+			t = sb.RandType()
+		}
 	case 1:
 		t = ChanOf(sb.RandomType(true))
 	case 2:
@@ -303,12 +308,29 @@ func (sb *StmtBuilder) RandomType(comp bool) Type {
 	case 3:
 		t = PointerOf(sb.RandomType(true))
 	case 4:
-		t = RandStructType(sb.conf.Types, comp)
+		t = sb.RandStructType(comp)
 	default:
 		t = sb.RandType()
 	}
 
 	return t
+}
+
+func (sb *StmtBuilder) RandStructType(comparable bool) StructType {
+	st := StructType{
+		"ST",
+		[]Type{},
+		[]string{},
+	}
+
+	nfields := 1 + rand.Intn(5)
+	for i := 0; i < nfields; i++ {
+		t := sb.RandomType(true)
+		st.Ftypes = append(st.Ftypes, t)
+		st.Fnames = append(st.Fnames, Ident(t)+strconv.Itoa(i))
+	}
+
+	return st
 }
 
 // DeclStmt returns a DeclStmt where nVars new variables of type kind

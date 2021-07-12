@@ -82,15 +82,16 @@ func testProgramGoTypes(t *testing.T, n int, conf microsmith.ProgramConf) {
 }
 
 func TestRandConf(t *testing.T) {
-	lim := 50
+	lim := 10
 	if testing.Short() {
 		lim = 5
 	}
+	rs := rand.New(rand.NewSource(int64(42)))
 	for i := 0; i < lim; i++ {
-		conf := microsmith.RandConf(rand.New(rand.NewSource(42)))
+		conf := microsmith.RandConf(rs)
 		// leave this (useful for debugging)
 		//fmt.Printf("%+v\n\n", conf)
-		testProgramGoTypes(t, 10, conf)
+		testProgramGoTypes(t, 20, conf)
 	}
 }
 

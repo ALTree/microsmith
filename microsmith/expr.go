@@ -289,8 +289,6 @@ func (eb *ExprBuilder) SubTypeExpr(e ast.Expr, t, target Type) ast.Expr {
 	eb.depth++
 	defer func() { eb.depth-- }()
 
-	//fmt.Printf("SubTypeExpr(%v, %v, %v)\n", e, t.Name(), target.Name())
-
 	switch t := t.(type) {
 	case ArrayType:
 		return eb.SubTypeExpr(eb.IndexExpr(e), t.Base(), target)
@@ -349,7 +347,7 @@ func (eb *ExprBuilder) StructFieldExpr(e ast.Expr, t StructType, target Type) as
 			return eb.SubTypeExpr(sl, ft, target)
 		}
 	}
-	panic("unreachable")
+	panic("unreachable:" + t.Name() + " " + " target: " + target.Name())
 }
 
 func (eb *ExprBuilder) ChanReceiveExpr(e ast.Expr) *ast.UnaryExpr {

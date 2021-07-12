@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"go/ast"
 	"math/rand"
-	"strconv"
 )
 
 type Type interface {
+	Addressable() bool
 	Ast() ast.Expr
 	Equal(Type) bool
 	Name() string
@@ -66,31 +66,16 @@ func Ident(t Type) string {
 	}
 }
 
-func Addressable(t Type) bool {
-	switch t := t.(type) {
-	case BasicType, ArrayType, StructType, MapType, PointerType:
-		return true
-	case FuncType:
-		// Pre-declared or external function cannot be assigned to,
-		// local user-defined functions can.
-		if t.Local {
-			return true
-		} else {
-			return false
-		}
-	case ChanType:
-		return false
-	default:
-		panic("Addressable: unknown type " + t.Name())
-	}
-}
-
 // -------------------------------- //
 //   basic                          //
 // -------------------------------- //
 
 type BasicType struct {
 	N string
+}
+
+func (t BasicType) Addressable() bool {
+	return true
 }
 
 func (t BasicType) Ast() ast.Expr {
@@ -143,6 +128,10 @@ type PointerType struct {
 	Btype Type
 }
 
+func (t PointerType) Addressable() bool {
+	return t.Base().Addressable()
+}
+
 func (t PointerType) Ast() ast.Expr {
 	return &ast.StarExpr{X: t.Base().Ast()}
 }
@@ -187,6 +176,10 @@ type ArrayType struct {
 	Etype Type
 }
 
+func (t ArrayType) Addressable() bool {
+	return true
+}
+
 func (t ArrayType) Ast() ast.Expr {
 	return &ast.ArrayType{Elt: t.Base().Ast()}
 }
@@ -227,12 +220,19 @@ func ArrayOf(t Type) ArrayType {
 //   struct                         //
 // -------------------------------- //
 
-const MaxStructFields = 6
-
 type StructType struct {
 	N      string
 	Ftypes []Type   // fields types
 	Fnames []string // field names
+}
+
+func (t StructType) Addressable() bool {
+	for _, t := range t.Ftypes {
+		if !t.Addressable() {
+			return false
+		}
+	}
+	return true
 }
 
 func (t StructType) Ast() ast.Expr {
@@ -271,7 +271,7 @@ func (st StructType) Equal(t Type) bool {
 			return false
 		}
 		for i := range st.Ftypes {
-			if st.Ftypes[i] != t2.Ftypes[i] {
+			if !st.Ftypes[i].Equal(t2.Ftypes[i]) {
 				return false
 			}
 		}
@@ -292,29 +292,6 @@ func (st StructType) Sliceable() bool {
 	return false
 }
 
-func RandStructType(EnabledTypes []Type, comparable bool) StructType {
-	st := StructType{
-		"ST",
-		[]Type{},
-		[]string{},
-	}
-
-	nfields := 1 + rand.Intn(MaxStructFields)
-	for i := 0; i < nfields; i++ {
-		t := EnabledTypes[rand.Intn(len(EnabledTypes))]
-		if rand.Intn(3) == 0 {
-			t = PointerOf(t)
-		}
-		if !comparable && rand.Intn(5) == 0 {
-			t = ArrayOf(t)
-		}
-		st.Ftypes = append(st.Ftypes, t)
-		st.Fnames = append(st.Fnames, Ident(t)+strconv.Itoa(i))
-	}
-
-	return st
-}
-
 // -------------------------------- //
 //   func                           //
 // -------------------------------- //
@@ -324,6 +301,14 @@ type FuncType struct {
 	Args  []Type
 	Ret   []Type
 	Local bool
+}
+
+func (t FuncType) Addressable() bool {
+	if t.Local {
+		return true
+	} else {
+		return false
+	}
 }
 
 func (t FuncType) Ast() ast.Expr {
@@ -518,6 +503,10 @@ type ChanType struct {
 	T Type
 }
 
+func (t ChanType) Addressable() bool {
+	return false
+}
+
 func (t ChanType) Ast() ast.Expr {
 	return &ast.ChanType{
 		Dir:   3,
@@ -541,7 +530,7 @@ func (t ChanType) Equal(t2 Type) bool {
 	if t2, ok := t2.(ChanType); !ok {
 		return false
 	} else {
-		return t.Base().Equal(t2)
+		return t.Base().Equal(t2.Base())
 	}
 }
 
@@ -563,6 +552,10 @@ func ChanOf(t Type) ChanType {
 
 type MapType struct {
 	KeyT, ValueT Type
+}
+
+func (t MapType) Addressable() bool {
+	return false
 }
 
 func (t MapType) Ast() ast.Expr {
