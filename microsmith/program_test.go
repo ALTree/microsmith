@@ -68,8 +68,9 @@ var TestConfigurations = map[string]microsmith.ProgramConf{
 
 // check n generated programs with go/types (in-memory)
 func testProgramGoTypes(t *testing.T, n int, conf microsmith.ProgramConf) {
+	rs := rand.New(rand.NewSource(7411))
 	for i := 0; i < n; i++ {
-		gp := microsmith.NewProgram(rand.New(rand.NewSource(int64(i))), conf)
+		gp := microsmith.NewProgram(rs, conf)
 		err := gp.Check()
 		if err != nil {
 			tmpfile, _ := ioutil.TempFile("", "fail*.go")
@@ -82,16 +83,14 @@ func testProgramGoTypes(t *testing.T, n int, conf microsmith.ProgramConf) {
 }
 
 func TestRandConf(t *testing.T) {
-	lim := 10
+	n := 50
 	if testing.Short() {
-		lim = 5
+		n = 20
 	}
-	rs := rand.New(rand.NewSource(int64(42)))
-	for i := 0; i < lim; i++ {
+	rs := rand.New(rand.NewSource(42))
+	for i := 0; i < 10; i++ {
 		conf := microsmith.RandConf(rs)
-		// leave this (useful for debugging)
-		//fmt.Printf("%+v\n\n", conf)
-		testProgramGoTypes(t, 20, conf)
+		testProgramGoTypes(t, n, conf)
 	}
 }
 
