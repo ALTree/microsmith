@@ -161,7 +161,7 @@ func (ls Scope) HasType(t Type) bool {
 func (ls Scope) GetRandomFunc(t Type) (Variable, bool) {
 	funcs := make([]Variable, 0, 32)
 	for _, v := range ls {
-		if t, ok := v.Type.(FuncType); ok && t.Ret[0].Equal(t) {
+		if ft, ok := v.Type.(FuncType); ok && ft.Ret[0].Equal(t) {
 			funcs = append(funcs, v)
 		}
 	}

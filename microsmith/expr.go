@@ -130,13 +130,13 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 
 	case BasicType:
 		switch eb.rs.Intn(8) {
-		case 0: // unary
+		case 0, 1: // unary
 			if t.Name() == "string" {
 				return eb.BinaryExpr(t)
 			} else {
 				return eb.UnaryExpr(t)
 			}
-		case 1, 2, 3: // binary
+		case 2, 3, 4: // binary
 			return eb.BinaryExpr(t)
 		default: // function call
 			if v, ok := eb.scope.GetRandomFunc(t); ok {
