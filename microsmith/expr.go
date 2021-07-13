@@ -233,7 +233,7 @@ func (eb *ExprBuilder) VarOrLit(t Type) ast.Expr {
 
 	// Slice, once in a while.
 	if _, ok := vst.Type.(ArrayType); ok {
-		if t.Equal(vst.Type) && eb.rs.Intn(2) == 0 {
+		if t.Equal(vst.Type) && eb.rs.Intn(4) == 0 {
 			return eb.SliceExpr(vst)
 		}
 	}
