@@ -33,7 +33,7 @@ func (eb *ExprBuilder) chooseToken(tokens []token.Token) token.Token {
 	return tokens[eb.rs.Intn(len(tokens))]
 }
 
-func (eb *ExprBuilder) BasicLit(t BasicType) *ast.BasicLit {
+func (eb *ExprBuilder) BasicLit(t BasicType) ast.Expr {
 	bl := new(ast.BasicLit)
 	switch t.Name() {
 	case "byte", "uint", "int", "int8", "int16", "int32", "int64":
@@ -50,12 +50,16 @@ func (eb *ExprBuilder) BasicLit(t BasicType) *ast.BasicLit {
 		bl.Kind = token.IMAG
 		bl.Value = strconv.FormatFloat(99*(eb.rs.Float64()), 'f', 2, 64) + "i"
 	case "bool":
-		panic("BasicLit: bool is not a BasicLit")
+		if eb.rs.Intn(2) == 0 {
+			return TrueIdent
+		} else {
+			return FalseIdent
+		}
 	case "string":
 		bl.Kind = token.STRING
 		bl.Value = RandString()
 	default:
-		panic("BasicLit: unimplemented type " + t.Name())
+		panic("Unimplemented for " + t.Name())
 	}
 
 	return bl
@@ -122,32 +126,28 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 		panic("eb.depth > 32")
 	}
 
-	var expr ast.Expr
 	switch t := t.(type) {
 
 	case BasicType:
 		switch eb.rs.Intn(8) {
 		case 0: // unary
 			if t.Name() == "string" {
-				expr = eb.BinaryExpr(t)
+				return eb.BinaryExpr(t)
 			} else {
-				expr = eb.UnaryExpr(t)
+				return eb.UnaryExpr(t)
 			}
 		case 1, 2, 3: // binary
-			expr = eb.BinaryExpr(t)
+			return eb.BinaryExpr(t)
 		default: // function call
 			if v, ok := eb.scope.GetRandomFunc(t); ok {
-				expr = eb.CallExpr(v)
+				return eb.CallExpr(v)
 			} else { // fallback
-				expr = eb.BinaryExpr(t)
+				return eb.BinaryExpr(t)
 			}
 		}
 
-	case ArrayType, MapType, StructType:
-		expr = eb.CompositeLit(t)
-
-	case ChanType, FuncType:
-		expr = eb.VarOrLit(t)
+	case ArrayType, ChanType, FuncType, MapType, StructType:
+		return eb.VarOrLit(t)
 
 	case PointerType:
 		// Either return a literal of the requested pointer type, &x
@@ -156,17 +156,17 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 		vst, baseInScope := eb.scope.GetRandomVarOfType(t.Base(), eb.rs)
 		if typeInScope && baseInScope {
 			if eb.rs.Intn(2) == 0 {
-				expr = vt.Name
+				return vt.Name
 			} else {
-				expr = &ast.UnaryExpr{
+				return &ast.UnaryExpr{
 					Op: token.AND,
 					X:  vst.Name,
 				}
 			}
 		} else if typeInScope {
-			expr = vt.Name
+			return vt.Name
 		} else if baseInScope {
-			expr = &ast.UnaryExpr{
+			return &ast.UnaryExpr{
 				Op: token.AND,
 				X:  vst.Name,
 			}
@@ -191,36 +191,14 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 			// pointer returned by Expr() in UnaryExpr(), and there we
 			// only do that when there's a pointer of that type in
 			// scope, so above we'll always enter the if typeInScope.
-			expr = &ast.Ident{Name: "nil"}
+			return &ast.Ident{Name: "nil"}
 		}
 
 	default:
-		panic("Expr: bad type " + t.Name())
+		panic("Unimplemented type " + t.Name())
 	}
-
-	return expr
 }
 
-// VarOrLit returns either:
-//   - a literal of type t
-//   - an expression of type t
-//
-// If no expression of type t can be built, it always returns a
-// literal. Otherwise, it returns a literal or an Expr with chances
-// 0.5 - 0.5.
-//
-// When returning an expression, that can be either an ast.Ident (for
-// example when t is int it could just return a variable I0 of type
-// int), or a derived expression of type type. Expression are derived
-// from:
-//   - arrays and maps, by indexing into them
-//   - channels, by receiving
-//   - structs, by selecting a field
-//   - pointers, by dereferencing
-//
-// When returning an expression, simple one are always preferred. A
-// derived expression is only returned when there are not variables of
-// type t in scope.
 func (eb *ExprBuilder) VarOrLit(t Type) ast.Expr {
 
 	vst, typeCanDerive := eb.scope.RandVarSubType(t, eb.rs)
@@ -228,42 +206,22 @@ func (eb *ExprBuilder) VarOrLit(t Type) ast.Expr {
 	if !typeCanDerive || !eb.Deepen() {
 		switch t := t.(type) {
 		case BasicType:
-			switch t.Name() {
-			case "bool":
-				if eb.rs.Intn(2) == 0 {
-					return TrueIdent
-				} else {
-					return FalseIdent
-				}
-			case "byte", "uint", "int8", "int16", "int32", "int64":
-				// Since integer lits are int by default, we need an
-				// explicit cast for other types.
-				bl := eb.BasicLit(t)
-				return &ast.CallExpr{
+			bl := eb.BasicLit(t)
+			if t.Name() != "int" && t.Name() != "float64" {
+				bl = &ast.CallExpr{
 					Fun:  &ast.Ident{Name: t.Name()},
 					Args: []ast.Expr{bl},
 				}
-			case "float32":
-				bl := eb.BasicLit(t)
-				return &ast.CallExpr{
-					Fun:  &ast.Ident{Name: "float32"},
-					Args: []ast.Expr{bl},
-				}
-			default:
-				return eb.BasicLit(t)
 			}
+			return bl
 		case ArrayType, StructType, MapType:
 			return eb.CompositeLit(t)
 		case ChanType:
-			// No literal of type Chan, but can be emulated by a
-			// make(chan t.Base()) expression.
+			// No literal of type Chan, but we can return make(chan t)
 			return &ast.CallExpr{
 				Fun: &ast.Ident{Name: "make"},
 				Args: []ast.Expr{
-					&ast.ChanType{
-						Dir:   3,
-						Value: t.Base().Ast(),
-					},
+					&ast.ChanType{Dir: 3, Value: t.Base().Ast()},
 				},
 			}
 		case PointerType, FuncType:
@@ -273,7 +231,12 @@ func (eb *ExprBuilder) VarOrLit(t Type) ast.Expr {
 		}
 	}
 
-	// TODO(alb): Call SliceExpr
+	// Slice, once in a while.
+	if _, ok := vst.Type.(ArrayType); ok {
+		if t.Equal(vst.Type) && eb.rs.Intn(2) == 0 {
+			return eb.SliceExpr(vst)
+		}
+	}
 
 	return eb.SubTypeExpr(vst.Name, vst.Type, t)
 }
