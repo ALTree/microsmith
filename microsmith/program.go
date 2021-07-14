@@ -138,9 +138,9 @@ func (gp *Program) Compile(arch string, fz FuzzOptions) (string, error) {
 	case strings.Contains(fz.Toolchain, "tinygo"):
 		var cmd *exec.Cmd
 		if fz.Noopt {
-			cmd = exec.Command(fz.Toolchain, "build", "-opt", "z", "-o", arcName, baseName+".go")
+			cmd = exec.Command(fz.Toolchain, "build", "-opt", "z", "-o", arcName, baseName+"_main.go")
 		} else {
-			cmd = exec.Command(fz.Toolchain, "build", "-o", arcName, baseName+".go")
+			cmd = exec.Command(fz.Toolchain, "build", "-o", arcName, baseName+"_main.go")
 		}
 		cmd.Dir = gp.workdir
 		out, err := cmd.CombinedOutput()

@@ -113,7 +113,7 @@ func main() {
 }
 
 var crashWhitelist = []*regexp.Regexp{
-	// regexp.MustCompile("illegal combination SRA"),
+	regexp.MustCompile("integer divide by zero"),
 }
 
 func Fuzz(id uint64, fz microsmith.FuzzOptions) {
