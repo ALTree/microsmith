@@ -43,7 +43,7 @@ used to stress-test Go compilers.
 ##### gccgo (2)
 
 - [#44383 internal compiler error: Segmentation fault during GIMPLE pass ealias](https://github.com/golang/go/issues/44383)
-- [#44386 internal compiler error: Segmentation fault with -Og during GIMPLE pass fre](https://github.com/golang/go/issues/44386)
+- [#47130 internal compiler error: in write_equal_function](https://github.com/golang/go/issues/47130)
 
 ##### tinygo (1)
 
