@@ -105,10 +105,7 @@ func (sb *StmtBuilder) Stmt() ast.Stmt {
 		}
 		return sb.AssignStmt()
 	case 8:
-		if v, ok := sb.eb.scope.GetRandomFuncAnyType(); ok {
-			return sb.DeferStmt(v)
-		}
-		return sb.AssignStmt()
+		return sb.DeferStmt()
 	default:
 		panic("bad Stmt index")
 	}
@@ -284,32 +281,29 @@ func (sb *StmtBuilder) RandomTypes(n int) []Type {
 }
 
 func (sb *StmtBuilder) RandomType(comp bool) Type {
-	var t Type
 	switch sb.rs.Intn(14) {
 	case 0, 1:
 		if comp {
-			t = sb.RandType()
+			return sb.RandType()
 		} else {
-			t = ArrayOf(sb.RandomType(true))
+			return ArrayOf(sb.RandomType(true))
 		}
 	case 2:
-		t = ChanOf(sb.RandomType(true))
+		return ChanOf(sb.RandomType(true))
 	case 3, 4:
-		t = MapOf(
+		return MapOf(
 			sb.RandType(), // map keys need to be comparable
 			sb.RandomType(true),
 		)
 	case 5, 6:
-		t = PointerOf(sb.RandomType(true))
+		return PointerOf(sb.RandomType(true))
 	case 7:
-		t = sb.RandStructType(comp)
+		return sb.RandStructType(comp)
 	case 8:
 		return sb.RandFuncType()
 	default:
-		t = sb.RandType()
+		return sb.RandType()
 	}
-
-	return t
 }
 
 func (sb *StmtBuilder) RandStructType(comparable bool) StructType {
@@ -557,9 +551,9 @@ func (sb *StmtBuilder) RangeStmt(arr Variable) *ast.RangeStmt {
 	return rs
 }
 
-func (sb *StmtBuilder) DeferStmt(v Variable) *ast.DeferStmt {
+func (sb *StmtBuilder) DeferStmt() *ast.DeferStmt {
 	return &ast.DeferStmt{
-		Call: sb.eb.CallExpr(v),
+		Call: sb.eb.CallExpr(sb.conf.RandType(), false /* no casts */),
 	}
 }
 

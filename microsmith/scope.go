@@ -171,20 +171,6 @@ func (ls Scope) GetRandomFunc(t Type) (Variable, bool) {
 	return funcs[rand.Intn(len(funcs))], true
 }
 
-// Returns a random function in scope; but not a predefined one.
-func (ls Scope) GetRandomFuncAnyType() (Variable, bool) {
-	funcs := make([]Variable, 0, 32)
-	for _, v := range ls {
-		if t, ok := v.Type.(FuncType); ok && t.Local {
-			funcs = append(funcs, v)
-		}
-	}
-	if len(funcs) == 0 {
-		return Variable{}, false
-	}
-	return funcs[rand.Intn(len(funcs))], true
-}
-
 // Return a random Variable of type t (exact match)
 func (ls Scope) GetRandomVarOfType(t Type, rs *rand.Rand) (Variable, bool) {
 	cnt := 0

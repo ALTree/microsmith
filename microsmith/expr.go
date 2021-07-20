@@ -131,19 +131,15 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 	case BasicType:
 		switch eb.rs.Intn(8) {
 		case 0, 1: // unary
-			if t.Name() == "string" {
-				return eb.BinaryExpr(t)
-			} else {
+			if t.Name() != "string" {
 				return eb.UnaryExpr(t)
+			} else {
+				return eb.BinaryExpr(t)
 			}
-		case 2, 3, 4: // binary
+		case 2, 3, 4, 5: // binary
 			return eb.BinaryExpr(t)
 		default: // function call
-			if v, ok := eb.scope.GetRandomFunc(t); ok {
-				return eb.CallExpr(v)
-			} else { // fallback
-				return eb.BinaryExpr(t)
-			}
+			return eb.CallExpr(t, false /* casts are ok*/)
 		}
 
 	case ArrayType, ChanType, FuncType, MapType, StructType:
@@ -368,14 +364,9 @@ func (eb *ExprBuilder) UnaryExpr(t Type) *ast.UnaryExpr {
 	// dereferencing it with chance 0.5
 	if eb.rs.Intn(2) == 0 && eb.scope.HasType(PointerOf(t)) {
 		ue.Op = token.MUL
-		if true || eb.Deepen() {
-			// See comment in Expr() for PointerType for why we can
-			// only rely on Expr() here.
-			ue.X = eb.Expr(PointerOf(t))
-		} else {
-			ue.X = eb.VarOrLit(PointerOf(t))
-		}
-
+		// See comment in Expr() for PointerType for why we can
+		// only rely on Expr() here.
+		ue.X = eb.Expr(PointerOf(t))
 		return ue
 	}
 
@@ -521,24 +512,59 @@ func (eb *ExprBuilder) BinaryExpr(t Type) *ast.BinaryExpr {
 
 // CallExpr returns a call expression with a function call that has
 // return value of type t.
-func (eb *ExprBuilder) CallExpr(fun Variable) *ast.CallExpr {
-	name := fun.Name.Name
-	switch {
-	case name == "len":
-		return eb.MakeLenCall()
-	case name == "float64" || name == "int":
-		return eb.MakeCast(fun.Type.(FuncType))
-	case strings.HasPrefix(name, "math."):
-		return eb.MakeMathCall(fun)
-	default:
-		args := make([]ast.Expr, 0, len(fun.Type.(FuncType).Args))
-		for _, arg := range fun.Type.(FuncType).Args {
+func (eb *ExprBuilder) CallExpr(t Type, castOk bool) *ast.CallExpr {
+	if v, ok := eb.scope.GetRandomFunc(t); ok && castOk {
+		name := v.Name.Name
+		switch {
+		case name == "len":
+			return eb.MakeLenCall()
+		case name == "float64" || name == "int":
+			return eb.MakeCast(v.Type.(FuncType))
+		case strings.HasPrefix(name, "math."):
+			return eb.MakeMathCall(v)
+		default:
+			args := make([]ast.Expr, 0, len(v.Type.(FuncType).Args))
+			for _, arg := range v.Type.(FuncType).Args {
+				args = append(args, eb.VarOrLit(arg))
+			}
+			return &ast.CallExpr{
+				Fun:  &ast.Ident{Name: name},
+				Args: args,
+			}
+		}
+	} else {
+		// No functions returning t in scope. Conjure a random one,
+		// and call it.
+
+		// Random func type, 2 parameters, return type t.
+		ft := &FuncType{
+			"FU",
+			[]Type{eb.conf.RandType(), eb.conf.RandType()},
+			[]Type{t},
+			true,
+		}
+
+		// Empty body (avoid excessive nesting, we are just building
+		// an expression after all), except for the return statement.
+		var retExpr ast.Expr
+		if eb.Deepen() {
+			retExpr = eb.Expr(t)
+		} else {
+			retExpr = eb.VarOrLit(t)
+		}
+		retStmt := &ast.ReturnStmt{Results: []ast.Expr{retExpr}}
+		p, r := ft.MakeFieldLists(false, 0)
+		fl := &ast.FuncLit{
+			Type: &ast.FuncType{Params: p, Results: r},
+			Body: &ast.BlockStmt{List: []ast.Stmt{retStmt}},
+		}
+
+		// and then call it
+		args := make([]ast.Expr, 0, len(ft.Args))
+		for _, arg := range ft.Args {
 			args = append(args, eb.VarOrLit(arg))
 		}
-		return &ast.CallExpr{
-			Fun:  &ast.Ident{Name: name},
-			Args: args,
-		}
+		return &ast.CallExpr{Fun: fl, Args: args}
 	}
 }
 
