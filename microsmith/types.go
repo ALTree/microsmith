@@ -344,9 +344,6 @@ func (f FuncType) Contains(t Type) bool {
 }
 
 func (ft FuncType) Name() string {
-	if ft.N == "FU" {
-		panic("hi")
-	}
 	return ft.N
 }
 

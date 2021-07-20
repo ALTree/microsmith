@@ -547,8 +547,10 @@ func (sb *StmtBuilder) RangeStmt(arr Variable) *ast.RangeStmt {
 }
 
 func (sb *StmtBuilder) DeferStmt() *ast.DeferStmt {
-	return &ast.DeferStmt{
-		Call: sb.eb.CallExpr(sb.conf.RandType(), false /* no casts */),
+	if v, ok := sb.eb.scope.GetRandomFuncAnyType(); ok && sb.rs.Intn(4) > 0 {
+		return &ast.DeferStmt{Call: sb.eb.MakeFuncCall(v)}
+	} else {
+		return &ast.DeferStmt{Call: sb.eb.CallExpr(sb.conf.RandType(), DEFER)}
 	}
 }
 

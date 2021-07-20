@@ -139,7 +139,7 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 		case 2, 3, 4, 5: // binary
 			return eb.BinaryExpr(t)
 		default: // function call
-			return eb.CallExpr(t, true /* casts are ok*/)
+			return eb.CallExpr(t, NOTDEFER)
 		}
 
 	case ArrayType, ChanType, FuncType, MapType, StructType:
@@ -510,27 +510,25 @@ func (eb *ExprBuilder) BinaryExpr(t Type) *ast.BinaryExpr {
 	return ue
 }
 
+type CallExprType int
+
+const (
+	DEFER    CallExprType = 0
+	NOTDEFER CallExprType = 1
+)
+
 // CallExpr returns a call expression with a function call that has
 // return value of type t.
-func (eb *ExprBuilder) CallExpr(t Type, castOk bool) *ast.CallExpr {
-	if v, ok := eb.scope.GetRandomFunc(t); ok && castOk {
+func (eb *ExprBuilder) CallExpr(t Type, cet CallExprType) *ast.CallExpr {
+	if v, ok := eb.scope.GetRandomFunc(t); ok && (cet == NOTDEFER || v.Type.(FuncType).Local) {
 		name := v.Name.Name
 		switch {
 		case name == "len":
 			return eb.MakeLenCall()
-		case name == "float64" || name == "int":
-			return eb.MakeCast(v.Type.(FuncType))
 		case strings.HasPrefix(name, "math."):
 			return eb.MakeMathCall(v)
 		default:
-			args := make([]ast.Expr, 0, len(v.Type.(FuncType).Args))
-			for _, arg := range v.Type.(FuncType).Args {
-				args = append(args, eb.VarOrLit(arg))
-			}
-			return &ast.CallExpr{
-				Fun:  &ast.Ident{Name: name},
-				Args: args,
-			}
+			return eb.MakeFuncCall(v)
 		}
 	} else {
 		// No functions returning t in scope. Conjure a random one,
@@ -568,15 +566,26 @@ func (eb *ExprBuilder) CallExpr(t Type, castOk bool) *ast.CallExpr {
 	}
 }
 
-func (eb *ExprBuilder) MakeCast(f FuncType) *ast.CallExpr {
-	ce := &ast.CallExpr{Fun: &ast.Ident{Name: f.N}}
-	if eb.Deepen() {
-		ce.Args = []ast.Expr{eb.Expr(f.Args[0])}
-	} else {
-		ce.Args = []ast.Expr{eb.VarOrLit(f.Args[0])}
+func (eb *ExprBuilder) MakeFuncCall(v Variable) *ast.CallExpr {
+	if fnc, ok := v.Type.(FuncType); ok {
+		args := make([]ast.Expr, 0, len(fnc.Args))
+		for _, arg := range fnc.Args {
+			if eb.Deepen() && fnc.Local {
+				// Cannot call Expr with casts, because Expr could
+				// return UnaryExpr(Literal) like -11 which cannot
+				// be cast to e.g. int.
+				args = append(args, eb.Expr(arg))
+			} else {
+				args = append(args, eb.VarOrLit(arg))
+			}
+		}
+		return &ast.CallExpr{
+			Fun:  &ast.Ident{Name: v.Name.Name},
+			Args: args,
+		}
 	}
-	return ce
 
+	panic("non-func v in MakeFuncCall")
 }
 
 func (eb *ExprBuilder) MakeLenCall() *ast.CallExpr {
