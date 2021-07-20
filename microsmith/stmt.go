@@ -324,7 +324,7 @@ func (sb *StmtBuilder) RandStructType(comparable bool) StructType {
 }
 
 func (sb *StmtBuilder) RandFuncType() FuncType {
-	args := make([]Type, 0, sb.rs.Intn(8))
+	args := make([]Type, 0, sb.rs.Intn(5))
 
 	// arguments
 	for i := 0; i < cap(args); i++ {
