@@ -139,7 +139,7 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 		case 2, 3, 4, 5: // binary
 			return eb.BinaryExpr(t)
 		default: // function call
-			return eb.CallExpr(t, false /* casts are ok*/)
+			return eb.CallExpr(t, true /* casts are ok*/)
 		}
 
 	case ArrayType, ChanType, FuncType, MapType, StructType:
