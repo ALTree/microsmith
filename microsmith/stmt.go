@@ -119,15 +119,17 @@ func (sb *StmtBuilder) AssignStmt() *ast.AssignStmt {
 	switch t := v.Type.(type) {
 
 	case StructType:
-		// For structs, 50/50 between assigning to the variable, or
+		// For structs, 50/50 between assigning to the variable and
 		// setting one of its fields.
-		if sb.rs.Intn(2) == 0 { // v = struct{<expr>, <expr>, ...}
+		if sb.rs.Intn(2) == 0 || len(t.Ftypes) == 0 {
+			// v = struct{<expr>, <expr>, ...}
 			return &ast.AssignStmt{
 				Lhs: []ast.Expr{v.Name},
 				Tok: token.ASSIGN,
 				Rhs: []ast.Expr{sb.eb.CompositeLit(t)},
 			}
-		} else { // v.field = <expr>
+		} else {
+			// v.field = <expr>
 			fieldType := t.Ftypes[sb.rs.Intn(len(t.Fnames))]
 			return &ast.AssignStmt{
 				Lhs: []ast.Expr{sb.eb.StructFieldExpr(v.Name, t, fieldType)},
@@ -307,19 +309,12 @@ func (sb *StmtBuilder) RandomType(comp bool) Type {
 }
 
 func (sb *StmtBuilder) RandStructType(comparable bool) StructType {
-	st := StructType{
-		"ST",
-		[]Type{},
-		[]string{},
-	}
-
-	nfields := 1 + sb.rs.Intn(5)
-	for i := 0; i < nfields; i++ {
+	st := StructType{"ST", []Type{}, []string{}}
+	for i := 0; i < sb.rs.Intn(6); i++ {
 		t := sb.RandomType(true)
 		st.Ftypes = append(st.Ftypes, t)
 		st.Fnames = append(st.Fnames, Ident(t)+strconv.Itoa(i))
 	}
-
 	return st
 }
 
