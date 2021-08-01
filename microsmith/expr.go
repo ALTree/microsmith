@@ -129,7 +129,7 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 	switch t := t.(type) {
 
 	case BasicType:
-		switch eb.rs.Intn(8) {
+		switch eb.rs.Intn(7) {
 		case 0, 1: // unary
 			if t.Name() != "string" {
 				return eb.UnaryExpr(t)
