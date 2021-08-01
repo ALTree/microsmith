@@ -26,7 +26,7 @@ func NewExprBuilder(rs *rand.Rand, conf ProgramConf, s *Scope) *ExprBuilder {
 // Returns true if the expression tree currently being built is
 // allowed to become deeper.
 func (eb *ExprBuilder) Deepen() bool {
-	return (eb.depth <= 6) && (eb.rs.Float64() < 0.65)
+	return (eb.depth <= 6) && (eb.rs.Float64() < 0.7)
 }
 
 func (eb *ExprBuilder) chooseToken(tokens []token.Token) token.Token {
@@ -131,8 +131,8 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 	case BasicType:
 		switch eb.rs.Intn(7) {
 		case 0, 1: // unary
-			if t.Name() != "string" {
-				return eb.UnaryExpr(t)
+			if t.Name() == "string" {
+				return eb.VarOrLit(t)
 			} else {
 				return eb.BinaryExpr(t)
 			}
