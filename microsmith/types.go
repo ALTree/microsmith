@@ -303,11 +303,7 @@ type FuncType struct {
 }
 
 func (t FuncType) Addressable() bool {
-	if t.Local {
-		return true
-	} else {
-		return false
-	}
+	return t.Local
 }
 
 func (t FuncType) Ast() ast.Expr {

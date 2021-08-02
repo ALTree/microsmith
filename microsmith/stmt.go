@@ -708,7 +708,12 @@ var noName = ast.Ident{Name: "_"}
 //   _, _, ... _ = var1, var2, ..., varN
 // for each i in idents
 func (sb *StmtBuilder) UseVars(idents []*ast.Ident) ast.Stmt {
-	useStmt := &ast.AssignStmt{Tok: token.ASSIGN}
+	useStmt := &ast.AssignStmt{
+		Lhs: make([]ast.Expr, 0, len(idents)),
+		Tok: token.ASSIGN,
+		Rhs: make([]ast.Expr, 0, len(idents)),
+	}
+
 	for _, name := range idents {
 		useStmt.Lhs = append(useStmt.Lhs, &noName)
 		useStmt.Rhs = append(useStmt.Rhs, name)
