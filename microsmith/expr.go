@@ -208,7 +208,7 @@ func (eb *ExprBuilder) VarOrLit(t Type) ast.Expr {
 				t.Name() == "uint" ||
 				t.Name() == "float32" {
 				bl = &ast.CallExpr{
-					Fun:  &ast.Ident{Name: t.Name()},
+					Fun:  TypeIdent(t.Name()),
 					Args: []ast.Expr{bl},
 				}
 			}
@@ -488,7 +488,7 @@ func (eb *ExprBuilder) BinaryExpr(t Type) *ast.BinaryExpr {
 				panic("BinaryExpr: no int in scope")
 			}
 			ue.Y = &ast.CallExpr{
-				Fun:  &ast.Ident{Name: t2.Name()},
+				Fun:  TypeIdent(t2.Name()),
 				Args: []ast.Expr{vi.Name},
 			}
 		}
