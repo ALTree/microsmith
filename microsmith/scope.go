@@ -23,7 +23,7 @@ type Scope []Variable
 // the LHS of an AssignStmt. If nofunc is TRUE, ignore FuncType
 // variables.
 func (s Scope) RandomVar(nofunc bool) Variable {
-	vs := make([]Variable, 0, 16)
+	vs := make([]Variable, 0, 256)
 	for _, v := range s {
 		// Maps are NOT addressable, but it doesn't matter here
 		// because the only RandomVar caller (AssignStmt), always
