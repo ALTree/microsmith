@@ -3,30 +3,26 @@ package microsmith
 import (
 	"math/rand"
 	"strconv"
+	"strings"
 )
 
-// Returns a random ASCII string of length 0-16
+// Returns a random ASCII string
 func RandString() string {
-	rs := []string{
-		`""`,
-		`"a"`,
-		`"ab"`,
-		`"abc"`,
-		`"abcd"`,
-		`"abcde"`,
-		`"abcdef"`,
-		`"abcdefg"`,
-		`"abcdefgh"`,
-		`"abcdefghi"`,
-		`"abcdefghij"`,
-		`"abcdefghijk"`,
-		`"abcdefghijkl"`,
-		`"abcdefghijklm"`,
-		`"abcdefghijklmn"`,
-		`"abcdefghijklmno"`,
-		`"abcdefghijklmnop"`,
+	const chars = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+	n := int(rand.NormFloat64()*8.0 + 12.0)
+	if n < 0 {
+		n = 0
 	}
-	return rs[rand.Intn(len(rs))]
+
+	sb := strings.Builder{}
+	sb.Grow(n + 2)
+	sb.WriteByte('"')
+	for i := 0; i < n; i++ {
+		sb.WriteByte(chars[rand.Int63()%int64(len(chars))])
+	}
+	sb.WriteByte('"')
+	return sb.String()
 }
 
 // returns a random rune literal

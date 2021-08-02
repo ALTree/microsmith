@@ -190,3 +190,12 @@ func BenchmarkProgram(b *testing.B) {
 		gp = db.File("a", 0)
 	}
 }
+
+var sink string
+
+func BenchmarkRandString(b *testing.B) {
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		sink = microsmith.RandString()
+	}
+}
