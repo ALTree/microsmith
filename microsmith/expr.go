@@ -480,7 +480,7 @@ func (eb *ExprBuilder) BinaryExpr(t Type) *ast.BinaryExpr {
 		}
 
 		// make sure the RHS is not a constant expression
-		if vi, ok := eb.scope.RandVarSubType(BasicType{t2.Name()}, eb.rs); ok {
+		if vi, ok := eb.scope.RandVarSubType(t2, eb.rs); ok {
 			ue.Y = eb.SubTypeExpr(vi.Name, vi.Type, t2)
 		} else { // otherwise, cast from an int
 			vi, ok := eb.scope.GetRandomVarOfType(BasicType{"int"}, eb.rs)
