@@ -4,7 +4,7 @@ used to stress-test Go compilers.
 
 #### Bugs found
 
-##### gc compiler crashes (33)
+##### gc compiler crashes (34)
 
 - [#23504 internal compiler error: panic during layout](https://github.com/golang/go/issues/23504)
 - [#23889 panic: branch too far on arm64](https://github.com/golang/go/issues/23889)
@@ -39,6 +39,7 @@ used to stress-test Go compilers.
 - [#45359 internal compiler error: FlagConstant op should never make it to codegen](https://github.com/golang/go/issues/45359)
 - [#45589 internal compiler error: Invalid PPC64 rotate mask](https://github.com/golang/go/issues/45589)
 - [#45693 internal compiler error: bad live variable at entry](https://github.com/golang/go/issues/45693)
+- [#47684 internal compiler error: misuse of CaptureName](https://github.com/golang/go/issues/47684)
 
 ##### gccgo (2)
 
