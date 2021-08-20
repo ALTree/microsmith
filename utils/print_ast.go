@@ -7,11 +7,16 @@ import (
 )
 
 var src string = `
-package main
+package p
+
+func f[G1 I1, G2 I2]() {
+
+}
 
 func main() {
-  var x [4]int
+  f[int32, float32]()
 }
+
 `
 
 func main() {

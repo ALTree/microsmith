@@ -3,6 +3,7 @@ package microsmith
 import (
 	"fmt"
 	"go/ast"
+	"go/parser"
 	"go/token"
 	"math/rand"
 )
@@ -51,10 +52,27 @@ func NewDeclBuilder(rs *rand.Rand, conf ProgramConf) *DeclBuilder {
 	return &DeclBuilder{sb: NewStmtBuilder(rs, conf)}
 }
 
-func (db *DeclBuilder) FuncDecl(i int) *ast.FuncDecl {
+func (db *DeclBuilder) FuncDecl(i int, n int) *ast.FuncDecl {
+
+	paramsList := []*ast.Field{}
+	for i := 1; i <= n; i++ {
+		paramsList = append(
+			paramsList,
+			&ast.Field{
+				Names: []*ast.Ident{&ast.Ident{Name: fmt.Sprintf("G%v", i)}},
+				Type:  &ast.Ident{Name: fmt.Sprintf("I%v", i)},
+			},
+		)
+	}
+
 	return &ast.FuncDecl{
 		Name: db.FuncIdent(i),
-		Type: &ast.FuncType{0, new(ast.FieldList), nil},
+		Type: &ast.FuncType{
+			Func:    0,
+			TParams: &ast.FieldList{List: paramsList},
+			Params:  new(ast.FieldList),
+			Results: nil,
+		},
 		Body: db.sb.BlockStmt(),
 	}
 }
@@ -90,14 +108,18 @@ func (db *DeclBuilder) File(pkg string, id uint64) *ast.File {
 	// (to avoid "unused package" errors)
 	af.Decls = append(af.Decls, MakeUsePakage(`"math"`))
 
+	af.Decls = append(af.Decls, MakeConstraint("I1", "int8|int16|int32|int"))
+	af.Decls = append(af.Decls, MakeConstraint("I2", "float32|float64"))
+	af.Decls = append(af.Decls, MakeConstraint("I3", "uint16|int8|byte"))
+
 	// In the global scope:
 	//   var i int
 	// So we always have an int available
-	af.Decls = append(af.Decls, db.MakeInt())
+	af.Decls = append(af.Decls, MakeInt())
 	db.sb.scope.AddVariable(&ast.Ident{Name: "i"}, BasicType{"int"})
 
 	// Now half a dozen top-level variables
-	for i := 1; i <= 6; i++ {
+	for i := 1; i <= 0; i++ {
 		t := db.sb.RandType()
 		if db.sb.rs.Intn(3) == 0 {
 			t = PointerOf(t)
@@ -116,7 +138,7 @@ func (db *DeclBuilder) File(pkg string, id uint64) *ast.File {
 
 	// Declare fcnt top-level functions
 	for i := 0; i < fcnt; i++ {
-		af.Decls = append(af.Decls, db.FuncDecl(i))
+		af.Decls = append(af.Decls, db.FuncDecl(i, 3))
 	}
 
 	// If we're not building a main package, we're done. Otherwise,
@@ -135,7 +157,14 @@ func (db *DeclBuilder) File(pkg string, id uint64) *ast.File {
 	for i := 0; i < fcnt; i++ {
 		mainF.Body.List = append(
 			mainF.Body.List,
-			&ast.ExprStmt{&ast.CallExpr{Fun: db.FuncIdent(i)}},
+			&ast.ExprStmt{
+				&ast.CallExpr{
+					Fun: &ast.MultiIndexExpr{
+						X:       db.FuncIdent(i),
+						Indices: []ast.Expr{&ast.Ident{Name: "int32"}, &ast.Ident{Name: "float32"}, &ast.Ident{Name: "uint8"}},
+					},
+				},
+			},
 		)
 	}
 
@@ -189,7 +218,7 @@ func MakeUsePakage(p string) *ast.GenDecl {
 	}
 }
 
-func (db *DeclBuilder) MakeInt() *ast.GenDecl {
+func MakeInt() *ast.GenDecl {
 	return &ast.GenDecl{
 		Tok: token.VAR,
 		Specs: []ast.Spec{
@@ -201,6 +230,14 @@ func (db *DeclBuilder) MakeInt() *ast.GenDecl {
 			},
 		},
 	}
+}
+
+func MakeConstraint(name, types string) *ast.GenDecl {
+	src := "package p\n"
+	src += "type " + name + " interface{\n"
+	src += types + "\n}"
+	f, _ := parser.ParseFile(token.NewFileSet(), "", src, 0)
+	return f.Decls[0].(*ast.GenDecl)
 }
 
 func (db *DeclBuilder) MakeVar(t Type, i int) *ast.GenDecl {

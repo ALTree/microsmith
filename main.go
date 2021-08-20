@@ -113,7 +113,8 @@ func main() {
 }
 
 var crashWhitelist = []*regexp.Regexp{
-	regexp.MustCompile("integer divide by zero"),
+	// regexp.MustCompile("found illegal assignment"),
+	// regexp.MustCompile("not calculated"),
 }
 
 func Fuzz(id uint64, fz microsmith.FuzzOptions) {
@@ -223,7 +224,7 @@ func installDeps(arch string, fz microsmith.FuzzOptions) {
 		arch = "386"
 		cmd.Env = append(os.Environ(), "GO386=softfloat")
 	}
-	cmd.Env = append(os.Environ(), "GOOS="+goos, "GOARCH="+arch)
+	cmd.Env = append(os.Environ(), "GOOS="+goos, "GOARCH="+arch /*, "GOEXPERIMENT=unified"*/)
 
 	out, err := cmd.CombinedOutput()
 	if err != nil {

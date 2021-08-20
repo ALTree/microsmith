@@ -208,7 +208,7 @@ func (eb *ExprBuilder) VarOrLit(t Type) ast.Expr {
 				t.Name() == "uint" ||
 				t.Name() == "float32" {
 				bl = &ast.CallExpr{
-					Fun:  TypeIdent(t.Name()),
+					Fun:  t.Ast(),
 					Args: []ast.Expr{bl},
 				}
 			}

@@ -162,6 +162,7 @@ func (gp *Program) Compile(arch string, fz FuzzOptions) (string, error) {
 		} else {
 			env = append(env, "GOARCH="+arch)
 		}
+		//env = append(env, "GOEXPERIMENT=unified")
 
 		// Setup compile args
 		buildArgs := []string{"tool", "compile"}
@@ -175,6 +176,8 @@ func (gp *Program) Compile(arch string, fz FuzzOptions) (string, error) {
 			cs := fmt.Sprintf("-d=ssa/check/seed=%v", CheckSeed)
 			buildArgs = append(buildArgs, cs)
 		}
+
+		buildArgs = append(buildArgs, "-G=3")
 
 		// Compile
 		for _, file := range gp.files {
