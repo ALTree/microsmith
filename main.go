@@ -227,7 +227,7 @@ func installDeps(arch string, fz microsmith.FuzzOptions) {
 	}
 	cmd.Env = append(os.Environ(), "GOOS="+goos, "GOARCH="+arch)
 	if *unifiedF {
-		cmd.Env = append(os.Environ(), "GOEXPERIMENT=unified")
+		cmd.Env = append(cmd.Env, "GOEXPERIMENT=unified")
 	}
 
 	out, err := cmd.CombinedOutput()
