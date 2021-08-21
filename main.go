@@ -29,6 +29,7 @@ var (
 	ssacheckF  = flag.Bool("ssacheck", false, "Compile with -d=ssa/check/on")
 	toolchainF = flag.String("bin", "", "Go toolchain to fuzz")
 	workdirF   = flag.String("work", "work", "Workdir for the fuzzing process")
+	unifiedF   = flag.Bool("unified", false, "GOEXPERIMENT=unified")
 )
 
 var archs []string
@@ -67,7 +68,7 @@ func main() {
 		os.Exit(2)
 	}
 
-	fz := microsmith.FuzzOptions{*toolchainF, *nooptF, *raceF, *ssacheckF}
+	fz := microsmith.FuzzOptions{*toolchainF, *nooptF, *raceF, *ssacheckF, *unifiedF}
 
 	archs = strings.Split(*archF, ",")
 
@@ -224,7 +225,10 @@ func installDeps(arch string, fz microsmith.FuzzOptions) {
 		arch = "386"
 		cmd.Env = append(os.Environ(), "GO386=softfloat")
 	}
-	cmd.Env = append(os.Environ(), "GOOS="+goos, "GOARCH="+arch /*, "GOEXPERIMENT=unified"*/)
+	cmd.Env = append(os.Environ(), "GOOS="+goos, "GOARCH="+arch)
+	if *unifiedF {
+		cmd.Env = append(os.Environ(), "GOEXPERIMENT=unified")
+	}
 
 	out, err := cmd.CombinedOutput()
 	if err != nil {

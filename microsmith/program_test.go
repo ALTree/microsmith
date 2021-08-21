@@ -148,7 +148,7 @@ func TestProgramGc(t *testing.T) {
 		}
 		fz := microsmith.FuzzOptions{
 			"go",
-			false, false, false,
+			false, false, false, false,
 		}
 		out, err := gp.Compile("amd64", fz)
 		if err != nil {

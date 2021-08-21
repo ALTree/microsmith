@@ -33,8 +33,8 @@ type File struct {
 }
 
 type FuzzOptions struct {
-	Toolchain             string
-	Noopt, Race, Ssacheck bool
+	Toolchain                      string
+	Noopt, Race, Ssacheck, Unified bool
 }
 
 var CheckSeed int
@@ -162,7 +162,9 @@ func (gp *Program) Compile(arch string, fz FuzzOptions) (string, error) {
 		} else {
 			env = append(env, "GOARCH="+arch)
 		}
-		//env = append(env, "GOEXPERIMENT=unified")
+		if fz.Unified {
+			env = append(env, "GOEXPERIMENT=unified")
+		}
 
 		// Setup compile args
 		buildArgs := []string{"tool", "compile"}
@@ -176,8 +178,6 @@ func (gp *Program) Compile(arch string, fz FuzzOptions) (string, error) {
 			cs := fmt.Sprintf("-d=ssa/check/seed=%v", CheckSeed)
 			buildArgs = append(buildArgs, cs)
 		}
-
-		buildArgs = append(buildArgs, "-G=3")
 
 		// Compile
 		for _, file := range gp.files {
