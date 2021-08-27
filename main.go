@@ -114,8 +114,7 @@ func main() {
 }
 
 var crashWhitelist = []*regexp.Regexp{
-	// regexp.MustCompile("found illegal assignment"),
-	// regexp.MustCompile("not calculated"),
+	regexp.MustCompile("found illegal assignment"),
 }
 
 func Fuzz(id uint64, fz microsmith.FuzzOptions) {

@@ -126,6 +126,35 @@ func TestHuge(t *testing.T) {
 	testProgramGoTypes(t, lim, TestConfigurations["huge"])
 }
 
+func TestMultiPkg(t *testing.T) {
+	if _, err := os.Stat(WorkDir); os.IsNotExist(err) {
+		err := os.MkdirAll(WorkDir, os.ModePerm)
+		if err != nil {
+			t.Fatalf("%v", err)
+		}
+	}
+
+	rand := rand.New(rand.NewSource(42))
+	conf := microsmith.RandConf(rand)
+	conf.MultiPkg = true
+	gp := microsmith.NewProgram(rand, conf)
+	err := gp.WriteToDisk(WorkDir)
+	if err != nil {
+		t.Fatalf("Could not write to file: %s", err)
+	}
+	fz := microsmith.FuzzOptions{
+		"/home/alberto/go/bin/go",
+		false, false, false, false,
+	}
+	out, err := gp.Compile("amd64", fz)
+	if err != nil {
+		os.RemoveAll(WorkDir)
+		t.Fatalf("Program did not compile: %s", out)
+	}
+
+	os.RemoveAll(WorkDir)
+}
+
 // Check generated programs with gc (from file).
 func TestProgramGc(t *testing.T) {
 	if testing.Short() || runtime.GOOS == "windows" {

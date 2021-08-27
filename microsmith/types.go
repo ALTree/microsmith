@@ -589,12 +589,12 @@ var Idents = map[string]*ast.Ident{
 	"int16":      &ast.Ident{Name: "int16"},
 	"int32":      &ast.Ident{Name: "int32"},
 	"int64":      &ast.Ident{Name: "int64"},
-	"uint":       &ast.Ident{Name: "G3"},
+	"uint":       &ast.Ident{Name: "uint"},
 	"float32":    &ast.Ident{Name: "G2"},
 	"float64":    &ast.Ident{Name: "float64"},
 	"complex128": &ast.Ident{Name: "complex128"},
 	"rune":       &ast.Ident{Name: "rune"},
-	"string":     &ast.Ident{Name: "string"},
+	"string":     &ast.Ident{Name: "G3"},
 }
 
 func TypeIdent(t string) *ast.Ident {

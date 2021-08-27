@@ -108,9 +108,9 @@ func (db *DeclBuilder) File(pkg string, id uint64) *ast.File {
 	// (to avoid "unused package" errors)
 	af.Decls = append(af.Decls, MakeUsePakage(`"math"`))
 
-	af.Decls = append(af.Decls, MakeConstraint("I1", "int8|int16|int32|int"))
+	af.Decls = append(af.Decls, MakeConstraint("I1", "int8|int16|int32|int64|int|uint"))
 	af.Decls = append(af.Decls, MakeConstraint("I2", "float32|float64"))
-	af.Decls = append(af.Decls, MakeConstraint("I3", "uint16|int8|byte"))
+	af.Decls = append(af.Decls, MakeConstraint("I3", "string"))
 
 	// In the global scope:
 	//   var i int
@@ -161,7 +161,7 @@ func (db *DeclBuilder) File(pkg string, id uint64) *ast.File {
 				&ast.CallExpr{
 					Fun: &ast.MultiIndexExpr{
 						X:       db.FuncIdent(i),
-						Indices: []ast.Expr{&ast.Ident{Name: "int32"}, &ast.Ident{Name: "float32"}, &ast.Ident{Name: "uint8"}},
+						Indices: []ast.Expr{&ast.Ident{Name: "int16"}, &ast.Ident{Name: "float32"}, &ast.Ident{Name: "string"}},
 					},
 				},
 			},
@@ -172,11 +172,15 @@ func (db *DeclBuilder) File(pkg string, id uint64) *ast.File {
 	if db.Conf().MultiPkg {
 		mainF.Body.List = append(
 			mainF.Body.List,
-			&ast.ExprStmt{&ast.CallExpr{
-				Fun: &ast.SelectorExpr{
-					X:   &ast.Ident{Name: "a"},
-					Sel: db.FuncIdent(0),
-				}}})
+			&ast.ExprStmt{
+				&ast.CallExpr{
+					Fun: &ast.MultiIndexExpr{
+						X:       &ast.SelectorExpr{X: &ast.Ident{Name: "a"}, Sel: db.FuncIdent(0)},
+						Indices: []ast.Expr{&ast.Ident{Name: "int"}, &ast.Ident{Name: "float32"}, &ast.Ident{Name: "string"}},
+					},
+				},
+			},
+		)
 	}
 
 	af.Decls = append(af.Decls, mainF)
