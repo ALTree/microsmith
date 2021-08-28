@@ -4,7 +4,7 @@ used to stress-test Go compilers.
 
 #### Bugs found
 
-##### gc compiler crashes (35)
+##### gc compiler crashes (36)
 
 - [#23504 internal compiler error: panic during layout](https://github.com/golang/go/issues/23504)
 - [#23889 panic: branch too far on arm64](https://github.com/golang/go/issues/23889)
@@ -41,6 +41,7 @@ used to stress-test Go compilers.
 - [#45693 internal compiler error: bad live variable at entry](https://github.com/golang/go/issues/45693)
 - [#47684 internal compiler error: misuse of CaptureName](https://github.com/golang/go/issues/47684)
 - [#47723 internal compiler error: .dict already has a location](https://github.com/golang/go/issues/47723)
+- [#48026 internal compiler error: arg does not dominate](https://github.com/golang/go/issues/48026)
 
 ##### gccgo (2)
 
