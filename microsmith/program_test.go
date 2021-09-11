@@ -176,13 +176,13 @@ func TestProgramGc(t *testing.T) {
 			t.Fatalf("Could not write to file: %s", err)
 		}
 		fz := microsmith.FuzzOptions{
-			"go",
+			"/home/alberto/go/bin/go",
 			false, false, false, false,
 		}
 		out, err := gp.Compile("amd64", fz)
 		if err != nil {
 			t.Fatalf("Program did not compile: %s", out)
-			keepdir = false
+			keepdir = true
 		}
 	}
 

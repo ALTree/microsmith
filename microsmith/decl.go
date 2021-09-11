@@ -68,10 +68,10 @@ func (db *DeclBuilder) FuncDecl(i int, n int) *ast.FuncDecl {
 	return &ast.FuncDecl{
 		Name: db.FuncIdent(i),
 		Type: &ast.FuncType{
-			Func:    0,
-			TParams: &ast.FieldList{List: paramsList},
-			Params:  new(ast.FieldList),
-			Results: nil,
+			Func:       0,
+			TypeParams: &ast.FieldList{List: paramsList},
+			Params:     new(ast.FieldList),
+			Results:    nil,
 		},
 		Body: db.sb.BlockStmt(),
 	}
@@ -159,7 +159,7 @@ func (db *DeclBuilder) File(pkg string, id uint64) *ast.File {
 			mainF.Body.List,
 			&ast.ExprStmt{
 				&ast.CallExpr{
-					Fun: &ast.MultiIndexExpr{
+					Fun: &ast.IndexListExpr{
 						X:       db.FuncIdent(i),
 						Indices: []ast.Expr{&ast.Ident{Name: "int16"}, &ast.Ident{Name: "float32"}, &ast.Ident{Name: "string"}},
 					},
@@ -174,7 +174,7 @@ func (db *DeclBuilder) File(pkg string, id uint64) *ast.File {
 			mainF.Body.List,
 			&ast.ExprStmt{
 				&ast.CallExpr{
-					Fun: &ast.MultiIndexExpr{
+					Fun: &ast.IndexListExpr{
 						X:       &ast.SelectorExpr{X: &ast.Ident{Name: "a"}, Sel: db.FuncIdent(0)},
 						Indices: []ast.Expr{&ast.Ident{Name: "int"}, &ast.Ident{Name: "float32"}, &ast.Ident{Name: "string"}},
 					},
