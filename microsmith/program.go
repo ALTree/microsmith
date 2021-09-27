@@ -32,9 +32,14 @@ type File struct {
 	path   *os.File
 }
 
-type FuzzOptions struct {
-	Toolchain                      string
-	Noopt, Race, Ssacheck, Unified bool
+type BuildOptions struct {
+	Toolchain             string
+	Noopt, Race, Ssacheck bool
+	Unified               bool
+}
+
+type CodeOptions struct {
+	Typeparams bool
 }
 
 var CheckSeed int
@@ -113,7 +118,7 @@ func (gp *Program) Check() error {
 // If the compilation subprocess exits with an error code, Compile
 // returns the error message printed by the toolchain and the
 // subprocess error code.
-func (gp *Program) Compile(arch string, fz FuzzOptions) (string, error) {
+func (gp *Program) Compile(arch string, bo BuildOptions) (string, error) {
 	if len(gp.files) == 0 {
 		return "", errors.New("cannot compile program with no files")
 	}
@@ -123,24 +128,24 @@ func (gp *Program) Compile(arch string, fz FuzzOptions) (string, error) {
 
 	switch {
 
-	case strings.Contains(fz.Toolchain, "gccgo"):
+	case strings.Contains(bo.Toolchain, "gccgo"):
 		oFlag := "-O2"
-		if fz.Noopt {
+		if bo.Noopt {
 			oFlag = "-Og"
 		}
-		cmd := exec.Command(fz.Toolchain, oFlag, "-o", arcName, baseName+"_main.go")
+		cmd := exec.Command(bo.Toolchain, oFlag, "-o", arcName, baseName+"_main.go")
 		cmd.Dir = gp.workdir
 		out, err := cmd.CombinedOutput()
 		if err != nil {
 			return string(out), err
 		}
 
-	case strings.Contains(fz.Toolchain, "tinygo"):
+	case strings.Contains(bo.Toolchain, "tinygo"):
 		var cmd *exec.Cmd
-		if fz.Noopt {
-			cmd = exec.Command(fz.Toolchain, "build", "-opt", "z", "-o", arcName, baseName+"_main.go")
+		if bo.Noopt {
+			cmd = exec.Command(bo.Toolchain, "build", "-opt", "z", "-o", arcName, baseName+"_main.go")
 		} else {
-			cmd = exec.Command(fz.Toolchain, "build", "-o", arcName, baseName+"_main.go")
+			cmd = exec.Command(bo.Toolchain, "build", "-o", arcName, baseName+"_main.go")
 		}
 		cmd.Dir = gp.workdir
 		out, err := cmd.CombinedOutput()
@@ -162,19 +167,19 @@ func (gp *Program) Compile(arch string, fz FuzzOptions) (string, error) {
 		} else {
 			env = append(env, "GOARCH="+arch)
 		}
-		if fz.Unified {
+		if bo.Unified {
 			env = append(env, "GOEXPERIMENT=unified")
 		}
 
 		// Setup compile args
 		buildArgs := []string{"tool", "compile"}
-		if fz.Race {
+		if bo.Race {
 			buildArgs = append(buildArgs, "-race")
 		}
-		if fz.Noopt {
+		if bo.Noopt {
 			buildArgs = append(buildArgs, "-N", "-l")
 		}
-		if fz.Ssacheck {
+		if bo.Ssacheck {
 			cs := fmt.Sprintf("-d=ssa/check/seed=%v", CheckSeed)
 			buildArgs = append(buildArgs, cs)
 		}
@@ -189,7 +194,7 @@ func (gp *Program) Compile(arch string, fz FuzzOptions) (string, error) {
 				cmdArgs = append(buildArgs, file.name)
 			}
 
-			cmd := exec.Command(fz.Toolchain, cmdArgs...)
+			cmd := exec.Command(bo.Toolchain, cmdArgs...)
 			cmd.Dir, cmd.Env = gp.workdir, env
 			out, err := cmd.CombinedOutput()
 			if err != nil {
@@ -199,13 +204,13 @@ func (gp *Program) Compile(arch string, fz FuzzOptions) (string, error) {
 
 		// Setup link args
 		linkArgs := []string{"tool", "link", "-L=."}
-		if fz.Race {
+		if bo.Race {
 			linkArgs = append(linkArgs, "-race")
 		}
 		linkArgs = append(linkArgs, "-o", baseName, arcName)
 
 		// Link
-		cmd := exec.Command(fz.Toolchain, linkArgs...)
+		cmd := exec.Command(bo.Toolchain, linkArgs...)
 		cmd.Dir, cmd.Env = gp.workdir, env
 		out, err := cmd.CombinedOutput()
 		if err != nil {

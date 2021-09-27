@@ -26,22 +26,20 @@ var AllTypes = []Type{
 
 type ProgramConf struct {
 	StmtConf
-	Types    []Type
-	MultiPkg bool
-	FuncNum  int
+	FuncNum    int
+	MultiPkg   bool
+	TypeParams bool
 }
 
 func RandConf(rs *rand.Rand) ProgramConf {
 	return ProgramConf{
 		StmtConf: StmtConf{MaxStmtDepth: 1 + rand.Intn(3)},
-		Types:    AllTypes,
-		MultiPkg: false,
 		FuncNum:  8,
 	}
 }
 
 func (pc *ProgramConf) RandType() Type {
-	return pc.Types[rand.Intn(len(pc.Types))]
+	return AllTypes[rand.Intn(len(AllTypes))]
 }
 
 type DeclBuilder struct {
@@ -54,10 +52,26 @@ func NewDeclBuilder(rs *rand.Rand, conf ProgramConf) *DeclBuilder {
 
 func (db *DeclBuilder) FuncDecl(i int, n int) *ast.FuncDecl {
 
-	paramsList := []*ast.Field{}
-	for i := 1; i <= n; i++ {
-		paramsList = append(
-			paramsList,
+	fd := &ast.FuncDecl{
+		Name: db.FuncIdent(i),
+		Type: &ast.FuncType{
+			Func:    0,
+			Params:  new(ast.FieldList),
+			Results: nil,
+		},
+		Body: db.sb.BlockStmt(),
+	}
+
+	// if not using typeparams, we're done
+	if !db.Conf().TypeParams {
+		return fd
+	}
+
+	// otherwise, add a TypeParams field
+	tps := []*ast.Field{}
+	for i := 0; i < n; i++ {
+		tps = append(
+			tps,
 			&ast.Field{
 				Names: []*ast.Ident{&ast.Ident{Name: fmt.Sprintf("G%v", i)}},
 				Type:  &ast.Ident{Name: fmt.Sprintf("I%v", i)},
@@ -65,16 +79,8 @@ func (db *DeclBuilder) FuncDecl(i int, n int) *ast.FuncDecl {
 		)
 	}
 
-	return &ast.FuncDecl{
-		Name: db.FuncIdent(i),
-		Type: &ast.FuncType{
-			Func:       0,
-			TypeParams: &ast.FieldList{List: paramsList},
-			Params:     new(ast.FieldList),
-			Results:    nil,
-		},
-		Body: db.sb.BlockStmt(),
-	}
+	fd.Type.TypeParams = &ast.FieldList{List: tps}
+	return fd
 }
 
 func (db *DeclBuilder) FuncIdent(i int) *ast.Ident {
@@ -108,9 +114,12 @@ func (db *DeclBuilder) File(pkg string, id uint64) *ast.File {
 	// (to avoid "unused package" errors)
 	af.Decls = append(af.Decls, MakeUsePakage(`"math"`))
 
-	af.Decls = append(af.Decls, MakeConstraint("I1", "int8|int16|int32|int64|int|uint"))
-	af.Decls = append(af.Decls, MakeConstraint("I2", "float32|float64"))
-	af.Decls = append(af.Decls, MakeConstraint("I3", "string"))
+	tp := db.Conf().TypeParams
+	if tp {
+		af.Decls = append(af.Decls, MakeConstraint("I0", "int8|int16|int32|int64|int|uint"))
+		af.Decls = append(af.Decls, MakeConstraint("I1", "float32|float64"))
+		af.Decls = append(af.Decls, MakeConstraint("I2", "string"))
+	}
 
 	// In the global scope:
 	//   var i int
@@ -119,7 +128,7 @@ func (db *DeclBuilder) File(pkg string, id uint64) *ast.File {
 	db.sb.scope.AddVariable(&ast.Ident{Name: "i"}, BasicType{"int"})
 
 	// Now half a dozen top-level variables
-	for i := 1; i <= 0; i++ {
+	for i := 1; i <= 6; i++ {
 		t := db.sb.RandType()
 		if db.sb.rs.Intn(3) == 0 {
 			t = PointerOf(t)
@@ -155,31 +164,40 @@ func (db *DeclBuilder) File(pkg string, id uint64) *ast.File {
 
 	// call all local functions
 	for i := 0; i < fcnt; i++ {
+		var ce ast.CallExpr
+		if tp {
+			ce.Fun = &ast.IndexListExpr{
+				X:       db.FuncIdent(i),
+				Indices: []ast.Expr{&ast.Ident{Name: "int16"}, &ast.Ident{Name: "float32"}, &ast.Ident{Name: "string"}},
+			}
+		} else {
+			ce.Fun = db.FuncIdent(i)
+		}
+
 		mainF.Body.List = append(
 			mainF.Body.List,
-			&ast.ExprStmt{
-				&ast.CallExpr{
-					Fun: &ast.IndexListExpr{
-						X:       db.FuncIdent(i),
-						Indices: []ast.Expr{&ast.Ident{Name: "int16"}, &ast.Ident{Name: "float32"}, &ast.Ident{Name: "string"}},
-					},
-				},
-			},
+			&ast.ExprStmt{&ce},
 		)
 	}
 
 	// call the func in package a
 	if db.Conf().MultiPkg {
+		var ce ast.CallExpr
+		if tp {
+			ce.Fun = &ast.IndexListExpr{
+				X:       &ast.SelectorExpr{X: &ast.Ident{Name: "a"}, Sel: db.FuncIdent(0)},
+				Indices: []ast.Expr{&ast.Ident{Name: "int"}, &ast.Ident{Name: "float32"}, &ast.Ident{Name: "string"}},
+			}
+		} else {
+			ce.Fun = &ast.SelectorExpr{
+				X:   &ast.Ident{Name: "a"},
+				Sel: db.FuncIdent(0),
+			}
+		}
+
 		mainF.Body.List = append(
 			mainF.Body.List,
-			&ast.ExprStmt{
-				&ast.CallExpr{
-					Fun: &ast.IndexListExpr{
-						X:       &ast.SelectorExpr{X: &ast.Ident{Name: "a"}, Sel: db.FuncIdent(0)},
-						Indices: []ast.Expr{&ast.Ident{Name: "int"}, &ast.Ident{Name: "float32"}, &ast.Ident{Name: "string"}},
-					},
-				},
-			},
+			&ast.ExprStmt{&ce},
 		)
 	}
 

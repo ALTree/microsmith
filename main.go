@@ -20,16 +20,17 @@ var CrashCount int64
 var KnownCount int64
 
 var (
-	archF      = flag.String("arch", "", "GOARCHs to fuzz (comma separated list)")
-	debugF     = flag.Bool("debug", false, "Run in debug mode")
-	multiPkgF  = flag.Bool("multipkg", false, "Generate multipkg programs")
-	nooptF     = flag.Bool("noopt", false, "Compile with optimizations disabled")
-	pF         = flag.Uint64("p", 1, "Number of workers")
-	raceF      = flag.Bool("race", false, "Compile with -race")
-	ssacheckF  = flag.Bool("ssacheck", false, "Compile with -d=ssa/check/on")
-	toolchainF = flag.String("bin", "", "Go toolchain to fuzz")
-	workdirF   = flag.String("work", "work", "Workdir for the fuzzing process")
-	unifiedF   = flag.Bool("unified", false, "GOEXPERIMENT=unified")
+	archF     = flag.String("arch", "", "GOARCHs to fuzz (comma separated list)")
+	debugF    = flag.Bool("debug", false, "Run in debug mode")
+	multiPkgF = flag.Bool("multipkg", false, "Generate multipkg programs")
+	nooptF    = flag.Bool("noopt", false, "Compile with optimizations disabled")
+	pF        = flag.Uint64("p", 1, "Number of workers")
+	raceF     = flag.Bool("race", false, "Compile with -race")
+	ssacheckF = flag.Bool("ssacheck", false, "Compile with -d=ssa/check/on")
+	binF      = flag.String("bin", "", "Go toolchain to fuzz")
+	workdirF  = flag.String("work", "work", "Workdir for the fuzzing process")
+	tpF       = flag.Bool("tp", false, "Use typeparams in generated programs")
+	tpuF      = flag.Bool("tpu", false, "Use typeparams, compile with GOEXPERIMENT=unified")
 )
 
 var archs []string
@@ -43,7 +44,7 @@ func main() {
 		os.Exit(0)
 	}
 
-	if *toolchainF == "" {
+	if *binF == "" {
 		fmt.Println("-bin must be set")
 		os.Exit(2)
 	}
@@ -53,7 +54,11 @@ func main() {
 		os.Exit(2)
 	}
 
-	tc := guessToolchain(*toolchainF)
+	if *tpuF {
+		*tpF = true
+	}
+
+	tc := guessToolchain(*binF)
 	if tc == "gc" && *archF == "" {
 		fmt.Println("-arch must be set when fuzzing gc")
 		os.Exit(2)
@@ -63,12 +68,12 @@ func main() {
 		os.Exit(2)
 	}
 
-	if _, err := os.Stat(*toolchainF); os.IsNotExist(err) {
-		fmt.Printf("toolchain %v does not exist\n", *toolchainF)
+	if _, err := os.Stat(*binF); os.IsNotExist(err) {
+		fmt.Printf("toolchain %v does not exist\n", *binF)
 		os.Exit(2)
 	}
 
-	fz := microsmith.FuzzOptions{*toolchainF, *nooptF, *raceF, *ssacheckF, *unifiedF}
+	fz := microsmith.BuildOptions{*binF, *nooptF, *raceF, *ssacheckF, *tpuF}
 
 	archs = strings.Split(*archF, ",")
 
@@ -114,15 +119,16 @@ func main() {
 }
 
 var crashWhitelist = []*regexp.Regexp{
-	regexp.MustCompile("found illegal assignment"),
+	//regexp.MustCompile("found illegal assignment"),
 }
 
-func Fuzz(id uint64, fz microsmith.FuzzOptions) {
+func Fuzz(id uint64, bo microsmith.BuildOptions) {
 	rs := rand.New(
 		rand.NewSource(int64(0xfaff0011 * id * uint64(time.Now().UnixNano()))),
 	)
 	conf := microsmith.RandConf(rs)
 	conf.MultiPkg = *multiPkgF
+	conf.TypeParams = *tpF
 
 	counter := 0
 	for {
@@ -130,6 +136,7 @@ func Fuzz(id uint64, fz microsmith.FuzzOptions) {
 		if counter == 30 {
 			conf = microsmith.RandConf(rs)
 			conf.MultiPkg = *multiPkgF
+			conf.TypeParams = *tpF
 			counter = 0
 		}
 
@@ -157,7 +164,7 @@ func Fuzz(id uint64, fz microsmith.FuzzOptions) {
 					os.Exit(2)
 				},
 			)
-			out, err := gp.Compile(arch, fz)
+			out, err := gp.Compile(arch, bo)
 			timeout.Stop()
 
 			if err != nil {
@@ -193,10 +200,10 @@ func Fuzz(id uint64, fz microsmith.FuzzOptions) {
 
 func debugRun() {
 	conf := microsmith.ProgramConf{
-		StmtConf: microsmith.StmtConf{MaxStmtDepth: 2},
-		Types:    microsmith.AllTypes,
-		MultiPkg: *multiPkgF,
-		FuncNum:  2,
+		StmtConf:   microsmith.StmtConf{MaxStmtDepth: 2},
+		MultiPkg:   *multiPkgF,
+		FuncNum:    2,
+		TypeParams: *tpF,
 	}
 	rs := rand.New(rand.NewSource(int64(uint64(time.Now().UnixNano()))))
 	gp := microsmith.NewProgram(rs, conf)
@@ -208,12 +215,12 @@ func debugRun() {
 	}
 }
 
-func installDeps(arch string, fz microsmith.FuzzOptions) {
+func installDeps(arch string, bo microsmith.BuildOptions) {
 	var cmd *exec.Cmd
-	if fz.Race {
-		cmd = exec.Command(fz.Toolchain, "install", "-race", "std")
+	if bo.Race {
+		cmd = exec.Command(bo.Toolchain, "install", "-race", "std")
 	} else {
-		cmd = exec.Command(fz.Toolchain, "install", "std")
+		cmd = exec.Command(bo.Toolchain, "install", "std")
 	}
 
 	goos := "linux"
@@ -225,7 +232,7 @@ func installDeps(arch string, fz microsmith.FuzzOptions) {
 		cmd.Env = append(os.Environ(), "GO386=softfloat")
 	}
 	cmd.Env = append(os.Environ(), "GOOS="+goos, "GOARCH="+arch)
-	if *unifiedF {
+	if *tpuF {
 		cmd.Env = append(cmd.Env, "GOEXPERIMENT=unified")
 	}
 
@@ -236,11 +243,11 @@ func installDeps(arch string, fz microsmith.FuzzOptions) {
 	}
 }
 
-func guessToolchain(toolchain string) string {
+func guessToolchain(bin string) string {
 	switch {
-	case strings.Contains(*toolchainF, "gcc"):
+	case strings.Contains(bin, "gcc"):
 		return "gcc"
-	case strings.Contains(*toolchainF, "tinygo"):
+	case strings.Contains(bin, "tinygo"):
 		return "tinygo"
 	default:
 		return "gc"

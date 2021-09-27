@@ -34,7 +34,6 @@ var TestConfigurations = map[string]microsmith.ProgramConf{
 		StmtConf: microsmith.StmtConf{
 			MaxStmtDepth: 1,
 		},
-		Types:    allTypes,
 		MultiPkg: false,
 		FuncNum:  2,
 	},
@@ -43,7 +42,6 @@ var TestConfigurations = map[string]microsmith.ProgramConf{
 		StmtConf: microsmith.StmtConf{
 			MaxStmtDepth: 2,
 		},
-		Types:    allTypes,
 		MultiPkg: false,
 		FuncNum:  4,
 	},
@@ -52,7 +50,6 @@ var TestConfigurations = map[string]microsmith.ProgramConf{
 		StmtConf: microsmith.StmtConf{
 			MaxStmtDepth: 3,
 		},
-		Types:    allTypes,
 		MultiPkg: false,
 		FuncNum:  8,
 	},
@@ -60,7 +57,6 @@ var TestConfigurations = map[string]microsmith.ProgramConf{
 		StmtConf: microsmith.StmtConf{
 			MaxStmtDepth: 5,
 		},
-		Types:    allTypes,
 		MultiPkg: false,
 		FuncNum:  4,
 	},
@@ -126,7 +122,17 @@ func TestHuge(t *testing.T) {
 	testProgramGoTypes(t, lim, TestConfigurations["huge"])
 }
 
+func TestTypeParams(t *testing.T) {
+	conf := TestConfigurations["medium"]
+	conf.TypeParams = true
+	testProgramGoTypes(t, 50, conf)
+}
+
 func TestMultiPkg(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip()
+	}
+
 	if _, err := os.Stat(WorkDir); os.IsNotExist(err) {
 		err := os.MkdirAll(WorkDir, os.ModePerm)
 		if err != nil {
@@ -142,14 +148,14 @@ func TestMultiPkg(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Could not write to file: %s", err)
 	}
-	fz := microsmith.FuzzOptions{
+	bo := microsmith.BuildOptions{
 		"/home/alberto/go/bin/go",
 		false, false, false, false,
 	}
-	out, err := gp.Compile("amd64", fz)
+	out, err := gp.Compile("amd64", bo)
 	if err != nil {
 		os.RemoveAll(WorkDir)
-		t.Fatalf("Program did not compile: %s", out)
+		t.Fatalf("Program did not compile: %s %s", out, err)
 	}
 
 	os.RemoveAll(WorkDir)
@@ -175,11 +181,11 @@ func TestProgramGc(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Could not write to file: %s", err)
 		}
-		fz := microsmith.FuzzOptions{
+		bo := microsmith.BuildOptions{
 			"/home/alberto/go/bin/go",
 			false, false, false, false,
 		}
-		out, err := gp.Compile("amd64", fz)
+		out, err := gp.Compile("amd64", bo)
 		if err != nil {
 			t.Fatalf("Program did not compile: %s", out)
 			keepdir = true
@@ -194,16 +200,6 @@ func TestProgramGc(t *testing.T) {
 var BenchConf = microsmith.ProgramConf{
 	StmtConf: microsmith.StmtConf{
 		MaxStmtDepth: 2,
-	},
-	Types: []microsmith.Type{
-		microsmith.BasicType{"bool"},
-		microsmith.BasicType{"int"},
-		microsmith.BasicType{"int16"},
-		microsmith.BasicType{"uint"},
-		microsmith.BasicType{"float64"},
-		microsmith.BasicType{"complex128"},
-		microsmith.BasicType{"rune"},
-		microsmith.BasicType{"string"},
 	},
 	MultiPkg: false,
 	FuncNum:  4,
