@@ -205,10 +205,9 @@ func (eb *ExprBuilder) VarOrLit(t Type) ast.Expr {
 			bl := eb.BasicLit(t)
 			if t.Name() == "byte" ||
 				t.Name() == "int8" || t.Name() == "int16" || t.Name() == "int32" || t.Name() == "int64" ||
-				t.Name() == "uint" ||
-				t.Name() == "float32" {
+				t.Name() == "uint" || t.Name() == "float32" || t.Name() == "string" {
 				bl = &ast.CallExpr{
-					Fun:  TypeIdent(t.Name()),
+					Fun:  t.Ast(),
 					Args: []ast.Expr{bl},
 				}
 			}

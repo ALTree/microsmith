@@ -33,8 +33,8 @@ type File struct {
 }
 
 type FuzzOptions struct {
-	Toolchain             string
-	Noopt, Race, Ssacheck bool
+	Toolchain                      string
+	Noopt, Race, Ssacheck, Unified bool
 }
 
 var CheckSeed int
@@ -161,6 +161,9 @@ func (gp *Program) Compile(arch string, fz FuzzOptions) (string, error) {
 			env = append(env, "GOARCH=386", "GO386=softfloat")
 		} else {
 			env = append(env, "GOARCH="+arch)
+		}
+		if fz.Unified {
+			env = append(env, "GOEXPERIMENT=unified")
 		}
 
 		// Setup compile args
