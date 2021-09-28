@@ -9,15 +9,16 @@ import (
 )
 
 type StmtBuilder struct {
-	rs     *rand.Rand // randomness source
-	eb     *ExprBuilder
-	depth  int // how deep the stmt hyerarchy is
-	conf   ProgramConf
-	scope  *Scope
-	inloop bool     // are we inside a loop?
-	labels []string //
-	funcp  int      // counter for function param names
-	label  int
+	rs         *rand.Rand // randomness source
+	eb         *ExprBuilder
+	depth      int // how deep the stmt hyerarchy is
+	conf       ProgramConf
+	scope      *Scope
+	typeparams TypeParams
+	inloop     bool     // are we inside a loop?
+	labels     []string //
+	funcp      int      // counter for function param names
+	label      int
 }
 
 type StmtConf struct {
@@ -41,10 +42,6 @@ func NewStmtBuilder(rs *rand.Rand, conf ProgramConf) *StmtBuilder {
 	sb.scope = &scope
 	sb.eb = NewExprBuilder(rs, conf, sb.scope)
 	return sb
-}
-
-func (sb *StmtBuilder) RandType() Type {
-	return sb.conf.RandType()
 }
 
 func (sb *StmtBuilder) Stmt() ast.Stmt {
@@ -286,7 +283,7 @@ func (sb *StmtBuilder) RandomType(comp bool) Type {
 	switch sb.rs.Intn(14) {
 	case 0, 1:
 		if comp {
-			return sb.RandType()
+			return RandType()
 		} else {
 			return ArrayOf(sb.RandomType(true))
 		}
@@ -294,7 +291,7 @@ func (sb *StmtBuilder) RandomType(comp bool) Type {
 		return ChanOf(sb.RandomType(true))
 	case 3, 4:
 		return MapOf(
-			sb.RandType(), // map keys need to be comparable
+			RandType(), // map keys need to be comparable
 			sb.RandomType(true),
 		)
 	case 5, 6:
@@ -304,7 +301,7 @@ func (sb *StmtBuilder) RandomType(comp bool) Type {
 	case 8:
 		return sb.RandFuncType()
 	default:
-		return sb.RandType()
+		return RandType()
 	}
 }
 
@@ -360,8 +357,7 @@ func (sb *StmtBuilder) DeclStmt(nVars int, t Type) (*ast.DeclStmt, []*ast.Ident)
 		// assign to it (so we can give the function a body):
 		//
 		//  var FNC0 func(int) int = func(p0 int, p1 bool) int {
-		//                             Stmt
-		//                             Stmt
+		//                             Stmts ...
 		//                             return <int expr>
 		//                           }
 		//
@@ -385,7 +381,7 @@ func (sb *StmtBuilder) DeclStmt(nVars int, t Type) (*ast.DeclStmt, []*ast.Ident)
 		p, r := t2.MakeFieldLists(false, 0)
 		typ = &ast.FuncType{Params: p, Results: r}
 
-		// RHS (which chance 0.9)
+		// RHS (with chance 0.9)
 
 		if sb.rs.Intn(10) != 0 {
 			// Func type specifier again, but this time with parameter
@@ -550,7 +546,7 @@ func (sb *StmtBuilder) DeferStmt() *ast.DeferStmt {
 	if v, ok := sb.eb.scope.GetRandomFuncAnyType(); ok && sb.rs.Intn(4) > 0 {
 		return &ast.DeferStmt{Call: sb.eb.MakeFuncCall(v)}
 	} else {
-		return &ast.DeferStmt{Call: sb.eb.CallExpr(sb.conf.RandType(), DEFER)}
+		return &ast.DeferStmt{Call: sb.eb.CallExpr(RandType(), DEFER)}
 	}
 }
 
@@ -577,7 +573,7 @@ func (sb *StmtBuilder) SwitchStmt() *ast.SwitchStmt {
 	sb.depth++
 	defer func() { sb.depth-- }()
 
-	t := sb.RandType()
+	t := RandType()
 	if sb.rs.Intn(2) == 0 && sb.scope.HasType(PointerOf(t)) {
 		// sometimes switch on a pointer value
 		t = PointerOf(t)
@@ -621,7 +617,7 @@ func (sb *StmtBuilder) SendStmt() *ast.SendStmt {
 		// no channels in scope, but we can send to a brand new one,
 		// i.e. generate
 		//   make(chan int) <- 1
-		t := sb.RandType()
+		t := RandType()
 		st.Chan = sb.eb.VarOrLit(ChanType{T: t})
 		st.Value = sb.eb.Expr(t)
 	} else {
@@ -662,7 +658,7 @@ func (sb *StmtBuilder) CommClause(def bool) *ast.CommClause {
 		// when no chan is in scope, we select from a newly made channel,
 		// i.e. we build and return
 		//    select <-make(chan <random type>)
-		t := sb.RandType()
+		t := RandType()
 		return &ast.CommClause{
 			Comm: &ast.ExprStmt{
 				X: &ast.UnaryExpr{

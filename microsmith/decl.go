@@ -6,6 +6,7 @@ import (
 	"go/parser"
 	"go/token"
 	"math/rand"
+	"strings"
 )
 
 var AllTypes = []Type{
@@ -38,7 +39,7 @@ func RandConf(rs *rand.Rand) ProgramConf {
 	}
 }
 
-func (pc *ProgramConf) RandType() Type {
+func RandType() Type {
 	return AllTypes[rand.Intn(len(AllTypes))]
 }
 
@@ -50,7 +51,7 @@ func NewDeclBuilder(rs *rand.Rand, conf ProgramConf) *DeclBuilder {
 	return &DeclBuilder{sb: NewStmtBuilder(rs, conf)}
 }
 
-func (db *DeclBuilder) FuncDecl(i int, n int) *ast.FuncDecl {
+func (db *DeclBuilder) FuncDecl(i int, pkg string) *ast.FuncDecl {
 
 	fd := &ast.FuncDecl{
 		Name: db.FuncIdent(i),
@@ -63,18 +64,18 @@ func (db *DeclBuilder) FuncDecl(i int, n int) *ast.FuncDecl {
 	}
 
 	// if not using typeparams, we're done
-	if !db.Conf().TypeParams {
+	if !db.Conf().TypeParams || pkg != "main" {
 		return fd
 	}
 
-	// otherwise, add a TypeParams field
-	tps := []*ast.Field{}
-	for i := 0; i < n; i++ {
+	// otherwise, add them
+	tp, tps := db.sb.typeparams, []*ast.Field{}
+	for i := 0; i < 1+rand.Intn(3); i++ {
 		tps = append(
 			tps,
 			&ast.Field{
 				Names: []*ast.Ident{&ast.Ident{Name: fmt.Sprintf("G%v", i)}},
-				Type:  &ast.Ident{Name: fmt.Sprintf("I%v", i)},
+				Type:  tp[rand.Intn(len(tp))].Name,
 			},
 		)
 	}
@@ -115,10 +116,12 @@ func (db *DeclBuilder) File(pkg string, id uint64) *ast.File {
 	af.Decls = append(af.Decls, MakeUsePakage(`"math"`))
 
 	tp := db.Conf().TypeParams
-	if tp {
-		af.Decls = append(af.Decls, MakeConstraint("I0", "int8|int16|int32|int64|int|uint"))
-		af.Decls = append(af.Decls, MakeConstraint("I1", "float32|float64"))
-		af.Decls = append(af.Decls, MakeConstraint("I2", "string"))
+	if tp && pkg == "main" {
+		for i := 0; i < 1+rand.Intn(6); i++ {
+			c, tp := db.MakeRandConstraint(fmt.Sprintf("I%v", i))
+			af.Decls = append(af.Decls, c)
+			db.sb.typeparams = append(db.sb.typeparams, tp)
+		}
 	}
 
 	// In the global scope:
@@ -129,7 +132,7 @@ func (db *DeclBuilder) File(pkg string, id uint64) *ast.File {
 
 	// Now half a dozen top-level variables
 	for i := 1; i <= 6; i++ {
-		t := db.sb.RandType()
+		t := RandType()
 		if db.sb.rs.Intn(3) == 0 {
 			t = PointerOf(t)
 		}
@@ -147,7 +150,7 @@ func (db *DeclBuilder) File(pkg string, id uint64) *ast.File {
 
 	// Declare fcnt top-level functions
 	for i := 0; i < fcnt; i++ {
-		af.Decls = append(af.Decls, db.FuncDecl(i, 3))
+		af.Decls = append(af.Decls, db.FuncDecl(i, pkg))
 	}
 
 	// If we're not building a main package, we're done. Otherwise,
@@ -163,38 +166,37 @@ func (db *DeclBuilder) File(pkg string, id uint64) *ast.File {
 	}
 
 	// call all local functions
-	for i := 0; i < fcnt; i++ {
-		var ce ast.CallExpr
-		if tp {
-			ce.Fun = &ast.IndexListExpr{
-				X:       db.FuncIdent(i),
-				Indices: []ast.Expr{&ast.Ident{Name: "int16"}, &ast.Ident{Name: "float32"}, &ast.Ident{Name: "string"}},
+	for _, decl := range af.Decls {
+		if f, ok := decl.(*ast.FuncDecl); ok {
+			var ce ast.CallExpr
+			if tp {
+				// for each typeparam attached to the function, find
+				// its typelist, choose a subtype at random, and use
+				// it in the call.
+				var indices []ast.Expr
+				for _, typ := range f.Type.TypeParams.List {
+					types := db.sb.typeparams.FindByName(typ.Type.(*ast.Ident).Name).Types
+					indices = append(indices, types[rand.Intn(len(types))].Ast())
+				}
+				ce.Fun = &ast.IndexListExpr{X: f.Name, Indices: indices}
+			} else {
+				ce.Fun = f.Name
 			}
-		} else {
-			ce.Fun = db.FuncIdent(i)
-		}
 
-		mainF.Body.List = append(
-			mainF.Body.List,
-			&ast.ExprStmt{&ce},
-		)
+			mainF.Body.List = append(
+				mainF.Body.List,
+				&ast.ExprStmt{&ce},
+			)
+		}
 	}
 
 	// call the func in package a
 	if db.Conf().MultiPkg {
 		var ce ast.CallExpr
-		if tp {
-			ce.Fun = &ast.IndexListExpr{
-				X:       &ast.SelectorExpr{X: &ast.Ident{Name: "a"}, Sel: db.FuncIdent(0)},
-				Indices: []ast.Expr{&ast.Ident{Name: "int"}, &ast.Ident{Name: "float32"}, &ast.Ident{Name: "string"}},
-			}
-		} else {
-			ce.Fun = &ast.SelectorExpr{
-				X:   &ast.Ident{Name: "a"},
-				Sel: db.FuncIdent(0),
-			}
+		ce.Fun = &ast.SelectorExpr{
+			X:   &ast.Ident{Name: "a"},
+			Sel: db.FuncIdent(0),
 		}
-
 		mainF.Body.List = append(
 			mainF.Body.List,
 			&ast.ExprStmt{&ce},
@@ -254,12 +256,37 @@ func MakeInt() *ast.GenDecl {
 	}
 }
 
-func MakeConstraint(name, types string) *ast.GenDecl {
+func (db *DeclBuilder) MakeRandConstraint(name string) (*ast.GenDecl, TypeParam) {
+	types := make([]Type, len(AllTypes))
+	copy(types, AllTypes)
+	db.sb.rs.Shuffle(len(types), func(i, j int) { types[i], types[j] = types[j], types[i] })
+
+	types = types[:2+db.sb.rs.Intn(len(types)-2)]
+
+	// runte overlaps with int32, not allowed in constraints. Must
+	// remove rune if it's in the list.
+	ri := -1
+	for i := range types {
+		if types[i].Name() == "rune" {
+			ri = i
+			break
+		}
+	}
+	if ri != -1 {
+		types = append(types[:ri], types[ri+1:]...)
+	}
+
 	src := "package p\n"
 	src += "type " + name + " interface{\n"
-	src += types + "\n}"
+	for _, t := range types {
+		src += t.Name() + "|"
+	}
+	src = strings.TrimRight(src, "|")
+	src += "\n}"
 	f, _ := parser.ParseFile(token.NewFileSet(), "", src, 0)
-	return f.Decls[0].(*ast.GenDecl)
+	decl := f.Decls[0].(*ast.GenDecl)
+
+	return decl, TypeParam{Types: types, Name: &ast.Ident{Name: name}}
 }
 
 func (db *DeclBuilder) MakeVar(t Type, i int) *ast.GenDecl {

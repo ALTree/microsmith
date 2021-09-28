@@ -205,7 +205,7 @@ func (eb *ExprBuilder) VarOrLit(t Type) ast.Expr {
 			bl := eb.BasicLit(t)
 			if t.Name() == "byte" ||
 				t.Name() == "int8" || t.Name() == "int16" || t.Name() == "int32" || t.Name() == "int64" ||
-				t.Name() == "uint" || t.Name() == "float32" || t.Name() == "string" {
+				t.Name() == "uint" || t.Name() == "float32" {
 				bl = &ast.CallExpr{
 					Fun:  t.Ast(),
 					Args: []ast.Expr{bl},
@@ -441,7 +441,7 @@ func (eb *ExprBuilder) BinaryExpr(t Type) *ast.BinaryExpr {
 		ue.Op = eb.chooseToken([]token.Token{token.ADD, token.SUB, token.MUL})
 	case "bool":
 		if eb.rs.Intn(2) == 0 {
-			t = eb.conf.RandType()
+			t = RandType()
 			ops := []token.Token{token.EQL, token.NEQ}
 			if name := t.Name(); name != "bool" && name != "complex128" {
 				ops = append(ops, []token.Token{
@@ -539,7 +539,7 @@ func (eb *ExprBuilder) CallExpr(t Type, cet CallExprType) *ast.CallExpr {
 		// Random func type, 2 parameters, return type t.
 		ft := &FuncType{
 			"FU",
-			[]Type{eb.conf.RandType(), eb.conf.RandType()},
+			[]Type{RandType(), RandType()},
 			[]Type{t},
 			true,
 		}
@@ -594,7 +594,7 @@ func (eb *ExprBuilder) MakeLenCall() *ast.CallExpr {
 	// for a len call, we want a string or an array
 	var typ Type
 	if eb.rs.Intn(2) == 0 {
-		typ = ArrayOf(eb.conf.RandType())
+		typ = ArrayOf(RandType())
 	} else {
 		typ = BasicType{"string"}
 	}

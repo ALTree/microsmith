@@ -15,7 +15,7 @@ func (v Variable) String() string {
 	return v.Name.String() + " " + v.Type.Name()
 }
 
-// Scope in array holding all the variables that are in scope in a
+// A scope holds a list of all the variables that are in scope in a
 // given moment
 type Scope []Variable
 
@@ -281,5 +281,33 @@ func (ls Scope) GetRandomVarChan(rs *rand.Rand) (Variable, bool) {
 		}
 	}
 
+	panic("unreachable")
+}
+
+// A TypeParams holds a list of all the type parameters interfaces
+// that are available to the function in the package
+
+type TypeParam struct {
+	Types []Type
+	Name  *ast.Ident
+}
+
+type TypeParams []TypeParam
+
+func (tp TypeParam) String() string {
+	str := "{" + tp.Name.Name + " "
+	for _, t := range tp.Types {
+		str += t.Name() + "|"
+	}
+	str = str[:len(str)-1] + "}"
+	return str
+}
+
+func (tp TypeParams) FindByName(name string) TypeParam {
+	for i := 0; i < len(tp); i++ {
+		if tp[i].Name.Name == name {
+			return tp[i]
+		}
+	}
 	panic("unreachable")
 }

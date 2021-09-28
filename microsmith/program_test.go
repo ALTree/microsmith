@@ -5,7 +5,6 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"os"
-	"runtime"
 	"testing"
 
 	"github.com/ALTree/microsmith/microsmith"
@@ -79,14 +78,31 @@ func testProgramGoTypes(t *testing.T, n int, conf microsmith.ProgramConf) {
 }
 
 func TestRandConf(t *testing.T) {
-	n := 50
+	n := 10
 	if testing.Short() {
-		n = 20
+		n = 5
 	}
 	rs := rand.New(rand.NewSource(42))
 	for i := 0; i < 10; i++ {
 		conf := microsmith.RandConf(rs)
 		testProgramGoTypes(t, n, conf)
+	}
+}
+
+func TestRandConfTypeParams(t *testing.T) {
+	n := 10
+	if testing.Short() {
+		n = 5
+	}
+	for i := 0; i < 10; i++ {
+		testProgramGoTypes(
+			t, n,
+			microsmith.ProgramConf{
+				StmtConf:   microsmith.StmtConf{MaxStmtDepth: 2},
+				FuncNum:    2,
+				MultiPkg:   false,
+				TypeParams: true,
+			})
 	}
 }
 
@@ -128,11 +144,15 @@ func TestTypeParams(t *testing.T) {
 	testProgramGoTypes(t, 50, conf)
 }
 
-func TestMultiPkg(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip()
+func GetToolchain() string {
+	if bin := os.Getenv("GO_TC"); bin != "" {
+		return bin
+	} else {
+		return "go"
 	}
+}
 
+func TestMultiPkg(t *testing.T) {
 	if _, err := os.Stat(WorkDir); os.IsNotExist(err) {
 		err := os.MkdirAll(WorkDir, os.ModePerm)
 		if err != nil {
@@ -149,7 +169,7 @@ func TestMultiPkg(t *testing.T) {
 		t.Fatalf("Could not write to file: %s", err)
 	}
 	bo := microsmith.BuildOptions{
-		"/home/alberto/go/bin/go",
+		GetToolchain(),
 		false, false, false, false,
 	}
 	out, err := gp.Compile("amd64", bo)
@@ -162,9 +182,10 @@ func TestMultiPkg(t *testing.T) {
 }
 
 // Check generated programs with gc (from file).
-func TestProgramGc(t *testing.T) {
-	if testing.Short() || runtime.GOOS == "windows" {
-		t.Skip()
+func compile(t *testing.T, conf microsmith.ProgramConf) {
+	lim := 10
+	if testing.Short() {
+		lim = 2
 	}
 
 	if _, err := os.Stat(WorkDir); os.IsNotExist(err) {
@@ -173,16 +194,16 @@ func TestProgramGc(t *testing.T) {
 			t.Fatalf("%v", err)
 		}
 	}
-	rand := rand.New(rand.NewSource(42))
+
 	keepdir := false
-	for i := 0; i < 50; i++ {
-		gp := microsmith.NewProgram(rand, microsmith.RandConf(rand))
+	for i := 0; i < lim; i++ {
+		gp := microsmith.NewProgram(rand.New(rand.NewSource(42)), conf)
 		err := gp.WriteToDisk(WorkDir)
 		if err != nil {
 			t.Fatalf("Could not write to file: %s", err)
 		}
 		bo := microsmith.BuildOptions{
-			"/home/alberto/go/bin/go",
+			GetToolchain(),
 			false, false, false, false,
 		}
 		out, err := gp.Compile("amd64", bo)
@@ -195,6 +216,46 @@ func TestProgramGc(t *testing.T) {
 	if !keepdir {
 		os.RemoveAll(WorkDir)
 	}
+}
+
+func TestCompile(t *testing.T) {
+	compile(t,
+		microsmith.ProgramConf{
+			StmtConf:   microsmith.StmtConf{MaxStmtDepth: 2},
+			FuncNum:    2,
+			MultiPkg:   false,
+			TypeParams: false,
+		})
+}
+
+func TestCompileMultiPkg(t *testing.T) {
+	compile(t,
+		microsmith.ProgramConf{
+			StmtConf:   microsmith.StmtConf{MaxStmtDepth: 2},
+			FuncNum:    2,
+			MultiPkg:   true,
+			TypeParams: false,
+		})
+}
+
+func TestCompileTypeParams(t *testing.T) {
+	compile(t,
+		microsmith.ProgramConf{
+			StmtConf:   microsmith.StmtConf{MaxStmtDepth: 2},
+			FuncNum:    2,
+			MultiPkg:   false,
+			TypeParams: true,
+		})
+}
+
+func TestCompileMultiPkgTypeParams(t *testing.T) {
+	compile(t,
+		microsmith.ProgramConf{
+			StmtConf:   microsmith.StmtConf{MaxStmtDepth: 2},
+			FuncNum:    2,
+			MultiPkg:   true,
+			TypeParams: true,
+		})
 }
 
 var BenchConf = microsmith.ProgramConf{
