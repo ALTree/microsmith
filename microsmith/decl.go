@@ -26,7 +26,6 @@ var AllTypes = []Type{
 }
 
 type ProgramConf struct {
-	StmtConf
 	FuncNum    int
 	MultiPkg   bool
 	TypeParams bool
@@ -34,8 +33,7 @@ type ProgramConf struct {
 
 func RandConf(rs *rand.Rand) ProgramConf {
 	return ProgramConf{
-		StmtConf: StmtConf{MaxStmtDepth: 1 + rand.Intn(3)},
-		FuncNum:  8,
+		FuncNum: 8,
 	}
 }
 

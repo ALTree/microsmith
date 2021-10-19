@@ -200,7 +200,6 @@ func Fuzz(id uint64, bo microsmith.BuildOptions) {
 
 func debugRun() {
 	conf := microsmith.ProgramConf{
-		StmtConf:   microsmith.StmtConf{MaxStmtDepth: 2},
 		MultiPkg:   *multiPkgF,
 		FuncNum:    2,
 		TypeParams: *tpF,

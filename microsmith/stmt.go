@@ -21,8 +21,10 @@ type StmtBuilder struct {
 	label      int
 }
 
-type StmtConf struct {
-	MaxStmtDepth int // max depth of block nesting
+// Returns true if block statement currently being built is allowed to
+// have statements nested inside it.
+func (sb *StmtBuilder) CanNest() bool {
+	return (sb.depth <= 3) && (sb.eb.rs.Float64() < 0.8)
 }
 
 var InitialScope Scope
@@ -46,9 +48,8 @@ func NewStmtBuilder(rs *rand.Rand, conf ProgramConf) *StmtBuilder {
 
 func (sb *StmtBuilder) Stmt() ast.Stmt {
 
-	// If the maximum allowed stmt depth has been reached, generate an
-	// assign statement, since they don't nest.
-	if sb.depth > sb.conf.MaxStmtDepth {
+	// Assign statements don't deepen the hyerarchy.
+	if !sb.CanNest() {
 		return sb.AssignStmt()
 	}
 
@@ -229,21 +230,17 @@ func (sb *StmtBuilder) BlockStmt() *ast.BlockStmt {
 	stmts := []ast.Stmt{}
 
 	// A new block means opening a new scope.
-	//
-	// Start with nDecls line of variables declarations, each of a
-	// different random type.
-	nDecls := 3 + sb.rs.Intn(6)
 	var newVars []*ast.Ident
-	for _, t := range sb.RandomTypes(nDecls) {
+	for _, t := range sb.RandomTypes(3 + sb.rs.Intn(6)) {
 		newDecl, nv := sb.DeclStmt(1+sb.rs.Intn(3), t)
 		stmts = append(stmts, newDecl)
 		newVars = append(newVars, nv...)
 	}
 
 	var nStmts int
-	if sb.depth == sb.conf.MaxStmtDepth {
-		// At maxdepth, only assignments are allowed. Guarantee 8 of
-		// them, to be sure not to generate almost-empty blocks.
+	if !sb.CanNest() {
+		// If we stop nesting statements, guarantee 8 assignmens, to
+		// so we don't generate almost-empty blocks.
 		nStmts = 8
 	} else {
 		nStmts = 6 + sb.rs.Intn(5)
@@ -400,7 +397,7 @@ func (sb *StmtBuilder) DeclStmt(nVars int, t Type) (*ast.DeclStmt, []*ast.Ident)
 
 			// generate a function body
 			sb.depth++
-			if sb.depth < sb.conf.MaxStmtDepth {
+			if sb.CanNest() {
 				oil := sb.inloop
 				sb.inloop = false
 				fl.Body = sb.BlockStmt()

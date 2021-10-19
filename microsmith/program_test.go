@@ -30,32 +30,20 @@ var allTypes = []microsmith.Type{
 
 var TestConfigurations = map[string]microsmith.ProgramConf{
 	"small": {
-		StmtConf: microsmith.StmtConf{
-			MaxStmtDepth: 1,
-		},
 		MultiPkg: false,
 		FuncNum:  2,
 	},
 
 	"medium": {
-		StmtConf: microsmith.StmtConf{
-			MaxStmtDepth: 2,
-		},
 		MultiPkg: false,
 		FuncNum:  4,
 	},
 
 	"big": {
-		StmtConf: microsmith.StmtConf{
-			MaxStmtDepth: 3,
-		},
 		MultiPkg: false,
 		FuncNum:  8,
 	},
 	"huge": {
-		StmtConf: microsmith.StmtConf{
-			MaxStmtDepth: 5,
-		},
 		MultiPkg: false,
 		FuncNum:  4,
 	},
@@ -98,7 +86,6 @@ func TestRandConfTypeParams(t *testing.T) {
 		testProgramGoTypes(
 			t, n,
 			microsmith.ProgramConf{
-				StmtConf:   microsmith.StmtConf{MaxStmtDepth: 2},
 				FuncNum:    2,
 				MultiPkg:   false,
 				TypeParams: true,
@@ -221,7 +208,6 @@ func compile(t *testing.T, conf microsmith.ProgramConf) {
 func TestCompile(t *testing.T) {
 	compile(t,
 		microsmith.ProgramConf{
-			StmtConf:   microsmith.StmtConf{MaxStmtDepth: 2},
 			FuncNum:    2,
 			MultiPkg:   false,
 			TypeParams: false,
@@ -231,7 +217,6 @@ func TestCompile(t *testing.T) {
 func TestCompileMultiPkg(t *testing.T) {
 	compile(t,
 		microsmith.ProgramConf{
-			StmtConf:   microsmith.StmtConf{MaxStmtDepth: 2},
 			FuncNum:    2,
 			MultiPkg:   true,
 			TypeParams: false,
@@ -241,7 +226,6 @@ func TestCompileMultiPkg(t *testing.T) {
 func TestCompileTypeParams(t *testing.T) {
 	compile(t,
 		microsmith.ProgramConf{
-			StmtConf:   microsmith.StmtConf{MaxStmtDepth: 2},
 			FuncNum:    2,
 			MultiPkg:   false,
 			TypeParams: true,
@@ -251,7 +235,6 @@ func TestCompileTypeParams(t *testing.T) {
 func TestCompileMultiPkgTypeParams(t *testing.T) {
 	compile(t,
 		microsmith.ProgramConf{
-			StmtConf:   microsmith.StmtConf{MaxStmtDepth: 2},
 			FuncNum:    2,
 			MultiPkg:   true,
 			TypeParams: true,
@@ -259,9 +242,6 @@ func TestCompileMultiPkgTypeParams(t *testing.T) {
 }
 
 var BenchConf = microsmith.ProgramConf{
-	StmtConf: microsmith.StmtConf{
-		MaxStmtDepth: 2,
-	},
 	MultiPkg: false,
 	FuncNum:  4,
 }
