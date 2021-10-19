@@ -9,20 +9,20 @@ import (
 )
 
 type StmtBuilder struct {
-	rs         *rand.Rand // randomness source
-	eb         *ExprBuilder
-	depth      int // how deep the stmt hyerarchy is
-	conf       ProgramConf
-	scope      *Scope
-	typeparams TypeParams
-	inloop     bool     // are we inside a loop?
-	labels     []string //
-	funcp      int      // counter for function param names
-	label      int
+	conf     ProgramConf
+	currfunc *ast.FuncDecl // signature of func we're in
+	rs       *rand.Rand    // randomness source
+	eb       *ExprBuilder
+	depth    int // how deep the stmt hyerarchy is
+	scope    *Scope
+	funcp    int  // counter for function param names
+	inloop   bool // are we inside a loop?
+	labels   []string
+	label    int // counter for labels names
 }
 
-// Returns true if block statement currently being built is allowed to
-// have statements nested inside it.
+// Returns true if the block statement currently being built is
+// allowed to have statements nested inside it.
 func (sb *StmtBuilder) CanNest() bool {
 	return (sb.depth <= 3) && (sb.eb.rs.Float64() < 0.8)
 }
@@ -30,7 +30,7 @@ func (sb *StmtBuilder) CanNest() bool {
 var InitialScope Scope
 
 func init() {
-	InitialScope = make(Scope, 0, 16)
+	InitialScope = make(Scope, 0, len(PredeclaredFuncs))
 	for _, f := range PredeclaredFuncs {
 		InitialScope = append(InitialScope, Variable{f, &ast.Ident{Name: f.Name()}})
 	}
@@ -229,12 +229,23 @@ func (sb *StmtBuilder) BlockStmt() *ast.BlockStmt {
 	bs := new(ast.BlockStmt)
 	stmts := []ast.Stmt{}
 
-	// A new block means opening a new scope.
+	// A new block means opening a new scope. Declare a few new vars
+	// of random types.
 	var newVars []*ast.Ident
 	for _, t := range sb.RandomTypes(3 + sb.rs.Intn(6)) {
 		newDecl, nv := sb.DeclStmt(1+sb.rs.Intn(3), t)
 		stmts = append(stmts, newDecl)
 		newVars = append(newVars, nv...)
+	}
+
+	// And a few vars of the type parameters available in the
+	// function.
+	if sb.currfunc.Type.TypeParams != nil {
+		for i := 0; i < 3; i++ {
+			ds, idents := sb.DeclStmtTypeParam(i)
+			stmts = append(stmts, ds)
+			newVars = append(newVars, idents...)
+		}
 	}
 
 	var nStmts int
@@ -450,6 +461,25 @@ func (sb *StmtBuilder) DeclStmt(nVars int, t Type) (*ast.DeclStmt, []*ast.Ident)
 	ds := new(ast.DeclStmt)
 	ds.Decl = gd
 
+	return ds, idents
+}
+
+// Like DeclStmt, but declares a variable of a random TypeParam.
+func (sb *StmtBuilder) DeclStmtTypeParam(i int) (*ast.DeclStmt, []*ast.Ident) {
+	gd := new(ast.GenDecl)
+	gd.Tok = token.VAR
+	name := fmt.Sprintf("X%v", i)
+	gd.Specs = []ast.Spec{
+		&ast.ValueSpec{
+			Names:  []*ast.Ident{&ast.Ident{Name: name}},
+			Type:   &ast.Ident{Name: fmt.Sprintf("G%v", sb.rs.Intn(len(sb.currfunc.Type.TypeParams.List)))},
+			Values: nil,
+		},
+	}
+
+	idents := []*ast.Ident{&ast.Ident{Name: name}}
+	ds := new(ast.DeclStmt)
+	ds.Decl = gd
 	return ds, idents
 }
 

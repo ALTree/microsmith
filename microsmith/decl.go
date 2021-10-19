@@ -42,7 +42,8 @@ func RandType() Type {
 }
 
 type DeclBuilder struct {
-	sb *StmtBuilder
+	sb         *StmtBuilder
+	typeparams TypeParams // Type Parameters available in the package
 }
 
 func NewDeclBuilder(rs *rand.Rand, conf ProgramConf) *DeclBuilder {
@@ -58,16 +59,17 @@ func (db *DeclBuilder) FuncDecl(i int, pkg string) *ast.FuncDecl {
 			Params:  new(ast.FieldList),
 			Results: nil,
 		},
-		Body: db.sb.BlockStmt(),
 	}
 
-	// if not using typeparams, we're done
+	// if not using typeparams, generate a body and return
 	if !db.Conf().TypeParams || pkg != "main" {
+		db.sb.currfunc = fd
+		fd.Body = db.sb.BlockStmt()
 		return fd
 	}
 
 	// otherwise, add them
-	tp, tps := db.sb.typeparams, []*ast.Field{}
+	tp, tps := db.typeparams, []*ast.Field{}
 	for i := 0; i < 1+rand.Intn(3); i++ {
 		tps = append(
 			tps,
@@ -79,6 +81,8 @@ func (db *DeclBuilder) FuncDecl(i int, pkg string) *ast.FuncDecl {
 	}
 
 	fd.Type.TypeParams = &ast.FieldList{List: tps}
+	db.sb.currfunc = fd // this needs to be before the BlockStmt()
+	fd.Body = db.sb.BlockStmt()
 	return fd
 }
 
@@ -118,7 +122,7 @@ func (db *DeclBuilder) File(pkg string, id uint64) *ast.File {
 		for i := 0; i < 1+rand.Intn(6); i++ {
 			c, tp := db.MakeRandConstraint(fmt.Sprintf("I%v", i))
 			af.Decls = append(af.Decls, c)
-			db.sb.typeparams = append(db.sb.typeparams, tp)
+			db.typeparams = append(db.typeparams, tp)
 		}
 	}
 
@@ -173,7 +177,7 @@ func (db *DeclBuilder) File(pkg string, id uint64) *ast.File {
 				// it in the call.
 				var indices []ast.Expr
 				for _, typ := range f.Type.TypeParams.List {
-					types := db.sb.typeparams.FindByName(typ.Type.(*ast.Ident).Name).Types
+					types := db.typeparams.FindByName(typ.Type.(*ast.Ident).Name).Types
 					indices = append(indices, types[rand.Intn(len(types))].Ast())
 				}
 				ce.Fun = &ast.IndexListExpr{X: f.Name, Indices: indices}

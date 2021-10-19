@@ -284,24 +284,9 @@ func (ls Scope) GetRandomVarChan(rs *rand.Rand) (Variable, bool) {
 	panic("unreachable")
 }
 
-// A TypeParams holds a list of all the type parameters interfaces
-// that are available to the function in the package
-
-type TypeParam struct {
-	Types []Type
-	Name  *ast.Ident
-}
-
+// TypeParams holds a list of all the type parameters interfaces that
+// are available to the function in the package
 type TypeParams []TypeParam
-
-func (tp TypeParam) String() string {
-	str := "{" + tp.Name.Name + " "
-	for _, t := range tp.Types {
-		str += t.Name() + "|"
-	}
-	str = str[:len(str)-1] + "}"
-	return str
-}
 
 func (tp TypeParams) FindByName(name string) TypeParam {
 	for i := 0; i < len(tp); i++ {

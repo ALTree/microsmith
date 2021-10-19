@@ -578,51 +578,21 @@ func MapOf(kt, vt Type) MapType {
 }
 
 // ------------------------------------ //
-//   parametrized                       //
+//   Type Parameter                     //
 // ------------------------------------ //
 
-type ParamType struct {
+type TypeParam struct {
 	Types []Type
+	Name  *ast.Ident
 }
 
-func (pt ParamType) Addressable() bool {
-	return false
-}
-func (pt ParamType) Ast() ast.Expr {
-	return pt.Types[0].Ast() // TODO(alb): fix
-}
-
-func (pt ParamType) Equal(t Type) bool {
-	if t2, ok := t.(ParamType); !ok {
-		return false
-	} else {
-		if len(pt.Types) != len(t2.Types) {
-			return false
-		}
-		for i := range pt.Types {
-			// TODO(alb): actually order doesn't matter
-			if !pt.Types[i].Equal(t2.Types[i]) {
-				return false
-			}
-		}
-		return true
+func (tp TypeParam) String() string {
+	str := "{" + tp.Name.Name + " "
+	for _, t := range tp.Types {
+		str += t.Name() + "|"
 	}
-}
-
-func (pt ParamType) Name() string {
-	str := "{ "
-	for _, t := range pt.Types {
-		str += t.Name() + ", "
-	}
-	str += "}"
+	str = str[:len(str)-1] + "}"
 	return str
-}
-func (pt ParamType) Sliceable() bool {
-	return false
-}
-
-func (pt ParamType) Contains(t Type) bool {
-	return false // TODO(alb): is this right?
 }
 
 // ------------------------------------ //
