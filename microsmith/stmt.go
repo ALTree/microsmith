@@ -53,7 +53,7 @@ func (sb *StmtBuilder) Stmt() ast.Stmt {
 		return sb.AssignStmt()
 	}
 
-	switch sb.rs.Intn(9) {
+	switch sb.rs.Intn(10) {
 	case 0:
 		return sb.AssignStmt()
 	case 1:
@@ -104,6 +104,8 @@ func (sb *StmtBuilder) Stmt() ast.Stmt {
 		return sb.AssignStmt()
 	case 8:
 		return sb.DeferStmt()
+	case 9:
+		return sb.ExprStmt()
 	default:
 		panic("bad Stmt index")
 	}
@@ -715,14 +717,16 @@ func (sb *StmtBuilder) CommClause(def bool) *ast.CommClause {
 
 }
 
-// What is allowed, according to the spec:
-//   - function and method calls
-//   - receive operation
-//
-// Currently disabled because the code is a mess and it doesn't add
-// much to the generated programs anyway.
 func (sb *StmtBuilder) ExprStmt() *ast.ExprStmt {
-	panic("not implemented")
+	if ch, ok := sb.scope.GetRandomVarChan(sb.rs); ok {
+		return &ast.ExprStmt{
+			X: sb.eb.ChanReceiveExpr(ch.Name),
+		}
+	}
+
+	// len() is not allowed (it's not really a function), DEFER here
+	// prevents CallExpr to choose len as the function to call.
+	return &ast.ExprStmt{sb.eb.CallExpr(RandType(), DEFER)}
 }
 
 var noName = ast.Ident{Name: "_"}

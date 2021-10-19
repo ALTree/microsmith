@@ -559,6 +559,15 @@ func (eb *ExprBuilder) CallExpr(t Type, cet CallExprType) *ast.CallExpr {
 			Body: &ast.BlockStmt{List: []ast.Stmt{retStmt}},
 		}
 
+		// if we are in a defer, optionally add a recover call before
+		// the return statement.
+		if cet == DEFER && eb.rs.Intn(4) == 0 {
+			fl.Body.List = []ast.Stmt{
+				&ast.ExprStmt{&ast.CallExpr{Fun: &ast.Ident{Name: "recover"}}},
+				fl.Body.List[0],
+			}
+		}
+
 		// and then call it
 		args := make([]ast.Expr, 0, len(ft.Args))
 		for _, arg := range ft.Args {

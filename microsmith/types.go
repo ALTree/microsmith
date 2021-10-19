@@ -383,6 +383,7 @@ var LenFun FuncType = FuncType{
 	Args: nil, // custom handling
 	Ret:  []Type{BasicType{"int"}},
 }
+
 var Float32Float64Conv FuncType = FuncType{
 	N:    "float32",
 	Args: []Type{BasicType{"float64"}},
@@ -462,17 +463,17 @@ var MathLdexp FuncType = FuncType{
 
 var PredeclaredFuncs = []FuncType{
 	LenFun,
-	// Float32Float64Conv,
-	// Float64Float32Conv,
-	// IntFloat64Conv,
-	// IntUintConv,
-	// UintIntConv,
-	// Int16IntConv,
-	// IntInt16Conv,
-	//	Int8Int32Conv,
-	//Int32Int8Conv,
-	//Int8UintConv,
-	//IntInt64Conv,
+	Float32Float64Conv,
+	Float64Float32Conv,
+	IntFloat64Conv,
+	IntUintConv,
+	UintIntConv,
+	Int16IntConv,
+	IntInt16Conv,
+	Int8Int32Conv,
+	Int32Int8Conv,
+	Int8UintConv,
+	IntInt64Conv,
 	MathSqrt,
 	MathMax,
 	MathNaN,
