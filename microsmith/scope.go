@@ -112,6 +112,13 @@ func (s *Scope) NewIdent(t Type) *ast.Ident {
 			}
 		}
 
+	case TypeParam:
+		for _, v := range *s {
+			if _, ok := v.Type.(TypeParam); ok {
+				tc++
+			}
+		}
+
 	default:
 		for _, v := range *s {
 			if v.Type.Equal(t) {
@@ -290,7 +297,7 @@ type TypeParams []TypeParam
 
 func (tp TypeParams) FindByName(name string) TypeParam {
 	for i := 0; i < len(tp); i++ {
-		if tp[i].Name.Name == name {
+		if tp[i].N.Name == name {
 			return tp[i]
 		}
 	}

@@ -60,6 +60,8 @@ func Ident(t Type) string {
 		return "m"
 	case PointerType:
 		return "p" + Ident(t.Btype)
+	case TypeParam:
+		return "x"
 	default:
 		panic("Ident: unknown type " + t.Name())
 	}
@@ -584,11 +586,47 @@ func MapOf(kt, vt Type) MapType {
 
 type TypeParam struct {
 	Types []Type
-	Name  *ast.Ident
+	N     *ast.Ident
+}
+
+func (tp TypeParam) Addressable() bool {
+	return true
+}
+
+func (tp TypeParam) Ast() ast.Expr {
+	return tp.N
+}
+
+func (tp TypeParam) Equal(t Type) bool {
+	if t2, ok := t.(TypeParam); !ok {
+		return false
+	} else {
+		if len(tp.Types) != len(t2.Types) {
+			return false
+		}
+		for i := range tp.Types {
+			if !tp.Types[i].Equal(t2.Types[i]) { // TODO(alb): fix, needs sorting
+				return false
+			}
+		}
+		return true
+	}
+}
+
+func (tp TypeParam) Name() string {
+	return tp.String()
+}
+
+func (tp TypeParam) Sliceable() bool {
+	return false
+}
+
+func (tp TypeParam) Contains(t Type) bool {
+	return tp.Equal(t)
 }
 
 func (tp TypeParam) String() string {
-	str := "{" + tp.Name.Name + " "
+	str := "{" + tp.N.Name + " "
 	for _, t := range tp.Types {
 		str += t.Name() + "|"
 	}

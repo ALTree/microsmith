@@ -1,6 +1,7 @@
 package microsmith
 
 import (
+	"fmt"
 	"go/ast"
 	"go/token"
 	"math/rand"
@@ -189,6 +190,14 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 			// scope, so above we'll always enter the if typeInScope.
 			return &ast.Ident{Name: "nil"}
 		}
+
+	case TypeParam:
+		v, ok := eb.scope.RandVarSubType(t, eb.rs)
+		if !ok {
+			fmt.Println(eb.scope)
+			panic("Not typeparams in scope")
+		}
+		return v.Name
 
 	default:
 		panic("Unimplemented type " + t.Name())

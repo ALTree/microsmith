@@ -75,7 +75,7 @@ func (db *DeclBuilder) FuncDecl(i int, pkg string) *ast.FuncDecl {
 			tps,
 			&ast.Field{
 				Names: []*ast.Ident{&ast.Ident{Name: fmt.Sprintf("G%v", i)}},
-				Type:  tp[rand.Intn(len(tp))].Name,
+				Type:  tp[rand.Intn(len(tp))].N,
 			},
 		)
 	}
@@ -125,6 +125,7 @@ func (db *DeclBuilder) File(pkg string, id uint64) *ast.File {
 			db.typeparams = append(db.typeparams, tp)
 		}
 	}
+	db.sb.typeparams = db.typeparams
 
 	// In the global scope:
 	//   var i int
@@ -288,7 +289,7 @@ func (db *DeclBuilder) MakeRandConstraint(name string) (*ast.GenDecl, TypeParam)
 	f, _ := parser.ParseFile(token.NewFileSet(), "", src, 0)
 	decl := f.Decls[0].(*ast.GenDecl)
 
-	return decl, TypeParam{Types: types, Name: &ast.Ident{Name: name}}
+	return decl, TypeParam{Types: types, N: &ast.Ident{Name: name}}
 }
 
 func (db *DeclBuilder) MakeVar(t Type, i int) *ast.GenDecl {

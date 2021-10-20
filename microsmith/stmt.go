@@ -9,16 +9,17 @@ import (
 )
 
 type StmtBuilder struct {
-	conf     ProgramConf
-	currfunc *ast.FuncDecl // signature of func we're in
-	rs       *rand.Rand    // randomness source
-	eb       *ExprBuilder
-	depth    int // how deep the stmt hyerarchy is
-	scope    *Scope
-	funcp    int  // counter for function param names
-	inloop   bool // are we inside a loop?
-	labels   []string
-	label    int // counter for labels names
+	conf       ProgramConf
+	currfunc   *ast.FuncDecl // signature of func we're in
+	rs         *rand.Rand    // randomness source
+	eb         *ExprBuilder
+	depth      int // how deep the stmt hyerarchy is
+	scope      *Scope
+	typeparams []TypeParam // type parameters available to the program
+	funcp      int         // counter for function param names
+	inloop     bool        // are we inside a loop?
+	labels     []string
+	label      int // counter for labels names
 }
 
 // Returns true if the block statement currently being built is
@@ -243,8 +244,9 @@ func (sb *StmtBuilder) BlockStmt() *ast.BlockStmt {
 	// And a few vars of the type parameters available in the
 	// function.
 	if sb.currfunc.Type.TypeParams != nil {
-		for i := 0; i < 3; i++ {
-			ds, idents := sb.DeclStmtTypeParam(i)
+		for i := 0; i < 1+sb.rs.Intn(3); i++ {
+			randTypeParam := sb.typeparams[0]
+			ds, idents := sb.DeclStmt(1+sb.rs.Intn(2), randTypeParam)
 			stmts = append(stmts, ds)
 			newVars = append(newVars, idents...)
 		}
@@ -442,6 +444,23 @@ func (sb *StmtBuilder) DeclStmt(nVars int, t Type) (*ast.DeclStmt, []*ast.Ident)
 		// and restore the labels.
 		sb.labels = oldLabels
 
+	case TypeParam:
+		// for _, tp := range sb.currfunc.Type.TypeParams.List {
+		// 	fmt.Println(tp.Type.(*ast.Ident).Name, t2.N.Name, tp.Names[0].Name)
+		// 	if tp.Type.(*ast.Ident).Name == t2.N.Name {
+		// 		typ = &ast.Ident{
+		// 			Name: tp.Names[0].Name,
+		// 		}
+		// 		break
+		// 	}
+		// }
+
+		// TODO(alb): this is wrong, we don't declare a variable of
+		// the type t passed as an arg to the function we're in.
+		typ = &ast.Ident{
+			Name: fmt.Sprintf("G%v", 0),
+		}
+
 	default:
 		panic("DeclStmt bad type " + t.Name())
 	}
@@ -470,11 +489,11 @@ func (sb *StmtBuilder) DeclStmt(nVars int, t Type) (*ast.DeclStmt, []*ast.Ident)
 func (sb *StmtBuilder) DeclStmtTypeParam(i int) (*ast.DeclStmt, []*ast.Ident) {
 	gd := new(ast.GenDecl)
 	gd.Tok = token.VAR
-	name := fmt.Sprintf("X%v", i)
+	name := fmt.Sprintf("x%v", i)
 	gd.Specs = []ast.Spec{
 		&ast.ValueSpec{
 			Names:  []*ast.Ident{&ast.Ident{Name: name}},
-			Type:   &ast.Ident{Name: fmt.Sprintf("G%v", sb.rs.Intn(len(sb.currfunc.Type.TypeParams.List)))},
+			Type:   nil,
 			Values: nil,
 		},
 	}
