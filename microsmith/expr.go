@@ -8,19 +8,32 @@ import (
 	"strings"
 )
 
-type ExprBuilder struct {
-	pb *ProgramBuilder
+// --------------------------------
+//  ExprBuilder Type
+// --------------------------------
 
-	depth int    // how deep the expr hierarchy is
-	scope *Scope // passed down by StmtBuilders
+type ExprBuilder struct {
+	pb    *ProgramBuilder
+	depth int // how deep the expr hierarchy is
 }
 
-func NewExprBuilder(s *Scope, pb *ProgramBuilder) *ExprBuilder {
+func NewExprBuilder(pb *ProgramBuilder) *ExprBuilder {
 	return &ExprBuilder{
-		pb:    pb,
-		scope: s,
+		pb: pb,
 	}
 }
+
+// --------------------------------
+//  Accessors
+// --------------------------------
+
+func (eb ExprBuilder) S() *Scope {
+	return eb.pb.ctx.scope
+}
+
+// --------------------------------
+//  Builder Methods
+// --------------------------------
 
 // Returns true if the expression tree currently being built is
 // allowed to become deeper.
@@ -147,8 +160,8 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 	case PointerType:
 		// Either return a literal of the requested pointer type, &x
 		// with x of type t.Base(), or nil.
-		vt, typeInScope := eb.scope.GetRandomVarOfType(t, eb.pb.rs)
-		vst, baseInScope := eb.scope.GetRandomVarOfType(t.Base(), eb.pb.rs)
+		vt, typeInScope := eb.S().GetRandomVarOfType(t, eb.pb.rs)
+		vst, baseInScope := eb.S().GetRandomVarOfType(t.Base(), eb.pb.rs)
 		if typeInScope && baseInScope {
 			if eb.pb.rs.Intn(2) == 0 {
 				return vt.Name
@@ -190,9 +203,9 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 		}
 
 	case TypeParam:
-		v, ok := eb.scope.RandVarSubType(t, eb.pb.rs)
+		v, ok := eb.S().RandVarSubType(t, eb.pb.rs)
 		if !ok {
-			fmt.Println(eb.scope)
+			fmt.Println(eb.S())
 			panic("Not typeparams in scope")
 		}
 		return v.Name
@@ -204,7 +217,7 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 
 func (eb *ExprBuilder) VarOrLit(t Type) ast.Expr {
 
-	vst, typeCanDerive := eb.scope.RandVarSubType(t, eb.pb.rs)
+	vst, typeCanDerive := eb.S().RandVarSubType(t, eb.pb.rs)
 
 	if !typeCanDerive || !eb.Deepen() {
 		switch t := t.(type) {
@@ -328,7 +341,7 @@ func (eb *ExprBuilder) SliceExpr(v Variable) *ast.SliceExpr {
 	}
 
 	var low, high ast.Expr
-	indV, hasInt := eb.scope.GetRandomVarOfType(BasicType{"int"}, eb.pb.rs)
+	indV, hasInt := eb.S().GetRandomVarOfType(BasicType{"int"}, eb.pb.rs)
 	if hasInt && eb.Deepen() {
 		if eb.pb.rs.Intn(8) > 0 {
 			low = &ast.BinaryExpr{
@@ -371,7 +384,7 @@ func (eb *ExprBuilder) UnaryExpr(t Type) *ast.UnaryExpr {
 
 	// if there are pointers to t in scope, generate a t by
 	// dereferencing it with chance 0.5
-	if eb.pb.rs.Intn(2) == 0 && eb.scope.HasType(PointerOf(t)) {
+	if eb.pb.rs.Intn(2) == 0 && eb.S().HasType(PointerOf(t)) {
 		ue.Op = token.MUL
 		// See comment in Expr() for PointerType for why we can
 		// only rely on Expr() here.
@@ -486,10 +499,10 @@ func (eb *ExprBuilder) BinaryExpr(t Type) *ast.BinaryExpr {
 		}
 
 		// make sure the RHS is not a constant expression
-		if vi, ok := eb.scope.RandVarSubType(t2, eb.pb.rs); ok {
+		if vi, ok := eb.S().RandVarSubType(t2, eb.pb.rs); ok {
 			ue.Y = eb.SubTypeExpr(vi.Name, vi.Type, t2)
 		} else { // otherwise, cast from an int
-			vi, ok := eb.scope.GetRandomVarOfType(BasicType{"int"}, eb.pb.rs)
+			vi, ok := eb.S().GetRandomVarOfType(BasicType{"int"}, eb.pb.rs)
 			if !ok {
 				panic("BinaryExpr: no int in scope")
 			}
@@ -529,7 +542,7 @@ const (
 // CallExpr returns a call expression with a function call that has
 // return value of type t.
 func (eb *ExprBuilder) CallExpr(t Type, cet CallExprType) *ast.CallExpr {
-	if v, ok := eb.scope.GetRandomFunc(t); ok && (cet == NOTDEFER || v.Type.(FuncType).Local) {
+	if v, ok := eb.S().GetRandomFunc(t); ok && (cet == NOTDEFER || v.Type.(FuncType).Local) {
 		name := v.Name.Name
 		switch {
 		case name == "len":

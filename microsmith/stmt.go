@@ -7,46 +7,49 @@ import (
 	"strconv"
 )
 
+// --------------------------------
+//  StmtBuilder type
+// --------------------------------
+
 type StmtBuilder struct {
 	pb *ProgramBuilder
 
 	// TODO(alb): move all of these into Context or ProgramBuilder)
 	currfunc   *ast.FuncDecl // signature of func we're in
 	depth      int           // how deep the stmt hyerarchy is
-	scope      *Scope
-	typeparams []TypeParam // type parameters available to the program
-	funcp      int         // counter for function param names
-	inloop     bool        // are we inside a loop?
+	typeparams []TypeParam   // type parameters available to the program
+	funcp      int           // counter for function param names
+	inloop     bool          // are we inside a loop?
 	labels     []string
 	label      int // counter for labels names
 }
+
+func NewStmtBuilder(pb *ProgramBuilder) *StmtBuilder {
+	sb := new(StmtBuilder)
+	sb.pb = pb
+	return sb
+}
+
+// --------------------------------
+//  Accessors
+// --------------------------------
 
 func (sb StmtBuilder) E() *ExprBuilder {
 	return sb.pb.eb
 }
 
+func (sb StmtBuilder) S() *Scope {
+	return sb.pb.ctx.scope
+}
+
+// --------------------------------
+//  Builder Methods
+// --------------------------------
+
 // Returns true if the block statement currently being built is
 // allowed to have statements nested inside it.
 func (sb *StmtBuilder) CanNest() bool {
 	return (sb.depth <= 3) && (sb.pb.rs.Float64() < 0.8)
-}
-
-var InitialScope Scope
-
-func init() {
-	InitialScope = make(Scope, 0, len(PredeclaredFuncs))
-	for _, f := range PredeclaredFuncs {
-		InitialScope = append(InitialScope, Variable{f, &ast.Ident{Name: f.Name()}})
-	}
-}
-
-func NewStmtBuilder(pb *ProgramBuilder) *StmtBuilder {
-	sb := new(StmtBuilder)
-	scope := make(Scope, 0, 32)
-	scope = append(scope, InitialScope...)
-	sb.scope = &scope
-	sb.pb = pb
-	return sb
 }
 
 func (sb *StmtBuilder) Stmt() ast.Stmt {
@@ -64,7 +67,7 @@ func (sb *StmtBuilder) Stmt() ast.Stmt {
 	case 2:
 		// If at least one array or string is in scope, generate a for
 		// range loop with chance 0.5; otherwise generate a plain loop
-		arr, ok := sb.scope.GetRandomRangeable(sb.pb.rs)
+		arr, ok := sb.S().GetRandomRangeable(sb.pb.rs)
 		if ok && sb.pb.rs.Intn(2) == 0 {
 			if sb.pb.rs.Intn(4) == 0 { // 1 in 4 loops have a label
 				sb.label++
@@ -117,7 +120,7 @@ func (sb *StmtBuilder) Stmt() ast.Stmt {
 // gets a random variable currently in scope (that we can assign to),
 // and builds an AssignStmt with a random Expr of its type on the RHS
 func (sb *StmtBuilder) AssignStmt() *ast.AssignStmt {
-	v := sb.scope.RandomVar(true)
+	v := sb.S().RandomVar(true)
 
 	switch t := v.Type.(type) {
 
@@ -273,7 +276,7 @@ func (sb *StmtBuilder) BlockStmt() *ast.BlockStmt {
 	}
 
 	for _, v := range newVars {
-		sb.scope.DeleteIdentByName(v)
+		sb.S().DeleteIdentByName(v)
 	}
 
 	bs.List = stmts
@@ -408,7 +411,7 @@ func (sb *StmtBuilder) DeclStmt(nVars int, t Type) (*ast.DeclStmt, []*ast.Ident)
 
 			// add the parameters to the scope
 			for i, param := range fl.Type.Params.List {
-				sb.scope.AddVariable(param.Names[0], t2.Args[i])
+				sb.S().AddVariable(param.Names[0], t2.Args[i])
 				sb.funcp++
 			}
 
@@ -439,7 +442,7 @@ func (sb *StmtBuilder) DeclStmt(nVars int, t Type) (*ast.DeclStmt, []*ast.Ident)
 
 			// remove the function parameters from scope...
 			for _, param := range fl.Type.Params.List {
-				sb.scope.DeleteIdentByName(param.Names[0])
+				sb.S().DeleteIdentByName(param.Names[0])
 				sb.funcp--
 			}
 		}
@@ -470,7 +473,7 @@ func (sb *StmtBuilder) DeclStmt(nVars int, t Type) (*ast.DeclStmt, []*ast.Ident)
 	// generate nVars ast.Idents
 	idents := make([]*ast.Ident, 0, nVars)
 	for i := 0; i < nVars; i++ {
-		idents = append(idents, sb.scope.NewIdent(t))
+		idents = append(idents, sb.S().NewIdent(t))
 	}
 
 	gd.Specs = []ast.Spec{
@@ -552,14 +555,14 @@ func (sb *StmtBuilder) RangeStmt(arr Variable) *ast.RangeStmt {
 	sb.inloop = true
 	defer func() { sb.depth--; sb.inloop = false }()
 
-	i := sb.scope.NewIdent(BasicType{"int"})
+	i := sb.S().NewIdent(BasicType{"int"})
 	var v *ast.Ident
 	switch arr.Type.(type) {
 	case ArrayType:
-		v = sb.scope.NewIdent(arr.Type.(ArrayType).Base())
+		v = sb.S().NewIdent(arr.Type.(ArrayType).Base())
 	case BasicType:
 		if arr.Type.(BasicType).N == "string" {
-			v = sb.scope.NewIdent(BasicType{"rune"})
+			v = sb.S().NewIdent(BasicType{"rune"})
 		} else {
 			panic("cannot range on non-string BasicType")
 		}
@@ -577,8 +580,8 @@ func (sb *StmtBuilder) RangeStmt(arr Variable) *ast.RangeStmt {
 	rs.Body = sb.BlockStmt()
 	rs.Body.List = append(rs.Body.List, sb.UseVars([]*ast.Ident{i, v}))
 
-	sb.scope.DeleteIdentByName(i)
-	sb.scope.DeleteIdentByName(v)
+	sb.S().DeleteIdentByName(i)
+	sb.S().DeleteIdentByName(v)
 
 	for _, l := range sb.labels {
 		rs.Body.List = append(rs.Body.List,
@@ -593,7 +596,7 @@ func (sb *StmtBuilder) RangeStmt(arr Variable) *ast.RangeStmt {
 }
 
 func (sb *StmtBuilder) DeferStmt() *ast.DeferStmt {
-	if v, ok := sb.E().scope.GetRandomFuncAnyType(); ok && sb.pb.rs.Intn(4) > 0 {
+	if v, ok := sb.E().pb.ctx.scope.GetRandomFuncAnyType(); ok && sb.pb.rs.Intn(4) > 0 {
 		return &ast.DeferStmt{Call: sb.E().MakeFuncCall(v)}
 	} else {
 		return &ast.DeferStmt{Call: sb.E().CallExpr(RandType(), DEFER)}
@@ -624,7 +627,7 @@ func (sb *StmtBuilder) SwitchStmt() *ast.SwitchStmt {
 	defer func() { sb.depth-- }()
 
 	t := RandType()
-	if sb.pb.rs.Intn(2) == 0 && sb.scope.HasType(PointerOf(t)) {
+	if sb.pb.rs.Intn(2) == 0 && sb.S().HasType(PointerOf(t)) {
 		// sometimes switch on a pointer value
 		t = PointerOf(t)
 	}
@@ -662,7 +665,7 @@ func (sb *StmtBuilder) IncDecStmt(t Type) *ast.IncDecStmt {
 func (sb *StmtBuilder) SendStmt() *ast.SendStmt {
 	st := new(ast.SendStmt)
 
-	ch, ok := sb.scope.GetRandomVarChan(sb.pb.rs)
+	ch, ok := sb.S().GetRandomVarChan(sb.pb.rs)
 	if !ok {
 		// no channels in scope, but we can send to a brand new one,
 		// i.e. generate
@@ -703,7 +706,7 @@ func (sb *StmtBuilder) CommClause(def bool) *ast.CommClause {
 		return &ast.CommClause{Body: stmtList}
 	}
 
-	ch, chanInScope := sb.scope.GetRandomVarChan(sb.pb.rs)
+	ch, chanInScope := sb.S().GetRandomVarChan(sb.pb.rs)
 	if !chanInScope {
 		// when no chan is in scope, we select from a newly made channel,
 		// i.e. we build and return
@@ -739,7 +742,7 @@ func (sb *StmtBuilder) CommClause(def bool) *ast.CommClause {
 }
 
 func (sb *StmtBuilder) ExprStmt() *ast.ExprStmt {
-	if ch, ok := sb.scope.GetRandomVarChan(sb.pb.rs); ok {
+	if ch, ok := sb.S().GetRandomVarChan(sb.pb.rs); ok {
 		return &ast.ExprStmt{
 			X: sb.E().ChanReceiveExpr(ch.Name),
 		}

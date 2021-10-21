@@ -42,8 +42,17 @@ func NewProgramBuilder(conf ProgramConf) *ProgramBuilder {
 		ctx: NewContext(conf),
 		rs:  rand.New(rand.NewSource(rand.Int63())),
 	}
+
+	// Initialize Context.Scope with the predeclared functions:
+	scope := make(Scope, 0, 64)
+	for _, f := range PredeclaredFuncs {
+		scope = append(scope, Variable{f, &ast.Ident{Name: f.Name()}})
+	}
+	pb.ctx.scope = &scope
+
+	// Create the Stmt and Expr builders
 	pb.sb = NewStmtBuilder(&pb)
-	pb.eb = NewExprBuilder(pb.sb.scope, &pb)
+	pb.eb = NewExprBuilder(&pb)
 	return &pb
 }
 
@@ -98,6 +107,10 @@ func (pb *ProgramBuilder) Conf() ProgramConf {
 	return pb.ctx.programConf
 }
 
+func (pb *ProgramBuilder) Scope() *Scope {
+	return pb.ctx.scope
+}
+
 func (pb *ProgramBuilder) File(pkg string, id uint64) *ast.File {
 	af := new(ast.File)
 	af.Name = &ast.Ident{0, pkg, nil}
@@ -128,7 +141,7 @@ func (pb *ProgramBuilder) File(pkg string, id uint64) *ast.File {
 	//   var i int
 	// So we always have an int available
 	af.Decls = append(af.Decls, MakeInt())
-	pb.sb.scope.AddVariable(&ast.Ident{Name: "i"}, BasicType{"int"})
+	pb.Scope().AddVariable(&ast.Ident{Name: "i"}, BasicType{"int"})
 
 	// Now half a dozen top-level variables
 	for i := 1; i <= 6; i++ {
@@ -140,7 +153,7 @@ func (pb *ProgramBuilder) File(pkg string, id uint64) *ast.File {
 			t = ArrayOf(t)
 		}
 		af.Decls = append(af.Decls, pb.MakeVar(t, i))
-		pb.sb.scope.AddVariable(&ast.Ident{Name: fmt.Sprintf("V%v", i)}, t)
+		pb.Scope().AddVariable(&ast.Ident{Name: fmt.Sprintf("V%v", i)}, t)
 	}
 
 	// Declare top-level functions
