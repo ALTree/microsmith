@@ -291,11 +291,7 @@ func (ls Scope) GetRandomVarChan(rs *rand.Rand) (Variable, bool) {
 	panic("unreachable")
 }
 
-// TypeParams holds a list of all the type parameters interfaces that
-// are available to the function in the package
-type TypeParams []TypeParam
-
-func (tp TypeParams) FindByName(name string) TypeParam {
+func FindByName(tp []Constraint, name string) Constraint {
 	for i := 0; i < len(tp); i++ {
 		if tp[i].N.Name == name {
 			return tp[i]

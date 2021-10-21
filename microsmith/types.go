@@ -635,6 +635,18 @@ func (tp TypeParam) String() string {
 }
 
 // ------------------------------------ //
+//   Contraints                         //
+// ------------------------------------ //
+
+// type I0 {        <---- N
+//   int | string   <-- Types
+// }
+type Constraint struct {
+	N     *ast.Ident
+	Types []Type
+}
+
+// ------------------------------------ //
 //   preallocated                       //
 // ------------------------------------ //
 

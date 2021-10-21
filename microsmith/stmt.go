@@ -15,13 +15,12 @@ type StmtBuilder struct {
 	pb *ProgramBuilder
 
 	// TODO(alb): move all of these into Context or ProgramBuilder)
-	currfunc   *ast.FuncDecl // signature of func we're in
-	depth      int           // how deep the stmt hyerarchy is
-	typeparams []TypeParam   // type parameters available to the program
-	funcp      int           // counter for function param names
-	inloop     bool          // are we inside a loop?
-	labels     []string
-	label      int // counter for labels names
+	currfunc *ast.FuncDecl // signature of func we're in
+	depth    int           // how deep the stmt hyerarchy is
+	funcp    int           // counter for function param names
+	inloop   bool          // are we inside a loop?
+	labels   []string
+	label    int // counter for labels names
 }
 
 func NewStmtBuilder(pb *ProgramBuilder) *StmtBuilder {
@@ -248,13 +247,14 @@ func (sb *StmtBuilder) BlockStmt() *ast.BlockStmt {
 
 	// And a few vars of the type parameters available in the
 	// function.
-	if sb.currfunc.Type.TypeParams != nil {
-		for i := 0; i < 1+sb.pb.rs.Intn(3); i++ {
-			randTypeParam := sb.typeparams[0]
-			ds, idents := sb.DeclStmt(1+sb.pb.rs.Intn(2), randTypeParam)
-			stmts = append(stmts, ds)
-			newVars = append(newVars, idents...)
-		}
+	if sb.pb.ctx.constraints != nil {
+		// TODO(alb): implement
+		// for i := 0; i < 1+sb.pb.rs.Intn(3); i++ {
+		// 	randTypeParam := sb.pb.ctx.typeparams[0]
+		// 	ds, idents := sb.DeclStmt(1+sb.pb.rs.Intn(2), randTypeParam)
+		// 	stmts = append(stmts, ds)
+		// 	newVars = append(newVars, idents...)
+		// }
 	}
 
 	var nStmts int

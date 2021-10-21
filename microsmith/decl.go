@@ -30,11 +30,10 @@ func RandType() Type {
 }
 
 type ProgramBuilder struct {
-	ctx        *Context
-	rs         *rand.Rand
-	sb         *StmtBuilder
-	eb         *ExprBuilder
-	typeparams TypeParams // Type Parameters available in the package
+	ctx *Context
+	rs  *rand.Rand
+	sb  *StmtBuilder
+	eb  *ExprBuilder
 }
 
 func NewProgramBuilder(conf ProgramConf) *ProgramBuilder {
@@ -74,17 +73,19 @@ func (pb *ProgramBuilder) FuncDecl(i int, pkg string) *ast.FuncDecl {
 		return fd
 	}
 
-	// otherwise, add them
-	tp, tps := pb.typeparams, []*ast.Field{}
+	// If typeparams requested, use a few of the available one in the
+	// function signature, and add them to scope.
+	types, tps := make(Scope, 0, 4), []*ast.Field{}
 	for i := 0; i < 1+rand.Intn(3); i++ {
+		ident := &ast.Ident{Name: fmt.Sprintf("G%v", i)}
+		typ := pb.ctx.constraints[pb.rs.Intn(len(pb.ctx.constraints))]
 		tps = append(
 			tps,
-			&ast.Field{
-				Names: []*ast.Ident{&ast.Ident{Name: fmt.Sprintf("G%v", i)}},
-				Type:  tp[rand.Intn(len(tp))].N,
-			},
+			&ast.Field{Names: []*ast.Ident{ident}, Type: typ.N},
 		)
+		// types.AddVariable(ident, typ) // TODO(alb)
 	}
+	pb.ctx.types = &types
 
 	fd.Type.TypeParams = &ast.FieldList{List: tps}
 	pb.sb.currfunc = fd // this needs to be before the BlockStmt()
@@ -132,10 +133,9 @@ func (pb *ProgramBuilder) File(pkg string, id uint64) *ast.File {
 		for i := 0; i < 1+rand.Intn(6); i++ {
 			c, tp := pb.MakeRandConstraint(fmt.Sprintf("I%v", i))
 			af.Decls = append(af.Decls, c)
-			pb.typeparams = append(pb.typeparams, tp)
+			pb.ctx.constraints = append(pb.ctx.constraints, tp)
 		}
 	}
-	pb.sb.typeparams = pb.typeparams
 
 	// In the global scope:
 	//   var i int
@@ -183,7 +183,7 @@ func (pb *ProgramBuilder) File(pkg string, id uint64) *ast.File {
 				// it in the call.
 				var indices []ast.Expr
 				for _, typ := range f.Type.TypeParams.List {
-					types := pb.typeparams.FindByName(typ.Type.(*ast.Ident).Name).Types
+					types := FindByName(pb.ctx.constraints, typ.Type.(*ast.Ident).Name).Types
 					indices = append(indices, types[rand.Intn(len(types))].Ast())
 				}
 				ce.Fun = &ast.IndexListExpr{X: f.Name, Indices: indices}
@@ -264,7 +264,7 @@ func MakeInt() *ast.GenDecl {
 	}
 }
 
-func (pb *ProgramBuilder) MakeRandConstraint(name string) (*ast.GenDecl, TypeParam) {
+func (pb *ProgramBuilder) MakeRandConstraint(name string) (*ast.GenDecl, Constraint) {
 	types := make([]Type, len(AllTypes))
 	copy(types, AllTypes)
 	pb.rs.Shuffle(len(types), func(i, j int) { types[i], types[j] = types[j], types[i] })
@@ -294,7 +294,7 @@ func (pb *ProgramBuilder) MakeRandConstraint(name string) (*ast.GenDecl, TypePar
 	f, _ := parser.ParseFile(token.NewFileSet(), "", src, 0)
 	decl := f.Decls[0].(*ast.GenDecl)
 
-	return decl, TypeParam{Types: types, N: &ast.Ident{Name: name}}
+	return decl, Constraint{Types: types, N: &ast.Ident{Name: name}}
 }
 
 func (pb *ProgramBuilder) MakeVar(t Type, i int) *ast.GenDecl {
