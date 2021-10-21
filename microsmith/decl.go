@@ -25,18 +25,6 @@ var AllTypes = []Type{
 	BasicType{"string"},
 }
 
-type ProgramConf struct {
-	FuncNum    int
-	MultiPkg   bool
-	TypeParams bool
-}
-
-func RandConf() ProgramConf {
-	return ProgramConf{
-		FuncNum: 8,
-	}
-}
-
 func RandType() Type {
 	return AllTypes[rand.Intn(len(AllTypes))]
 }
@@ -51,10 +39,11 @@ type ProgramBuilder struct {
 
 func NewProgramBuilder(conf ProgramConf) *ProgramBuilder {
 	pb := ProgramBuilder{
-		ctx: NewContext(),
+		ctx: NewContext(conf),
 		rs:  rand.New(rand.NewSource(rand.Int63())),
 	}
-	pb.sb = NewStmtBuilder(conf, &pb)
+	pb.sb = NewStmtBuilder(&pb)
+	pb.eb = NewExprBuilder(pb.sb.scope, &pb)
 	return &pb
 }
 
@@ -106,7 +95,7 @@ func (pb *ProgramBuilder) FuncIdent(i int) *ast.Ident {
 }
 
 func (pb *ProgramBuilder) Conf() ProgramConf {
-	return pb.sb.conf
+	return pb.ctx.programConf
 }
 
 func (pb *ProgramBuilder) File(pkg string, id uint64) *ast.File {
@@ -154,13 +143,8 @@ func (pb *ProgramBuilder) File(pkg string, id uint64) *ast.File {
 		pb.sb.scope.AddVariable(&ast.Ident{Name: fmt.Sprintf("V%v", i)}, t)
 	}
 
-	fcnt := pb.Conf().FuncNum
-	if pkg != "main" {
-		fcnt = 1
-	}
-
-	// Declare fcnt top-level functions
-	for i := 0; i < fcnt; i++ {
+	// Declare top-level functions
+	for i := 0; i < 4+pb.rs.Intn(5); i++ {
 		af.Decls = append(af.Decls, pb.FuncDecl(i, pkg))
 	}
 
@@ -310,7 +294,7 @@ func (pb *ProgramBuilder) MakeVar(t Type, i int) *ast.GenDecl {
 				},
 				Type: t.Ast(),
 				Values: []ast.Expr{
-					pb.sb.eb.Expr(t),
+					pb.eb.Expr(t),
 				},
 			},
 		},

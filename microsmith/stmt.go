@@ -11,16 +11,18 @@ type StmtBuilder struct {
 	pb *ProgramBuilder
 
 	// TODO(alb): move all of these into Context or ProgramBuilder)
-	conf       ProgramConf
 	currfunc   *ast.FuncDecl // signature of func we're in
-	eb         *ExprBuilder
-	depth      int // how deep the stmt hyerarchy is
+	depth      int           // how deep the stmt hyerarchy is
 	scope      *Scope
 	typeparams []TypeParam // type parameters available to the program
 	funcp      int         // counter for function param names
 	inloop     bool        // are we inside a loop?
 	labels     []string
 	label      int // counter for labels names
+}
+
+func (sb StmtBuilder) E() *ExprBuilder {
+	return sb.pb.eb
 }
 
 // Returns true if the block statement currently being built is
@@ -38,13 +40,11 @@ func init() {
 	}
 }
 
-func NewStmtBuilder(conf ProgramConf, pb *ProgramBuilder) *StmtBuilder {
+func NewStmtBuilder(pb *ProgramBuilder) *StmtBuilder {
 	sb := new(StmtBuilder)
-	sb.conf = conf
 	scope := make(Scope, 0, 32)
 	scope = append(scope, InitialScope...)
 	sb.scope = &scope
-	sb.eb = NewExprBuilder(conf, sb.scope, pb)
 	sb.pb = pb
 	return sb
 }
@@ -129,15 +129,15 @@ func (sb *StmtBuilder) AssignStmt() *ast.AssignStmt {
 			return &ast.AssignStmt{
 				Lhs: []ast.Expr{v.Name},
 				Tok: token.ASSIGN,
-				Rhs: []ast.Expr{sb.eb.CompositeLit(t)},
+				Rhs: []ast.Expr{sb.E().CompositeLit(t)},
 			}
 		} else {
 			// v.field = <expr>
 			fieldType := t.Ftypes[sb.pb.rs.Intn(len(t.Fnames))]
 			return &ast.AssignStmt{
-				Lhs: []ast.Expr{sb.eb.StructFieldExpr(v.Name, t, fieldType)},
+				Lhs: []ast.Expr{sb.E().StructFieldExpr(v.Name, t, fieldType)},
 				Tok: token.ASSIGN,
-				Rhs: []ast.Expr{sb.eb.Expr(fieldType)},
+				Rhs: []ast.Expr{sb.E().Expr(fieldType)},
 			}
 		}
 
@@ -147,15 +147,15 @@ func (sb *StmtBuilder) AssignStmt() *ast.AssignStmt {
 		//   A = { <expr>, <expr>, ... }
 		if sb.pb.rs.Intn(2) == 0 {
 			return &ast.AssignStmt{
-				Lhs: []ast.Expr{sb.eb.IndexExpr(v.Name)},
+				Lhs: []ast.Expr{sb.E().IndexExpr(v.Name)},
 				Tok: token.ASSIGN,
-				Rhs: []ast.Expr{sb.eb.Expr(t.Base())},
+				Rhs: []ast.Expr{sb.E().Expr(t.Base())},
 			}
 		} else {
 			return &ast.AssignStmt{
 				Lhs: []ast.Expr{v.Name},
 				Tok: token.ASSIGN,
-				Rhs: []ast.Expr{sb.eb.Expr(v.Type)},
+				Rhs: []ast.Expr{sb.E().Expr(v.Type)},
 			}
 		}
 
@@ -168,15 +168,15 @@ func (sb *StmtBuilder) AssignStmt() *ast.AssignStmt {
 		//   M = { <expr>: <expr> }
 		if sb.pb.rs.Intn(2) == 0 {
 			return &ast.AssignStmt{
-				Lhs: []ast.Expr{sb.eb.MapIndexExpr(v.Name, v.Type.(MapType).KeyT)},
+				Lhs: []ast.Expr{sb.E().MapIndexExpr(v.Name, v.Type.(MapType).KeyT)},
 				Tok: token.ASSIGN,
-				Rhs: []ast.Expr{sb.eb.Expr(v.Type.(MapType).ValueT)},
+				Rhs: []ast.Expr{sb.E().Expr(v.Type.(MapType).ValueT)},
 			}
 		} else {
 			return &ast.AssignStmt{
 				Lhs: []ast.Expr{v.Name},
 				Tok: token.ASSIGN,
-				Rhs: []ast.Expr{sb.eb.Expr(v.Type)},
+				Rhs: []ast.Expr{sb.E().Expr(v.Type)},
 			}
 		}
 
@@ -187,7 +187,7 @@ func (sb *StmtBuilder) AssignStmt() *ast.AssignStmt {
 		return &ast.AssignStmt{
 			Lhs: []ast.Expr{v.Name},
 			Tok: token.ASSIGN,
-			Rhs: []ast.Expr{sb.eb.Expr(v.Type)},
+			Rhs: []ast.Expr{sb.E().Expr(v.Type)},
 		}
 	}
 }
@@ -432,7 +432,7 @@ func (sb *StmtBuilder) DeclStmt(nVars int, t Type) (*ast.DeclStmt, []*ast.Ident)
 			// Finally, append a closing return statement
 			retStmt := &ast.ReturnStmt{Results: []ast.Expr{}}
 			for _, ret := range t2.Ret {
-				retStmt.Results = append(retStmt.Results, sb.eb.Expr(ret))
+				retStmt.Results = append(retStmt.Results, sb.E().Expr(ret))
 			}
 			fl.Body.List = append(fl.Body.List, retStmt)
 			rhs = append(rhs, fl)
@@ -516,7 +516,7 @@ func (sb *StmtBuilder) ForStmt() *ast.ForStmt {
 	// - Init and Post statements with chance 0.5
 	// - A body with chance 0.97 (1-1/32)
 	if sb.pb.rs.Intn(16) > 0 {
-		fs.Cond = sb.eb.Expr(BasicType{"bool"})
+		fs.Cond = sb.E().Expr(BasicType{"bool"})
 	}
 	if sb.pb.rs.Intn(2) > 0 {
 		fs.Init = sb.AssignStmt()
@@ -593,10 +593,10 @@ func (sb *StmtBuilder) RangeStmt(arr Variable) *ast.RangeStmt {
 }
 
 func (sb *StmtBuilder) DeferStmt() *ast.DeferStmt {
-	if v, ok := sb.eb.scope.GetRandomFuncAnyType(); ok && sb.pb.rs.Intn(4) > 0 {
-		return &ast.DeferStmt{Call: sb.eb.MakeFuncCall(v)}
+	if v, ok := sb.E().scope.GetRandomFuncAnyType(); ok && sb.pb.rs.Intn(4) > 0 {
+		return &ast.DeferStmt{Call: sb.E().MakeFuncCall(v)}
 	} else {
-		return &ast.DeferStmt{Call: sb.eb.CallExpr(RandType(), DEFER)}
+		return &ast.DeferStmt{Call: sb.E().CallExpr(RandType(), DEFER)}
 	}
 }
 
@@ -606,7 +606,7 @@ func (sb *StmtBuilder) IfStmt() *ast.IfStmt {
 	defer func() { sb.depth-- }()
 
 	is := &ast.IfStmt{
-		Cond: sb.eb.Expr(BasicType{"bool"}),
+		Cond: sb.E().Expr(BasicType{"bool"}),
 		Body: sb.BlockStmt(),
 	}
 
@@ -630,7 +630,7 @@ func (sb *StmtBuilder) SwitchStmt() *ast.SwitchStmt {
 	}
 
 	ss := &ast.SwitchStmt{
-		Tag: sb.eb.Expr(t),
+		Tag: sb.E().Expr(t),
 		Body: &ast.BlockStmt{
 			List: []ast.Stmt{
 				// Only generate one normal and one default case to
@@ -649,7 +649,7 @@ func (sb *StmtBuilder) SwitchStmt() *ast.SwitchStmt {
 func (sb *StmtBuilder) CaseClause(t Type, def bool) *ast.CaseClause {
 	cc := new(ast.CaseClause)
 	if !def {
-		cc.List = []ast.Expr{sb.eb.Expr(t)}
+		cc.List = []ast.Expr{sb.E().Expr(t)}
 	}
 	cc.Body = sb.BlockStmt().List
 	return cc
@@ -668,11 +668,11 @@ func (sb *StmtBuilder) SendStmt() *ast.SendStmt {
 		// i.e. generate
 		//   make(chan int) <- 1
 		t := RandType()
-		st.Chan = sb.eb.VarOrLit(ChanType{T: t})
-		st.Value = sb.eb.Expr(t)
+		st.Chan = sb.E().VarOrLit(ChanType{T: t})
+		st.Value = sb.E().Expr(t)
 	} else {
 		st.Chan = ch.Name
-		st.Value = sb.eb.Expr(ch.Type.(ChanType).Base())
+		st.Value = sb.E().Expr(ch.Type.(ChanType).Base())
 	}
 
 	return st
@@ -731,7 +731,7 @@ func (sb *StmtBuilder) CommClause(def bool) *ast.CommClause {
 	// otherwise, we receive from one of the channels in scope
 	return &ast.CommClause{
 		Comm: &ast.ExprStmt{
-			X: sb.eb.ChanReceiveExpr(ch.Name),
+			X: sb.E().ChanReceiveExpr(ch.Name),
 		},
 		Body: stmtList,
 	}
@@ -741,13 +741,13 @@ func (sb *StmtBuilder) CommClause(def bool) *ast.CommClause {
 func (sb *StmtBuilder) ExprStmt() *ast.ExprStmt {
 	if ch, ok := sb.scope.GetRandomVarChan(sb.pb.rs); ok {
 		return &ast.ExprStmt{
-			X: sb.eb.ChanReceiveExpr(ch.Name),
+			X: sb.E().ChanReceiveExpr(ch.Name),
 		}
 	}
 
 	// len() is not allowed (it's not really a function), DEFER here
 	// prevents CallExpr to choose len as the function to call.
-	return &ast.ExprStmt{sb.eb.CallExpr(RandType(), DEFER)}
+	return &ast.ExprStmt{sb.E().CallExpr(RandType(), DEFER)}
 }
 
 var noName = ast.Ident{Name: "_"}

@@ -124,19 +124,12 @@ var crashWhitelist = []*regexp.Regexp{
 }
 
 func Fuzz(id uint64, bo microsmith.BuildOptions) {
-	conf := microsmith.RandConf()
-	conf.MultiPkg = *multiPkgF
-	conf.TypeParams = *tpF
+	conf := microsmith.ProgramConf{
+		MultiPkg:   *multiPkgF,
+		TypeParams: *tpF,
+	}
 
-	counter := 0
 	for {
-		counter++
-		if counter == 30 {
-			conf = microsmith.RandConf()
-			conf.MultiPkg = *multiPkgF
-			conf.TypeParams = *tpF
-			counter = 0
-		}
 
 		gp := microsmith.NewProgram(conf)
 
@@ -199,7 +192,6 @@ func Fuzz(id uint64, bo microsmith.BuildOptions) {
 func debugRun() {
 	conf := microsmith.ProgramConf{
 		MultiPkg:   *multiPkgF,
-		FuncNum:    2,
 		TypeParams: *tpF,
 	}
 	gp := microsmith.NewProgram(conf)

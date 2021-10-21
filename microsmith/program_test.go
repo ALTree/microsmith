@@ -30,21 +30,17 @@ var allTypes = []microsmith.Type{
 var TestConfigurations = map[string]microsmith.ProgramConf{
 	"small": {
 		MultiPkg: false,
-		FuncNum:  2,
 	},
 
 	"medium": {
 		MultiPkg: false,
-		FuncNum:  4,
 	},
 
 	"big": {
 		MultiPkg: false,
-		FuncNum:  8,
 	},
 	"huge": {
 		MultiPkg: false,
-		FuncNum:  4,
 	},
 }
 
@@ -69,8 +65,8 @@ func TestRandConf(t *testing.T) {
 		n = 5
 	}
 	for i := 0; i < 10; i++ {
-		conf := microsmith.RandConf()
-		testProgramGoTypes(t, n, conf)
+		// no multipkg, no typeparams
+		testProgramGoTypes(t, n, microsmith.ProgramConf{})
 	}
 }
 
@@ -83,7 +79,6 @@ func TestRandConfTypeParams(t *testing.T) {
 		testProgramGoTypes(
 			t, n,
 			microsmith.ProgramConf{
-				FuncNum:    2,
 				MultiPkg:   false,
 				TypeParams: true,
 			})
@@ -144,8 +139,9 @@ func TestMultiPkg(t *testing.T) {
 		}
 	}
 
-	conf := microsmith.RandConf()
-	conf.MultiPkg = true
+	conf := microsmith.ProgramConf{
+		MultiPkg: true,
+	}
 	gp := microsmith.NewProgram(conf)
 	err := gp.WriteToDisk(WorkDir)
 	if err != nil {
@@ -204,7 +200,6 @@ func compile(t *testing.T, conf microsmith.ProgramConf) {
 func TestCompile(t *testing.T) {
 	compile(t,
 		microsmith.ProgramConf{
-			FuncNum:    2,
 			MultiPkg:   false,
 			TypeParams: false,
 		})
@@ -213,7 +208,6 @@ func TestCompile(t *testing.T) {
 func TestCompileMultiPkg(t *testing.T) {
 	compile(t,
 		microsmith.ProgramConf{
-			FuncNum:    2,
 			MultiPkg:   true,
 			TypeParams: false,
 		})
@@ -222,7 +216,6 @@ func TestCompileMultiPkg(t *testing.T) {
 func TestCompileTypeParams(t *testing.T) {
 	compile(t,
 		microsmith.ProgramConf{
-			FuncNum:    2,
 			MultiPkg:   false,
 			TypeParams: true,
 		})
@@ -231,15 +224,9 @@ func TestCompileTypeParams(t *testing.T) {
 func TestCompileMultiPkgTypeParams(t *testing.T) {
 	compile(t,
 		microsmith.ProgramConf{
-			FuncNum:    2,
 			MultiPkg:   true,
 			TypeParams: true,
 		})
-}
-
-var BenchConf = microsmith.ProgramConf{
-	MultiPkg: false,
-	FuncNum:  4,
 }
 
 var gp *ast.File
@@ -247,7 +234,7 @@ var gp *ast.File
 func BenchmarkProgram(b *testing.B) {
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
-		db := microsmith.NewProgramBuilder(BenchConf)
+		db := microsmith.NewProgramBuilder(microsmith.ProgramConf{})
 		gp = db.File("a", 0)
 	}
 }

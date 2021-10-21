@@ -11,15 +11,13 @@ import (
 type ExprBuilder struct {
 	pb *ProgramBuilder
 
-	depth int // how deep the expr hierarchy is
-	conf  ProgramConf
+	depth int    // how deep the expr hierarchy is
 	scope *Scope // passed down by StmtBuilders
 }
 
-func NewExprBuilder(conf ProgramConf, s *Scope, pb *ProgramBuilder) *ExprBuilder {
+func NewExprBuilder(s *Scope, pb *ProgramBuilder) *ExprBuilder {
 	return &ExprBuilder{
 		pb:    pb,
-		conf:  conf,
 		scope: s,
 	}
 }
