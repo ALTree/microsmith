@@ -31,7 +31,7 @@ type ProgramConf struct {
 	TypeParams bool
 }
 
-func RandConf(rs *rand.Rand) ProgramConf {
+func RandConf() ProgramConf {
 	return ProgramConf{
 		FuncNum: 8,
 	}
@@ -41,19 +41,27 @@ func RandType() Type {
 	return AllTypes[rand.Intn(len(AllTypes))]
 }
 
-type DeclBuilder struct {
+type ProgramBuilder struct {
+	ctx        *Context
+	rs         *rand.Rand
 	sb         *StmtBuilder
+	eb         *ExprBuilder
 	typeparams TypeParams // Type Parameters available in the package
 }
 
-func NewDeclBuilder(rs *rand.Rand, conf ProgramConf) *DeclBuilder {
-	return &DeclBuilder{sb: NewStmtBuilder(rs, conf)}
+func NewProgramBuilder(conf ProgramConf) *ProgramBuilder {
+	pb := ProgramBuilder{
+		ctx: NewContext(),
+		rs:  rand.New(rand.NewSource(rand.Int63())),
+	}
+	pb.sb = NewStmtBuilder(conf, &pb)
+	return &pb
 }
 
-func (db *DeclBuilder) FuncDecl(i int, pkg string) *ast.FuncDecl {
+func (pb *ProgramBuilder) FuncDecl(i int, pkg string) *ast.FuncDecl {
 
 	fd := &ast.FuncDecl{
-		Name: db.FuncIdent(i),
+		Name: pb.FuncIdent(i),
 		Type: &ast.FuncType{
 			Func:    0,
 			Params:  new(ast.FieldList),
@@ -62,14 +70,14 @@ func (db *DeclBuilder) FuncDecl(i int, pkg string) *ast.FuncDecl {
 	}
 
 	// if not using typeparams, generate a body and return
-	if !db.Conf().TypeParams || pkg != "main" {
-		db.sb.currfunc = fd
-		fd.Body = db.sb.BlockStmt()
+	if !pb.Conf().TypeParams || pkg != "main" {
+		pb.sb.currfunc = fd
+		fd.Body = pb.sb.BlockStmt()
 		return fd
 	}
 
 	// otherwise, add them
-	tp, tps := db.typeparams, []*ast.Field{}
+	tp, tps := pb.typeparams, []*ast.Field{}
 	for i := 0; i < 1+rand.Intn(3); i++ {
 		tps = append(
 			tps,
@@ -81,12 +89,12 @@ func (db *DeclBuilder) FuncDecl(i int, pkg string) *ast.FuncDecl {
 	}
 
 	fd.Type.TypeParams = &ast.FieldList{List: tps}
-	db.sb.currfunc = fd // this needs to be before the BlockStmt()
-	fd.Body = db.sb.BlockStmt()
+	pb.sb.currfunc = fd // this needs to be before the BlockStmt()
+	fd.Body = pb.sb.BlockStmt()
 	return fd
 }
 
-func (db *DeclBuilder) FuncIdent(i int) *ast.Ident {
+func (pb *ProgramBuilder) FuncIdent(i int) *ast.Ident {
 	id := new(ast.Ident)
 	id.Obj = &ast.Object{
 		Kind: ast.Fun,
@@ -97,16 +105,16 @@ func (db *DeclBuilder) FuncIdent(i int) *ast.Ident {
 	return id
 }
 
-func (db *DeclBuilder) Conf() ProgramConf {
-	return db.sb.conf
+func (pb *ProgramBuilder) Conf() ProgramConf {
+	return pb.sb.conf
 }
 
-func (db *DeclBuilder) File(pkg string, id uint64) *ast.File {
+func (pb *ProgramBuilder) File(pkg string, id uint64) *ast.File {
 	af := new(ast.File)
 	af.Name = &ast.Ident{0, pkg, nil}
 	af.Decls = []ast.Decl{}
 
-	if pkg == "main" && db.Conf().MultiPkg {
+	if pkg == "main" && pb.Conf().MultiPkg {
 		af.Decls = append(af.Decls, MakeImport(fmt.Sprintf(`"prog%v_a"`, id)))
 	}
 
@@ -117,43 +125,43 @@ func (db *DeclBuilder) File(pkg string, id uint64) *ast.File {
 	// (to avoid "unused package" errors)
 	af.Decls = append(af.Decls, MakeUsePakage(`"math"`))
 
-	tp := db.Conf().TypeParams
+	tp := pb.Conf().TypeParams
 	if tp && pkg == "main" {
 		for i := 0; i < 1+rand.Intn(6); i++ {
-			c, tp := db.MakeRandConstraint(fmt.Sprintf("I%v", i))
+			c, tp := pb.MakeRandConstraint(fmt.Sprintf("I%v", i))
 			af.Decls = append(af.Decls, c)
-			db.typeparams = append(db.typeparams, tp)
+			pb.typeparams = append(pb.typeparams, tp)
 		}
 	}
-	db.sb.typeparams = db.typeparams
+	pb.sb.typeparams = pb.typeparams
 
 	// In the global scope:
 	//   var i int
 	// So we always have an int available
 	af.Decls = append(af.Decls, MakeInt())
-	db.sb.scope.AddVariable(&ast.Ident{Name: "i"}, BasicType{"int"})
+	pb.sb.scope.AddVariable(&ast.Ident{Name: "i"}, BasicType{"int"})
 
 	// Now half a dozen top-level variables
 	for i := 1; i <= 6; i++ {
 		t := RandType()
-		if db.sb.rs.Intn(3) == 0 {
+		if pb.rs.Intn(3) == 0 {
 			t = PointerOf(t)
 		}
-		if db.sb.rs.Intn(5) == 0 {
+		if pb.rs.Intn(5) == 0 {
 			t = ArrayOf(t)
 		}
-		af.Decls = append(af.Decls, db.MakeVar(t, i))
-		db.sb.scope.AddVariable(&ast.Ident{Name: fmt.Sprintf("V%v", i)}, t)
+		af.Decls = append(af.Decls, pb.MakeVar(t, i))
+		pb.sb.scope.AddVariable(&ast.Ident{Name: fmt.Sprintf("V%v", i)}, t)
 	}
 
-	fcnt := db.Conf().FuncNum
+	fcnt := pb.Conf().FuncNum
 	if pkg != "main" {
 		fcnt = 1
 	}
 
 	// Declare fcnt top-level functions
 	for i := 0; i < fcnt; i++ {
-		af.Decls = append(af.Decls, db.FuncDecl(i, pkg))
+		af.Decls = append(af.Decls, pb.FuncDecl(i, pkg))
 	}
 
 	// If we're not building a main package, we're done. Otherwise,
@@ -178,7 +186,7 @@ func (db *DeclBuilder) File(pkg string, id uint64) *ast.File {
 				// it in the call.
 				var indices []ast.Expr
 				for _, typ := range f.Type.TypeParams.List {
-					types := db.typeparams.FindByName(typ.Type.(*ast.Ident).Name).Types
+					types := pb.typeparams.FindByName(typ.Type.(*ast.Ident).Name).Types
 					indices = append(indices, types[rand.Intn(len(types))].Ast())
 				}
 				ce.Fun = &ast.IndexListExpr{X: f.Name, Indices: indices}
@@ -194,11 +202,11 @@ func (db *DeclBuilder) File(pkg string, id uint64) *ast.File {
 	}
 
 	// call the func in package a
-	if db.Conf().MultiPkg {
+	if pb.Conf().MultiPkg {
 		var ce ast.CallExpr
 		ce.Fun = &ast.SelectorExpr{
 			X:   &ast.Ident{Name: "a"},
-			Sel: db.FuncIdent(0),
+			Sel: pb.FuncIdent(0),
 		}
 		mainF.Body.List = append(
 			mainF.Body.List,
@@ -259,12 +267,12 @@ func MakeInt() *ast.GenDecl {
 	}
 }
 
-func (db *DeclBuilder) MakeRandConstraint(name string) (*ast.GenDecl, TypeParam) {
+func (pb *ProgramBuilder) MakeRandConstraint(name string) (*ast.GenDecl, TypeParam) {
 	types := make([]Type, len(AllTypes))
 	copy(types, AllTypes)
-	db.sb.rs.Shuffle(len(types), func(i, j int) { types[i], types[j] = types[j], types[i] })
+	pb.rs.Shuffle(len(types), func(i, j int) { types[i], types[j] = types[j], types[i] })
 
-	types = types[:2+db.sb.rs.Intn(len(types)-2)]
+	types = types[:2+pb.rs.Intn(len(types)-2)]
 
 	// runte overlaps with int32, not allowed in constraints. Must
 	// remove rune if it's in the list.
@@ -292,7 +300,7 @@ func (db *DeclBuilder) MakeRandConstraint(name string) (*ast.GenDecl, TypeParam)
 	return decl, TypeParam{Types: types, N: &ast.Ident{Name: name}}
 }
 
-func (db *DeclBuilder) MakeVar(t Type, i int) *ast.GenDecl {
+func (pb *ProgramBuilder) MakeVar(t Type, i int) *ast.GenDecl {
 	return &ast.GenDecl{
 		Tok: token.VAR,
 		Specs: []ast.Spec{
@@ -302,7 +310,7 @@ func (db *DeclBuilder) MakeVar(t Type, i int) *ast.GenDecl {
 				},
 				Type: t.Ast(),
 				Values: []ast.Expr{
-					db.sb.eb.Expr(t),
+					pb.sb.eb.Expr(t),
 				},
 			},
 		},

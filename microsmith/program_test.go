@@ -3,7 +3,6 @@ package microsmith_test
 import (
 	"go/ast"
 	"io/ioutil"
-	"math/rand"
 	"os"
 	"testing"
 
@@ -51,9 +50,8 @@ var TestConfigurations = map[string]microsmith.ProgramConf{
 
 // check n generated programs with go/types (in-memory)
 func testProgramGoTypes(t *testing.T, n int, conf microsmith.ProgramConf) {
-	rs := rand.New(rand.NewSource(7411))
 	for i := 0; i < n; i++ {
-		gp := microsmith.NewProgram(rs, conf)
+		gp := microsmith.NewProgram(conf)
 		err := gp.Check()
 		if err != nil {
 			tmpfile, _ := ioutil.TempFile("", "fail*.go")
@@ -70,9 +68,8 @@ func TestRandConf(t *testing.T) {
 	if testing.Short() {
 		n = 5
 	}
-	rs := rand.New(rand.NewSource(42))
 	for i := 0; i < 10; i++ {
-		conf := microsmith.RandConf(rs)
+		conf := microsmith.RandConf()
 		testProgramGoTypes(t, n, conf)
 	}
 }
@@ -147,10 +144,9 @@ func TestMultiPkg(t *testing.T) {
 		}
 	}
 
-	rand := rand.New(rand.NewSource(42))
-	conf := microsmith.RandConf(rand)
+	conf := microsmith.RandConf()
 	conf.MultiPkg = true
-	gp := microsmith.NewProgram(rand, conf)
+	gp := microsmith.NewProgram(conf)
 	err := gp.WriteToDisk(WorkDir)
 	if err != nil {
 		t.Fatalf("Could not write to file: %s", err)
@@ -184,7 +180,7 @@ func compile(t *testing.T, conf microsmith.ProgramConf) {
 
 	keepdir := false
 	for i := 0; i < lim; i++ {
-		gp := microsmith.NewProgram(rand.New(rand.NewSource(42)), conf)
+		gp := microsmith.NewProgram(conf)
 		err := gp.WriteToDisk(WorkDir)
 		if err != nil {
 			t.Fatalf("Could not write to file: %s", err)
@@ -250,9 +246,8 @@ var gp *ast.File
 
 func BenchmarkProgram(b *testing.B) {
 	b.ReportAllocs()
-	rand := rand.New(rand.NewSource(19))
 	for i := 0; i < b.N; i++ {
-		db := microsmith.NewDeclBuilder(rand, BenchConf)
+		db := microsmith.NewProgramBuilder(BenchConf)
 		gp = db.File("a", 0)
 	}
 }

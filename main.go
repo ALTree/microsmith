@@ -38,6 +38,7 @@ var archs []string
 func main() {
 
 	flag.Parse()
+	rand.Seed(int64(time.Now().UnixNano()))
 
 	if *debugF {
 		debugRun()
@@ -123,10 +124,7 @@ var crashWhitelist = []*regexp.Regexp{
 }
 
 func Fuzz(id uint64, bo microsmith.BuildOptions) {
-	rs := rand.New(
-		rand.NewSource(int64(0xfaff0011 * id * uint64(time.Now().UnixNano()))),
-	)
-	conf := microsmith.RandConf(rs)
+	conf := microsmith.RandConf()
 	conf.MultiPkg = *multiPkgF
 	conf.TypeParams = *tpF
 
@@ -134,13 +132,13 @@ func Fuzz(id uint64, bo microsmith.BuildOptions) {
 	for {
 		counter++
 		if counter == 30 {
-			conf = microsmith.RandConf(rs)
+			conf = microsmith.RandConf()
 			conf.MultiPkg = *multiPkgF
 			conf.TypeParams = *tpF
 			counter = 0
 		}
 
-		gp := microsmith.NewProgram(rs, conf)
+		gp := microsmith.NewProgram(conf)
 
 		err := gp.Check()
 		if err != nil {
@@ -204,8 +202,7 @@ func debugRun() {
 		FuncNum:    2,
 		TypeParams: *tpF,
 	}
-	rs := rand.New(rand.NewSource(int64(uint64(time.Now().UnixNano()))))
-	gp := microsmith.NewProgram(rs, conf)
+	gp := microsmith.NewProgram(conf)
 	err := gp.Check()
 	fmt.Println(gp)
 	if err != nil {

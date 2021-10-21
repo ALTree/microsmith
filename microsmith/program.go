@@ -15,7 +15,6 @@ import (
 	"os"
 	"os/exec"
 	"strings"
-	"time"
 )
 
 type Program struct {
@@ -45,27 +44,26 @@ type CodeOptions struct {
 var CheckSeed int
 
 func init() {
-	rs := rand.New(rand.NewSource(time.Now().UnixNano()))
-	CheckSeed = rs.Int() % 1e5
+	CheckSeed = rand.Int() % 1e5
 }
 
-func NewProgram(rs *rand.Rand, conf ProgramConf) *Program {
+func NewProgram(conf ProgramConf) *Program {
 	pg := &Program{
-		id:    rs.Uint64(),
+		id:    rand.Uint64(),
 		conf:  conf,
 		files: make([]*File, 0),
 	}
 
 	if pg.conf.MultiPkg {
-		pg.files = append(pg.files, pg.NewFile(rs, "a"))
+		pg.files = append(pg.files, pg.NewFile("a"))
 	}
-	pg.files = append(pg.files, pg.NewFile(rs, "main"))
+	pg.files = append(pg.files, pg.NewFile("main"))
 
 	return pg
 }
 
-func (gp *Program) NewFile(rs *rand.Rand, pkg string) *File {
-	db := NewDeclBuilder(rs, gp.conf)
+func (gp *Program) NewFile(pkg string) *File {
+	db := NewProgramBuilder(gp.conf)
 	var buf bytes.Buffer
 	printer.Fprint(&buf, token.NewFileSet(), db.File(pkg, gp.id))
 	src := bytes.ReplaceAll(buf.Bytes(), []byte("func "), []byte("\nfunc "))

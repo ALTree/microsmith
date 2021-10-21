@@ -4,21 +4,21 @@ import (
 	"fmt"
 	"go/ast"
 	"go/token"
-	"math/rand"
 	"strconv"
 	"strings"
 )
 
 type ExprBuilder struct {
-	rs    *rand.Rand // randomness source
-	depth int        // how deep the expr hierarchy is
+	pb *ProgramBuilder
+
+	depth int // how deep the expr hierarchy is
 	conf  ProgramConf
 	scope *Scope // passed down by StmtBuilders
 }
 
-func NewExprBuilder(rs *rand.Rand, conf ProgramConf, s *Scope) *ExprBuilder {
+func NewExprBuilder(conf ProgramConf, s *Scope, pb *ProgramBuilder) *ExprBuilder {
 	return &ExprBuilder{
-		rs:    rs,
+		pb:    pb,
 		conf:  conf,
 		scope: s,
 	}
@@ -27,11 +27,11 @@ func NewExprBuilder(rs *rand.Rand, conf ProgramConf, s *Scope) *ExprBuilder {
 // Returns true if the expression tree currently being built is
 // allowed to become deeper.
 func (eb *ExprBuilder) Deepen() bool {
-	return (eb.depth <= 6) && (eb.rs.Float64() < 0.7)
+	return (eb.depth <= 6) && (eb.pb.rs.Float64() < 0.7)
 }
 
 func (eb *ExprBuilder) chooseToken(tokens []token.Token) token.Token {
-	return tokens[eb.rs.Intn(len(tokens))]
+	return tokens[eb.pb.rs.Intn(len(tokens))]
 }
 
 func (eb *ExprBuilder) BasicLit(t BasicType) ast.Expr {
@@ -39,19 +39,19 @@ func (eb *ExprBuilder) BasicLit(t BasicType) ast.Expr {
 	switch t.Name() {
 	case "byte", "uint", "int", "int8", "int16", "int32", "int64":
 		bl.Kind = token.INT
-		bl.Value = strconv.Itoa(eb.rs.Intn(100))
+		bl.Value = strconv.Itoa(eb.pb.rs.Intn(100))
 	case "rune":
 		bl.Kind = token.CHAR
 		bl.Value = RandRune()
 	case "float32", "float64":
 		bl.Kind = token.FLOAT
-		bl.Value = strconv.FormatFloat(999*(eb.rs.Float64()), 'f', 1, 64)
+		bl.Value = strconv.FormatFloat(999*(eb.pb.rs.Float64()), 'f', 1, 64)
 	case "complex128":
 		// There's no complex basiclit, generate an IMAG
 		bl.Kind = token.IMAG
-		bl.Value = strconv.FormatFloat(99*(eb.rs.Float64()), 'f', 2, 64) + "i"
+		bl.Value = strconv.FormatFloat(99*(eb.pb.rs.Float64()), 'f', 2, 64) + "i"
 	case "bool":
-		if eb.rs.Intn(2) == 0 {
+		if eb.pb.rs.Intn(2) == 0 {
 			return TrueIdent
 		} else {
 			return FalseIdent
@@ -74,7 +74,7 @@ func (eb *ExprBuilder) CompositeLit(t Type) *ast.CompositeLit {
 		// TODO(alb): also use []int{17: 999} syntax
 		cl := &ast.CompositeLit{Type: t.Ast()}
 		elems := []ast.Expr{}
-		for i := 0; i < eb.rs.Intn(5); i++ {
+		for i := 0; i < eb.pb.rs.Intn(5); i++ {
 			if eb.Deepen() {
 				elems = append(elems, eb.Expr(t.Base()))
 			} else {
@@ -130,7 +130,7 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 	switch t := t.(type) {
 
 	case BasicType:
-		switch eb.rs.Intn(7) {
+		switch eb.pb.rs.Intn(7) {
 		case 0, 1: // unary
 			if t.Name() == "string" {
 				return eb.VarOrLit(t)
@@ -149,10 +149,10 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 	case PointerType:
 		// Either return a literal of the requested pointer type, &x
 		// with x of type t.Base(), or nil.
-		vt, typeInScope := eb.scope.GetRandomVarOfType(t, eb.rs)
-		vst, baseInScope := eb.scope.GetRandomVarOfType(t.Base(), eb.rs)
+		vt, typeInScope := eb.scope.GetRandomVarOfType(t, eb.pb.rs)
+		vst, baseInScope := eb.scope.GetRandomVarOfType(t.Base(), eb.pb.rs)
 		if typeInScope && baseInScope {
-			if eb.rs.Intn(2) == 0 {
+			if eb.pb.rs.Intn(2) == 0 {
 				return vt.Name
 			} else {
 				return &ast.UnaryExpr{
@@ -192,7 +192,7 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 		}
 
 	case TypeParam:
-		v, ok := eb.scope.RandVarSubType(t, eb.rs)
+		v, ok := eb.scope.RandVarSubType(t, eb.pb.rs)
 		if !ok {
 			fmt.Println(eb.scope)
 			panic("Not typeparams in scope")
@@ -206,7 +206,7 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 
 func (eb *ExprBuilder) VarOrLit(t Type) ast.Expr {
 
-	vst, typeCanDerive := eb.scope.RandVarSubType(t, eb.rs)
+	vst, typeCanDerive := eb.scope.RandVarSubType(t, eb.pb.rs)
 
 	if !typeCanDerive || !eb.Deepen() {
 		switch t := t.(type) {
@@ -240,7 +240,7 @@ func (eb *ExprBuilder) VarOrLit(t Type) ast.Expr {
 
 	// Slice, once in a while.
 	if _, ok := vst.Type.(ArrayType); ok {
-		if t.Equal(vst.Type) && eb.rs.Intn(4) == 0 {
+		if t.Equal(vst.Type) && eb.pb.rs.Intn(4) == 0 {
 			return eb.SliceExpr(vst)
 		}
 	}
@@ -280,7 +280,7 @@ func (eb *ExprBuilder) SubTypeExpr(e ast.Expr, t, target Type) ast.Expr {
 // Returns e[...]
 func (eb *ExprBuilder) IndexExpr(e ast.Expr) *ast.IndexExpr {
 	var i ast.Expr
-	if eb.rs.Intn(2) == 0 && eb.Deepen() {
+	if eb.pb.rs.Intn(2) == 0 && eb.Deepen() {
 		i = eb.BinaryExpr(BasicType{"int"})
 	} else {
 		i = eb.VarOrLit(BasicType{"int"})
@@ -330,16 +330,16 @@ func (eb *ExprBuilder) SliceExpr(v Variable) *ast.SliceExpr {
 	}
 
 	var low, high ast.Expr
-	indV, hasInt := eb.scope.GetRandomVarOfType(BasicType{"int"}, eb.rs)
+	indV, hasInt := eb.scope.GetRandomVarOfType(BasicType{"int"}, eb.pb.rs)
 	if hasInt && eb.Deepen() {
-		if eb.rs.Intn(8) > 0 {
+		if eb.pb.rs.Intn(8) > 0 {
 			low = &ast.BinaryExpr{
 				X:  indV.Name,
 				Op: token.ADD,
 				Y:  eb.Expr(BasicType{"int"}),
 			}
 		}
-		if eb.rs.Intn(8) > 0 {
+		if eb.pb.rs.Intn(8) > 0 {
 			high = &ast.BinaryExpr{
 				X:  eb.Expr(BasicType{"int"}),
 				Op: token.ADD,
@@ -347,16 +347,16 @@ func (eb *ExprBuilder) SliceExpr(v Variable) *ast.SliceExpr {
 			}
 		}
 	} else {
-		if eb.rs.Intn(8) > 0 {
+		if eb.pb.rs.Intn(8) > 0 {
 			low = &ast.BasicLit{
 				Kind:  token.INT,
-				Value: strconv.Itoa(eb.rs.Intn(8)),
+				Value: strconv.Itoa(eb.pb.rs.Intn(8)),
 			}
 		}
-		if eb.rs.Intn(8) > 0 {
+		if eb.pb.rs.Intn(8) > 0 {
 			high = &ast.BasicLit{
 				Kind:  token.INT,
-				Value: strconv.Itoa(8 + eb.rs.Intn(17)),
+				Value: strconv.Itoa(8 + eb.pb.rs.Intn(17)),
 			}
 		}
 	}
@@ -373,7 +373,7 @@ func (eb *ExprBuilder) UnaryExpr(t Type) *ast.UnaryExpr {
 
 	// if there are pointers to t in scope, generate a t by
 	// dereferencing it with chance 0.5
-	if eb.rs.Intn(2) == 0 && eb.scope.HasType(PointerOf(t)) {
+	if eb.pb.rs.Intn(2) == 0 && eb.scope.HasType(PointerOf(t)) {
 		ue.Op = token.MUL
 		// See comment in Expr() for PointerType for why we can
 		// only rely on Expr() here.
@@ -449,7 +449,7 @@ func (eb *ExprBuilder) BinaryExpr(t Type) *ast.BinaryExpr {
 	case "complex128":
 		ue.Op = eb.chooseToken([]token.Token{token.ADD, token.SUB, token.MUL})
 	case "bool":
-		if eb.rs.Intn(2) == 0 {
+		if eb.pb.rs.Intn(2) == 0 {
 			t = RandType()
 			ops := []token.Token{token.EQL, token.NEQ}
 			if name := t.Name(); name != "bool" && name != "complex128" {
@@ -488,10 +488,10 @@ func (eb *ExprBuilder) BinaryExpr(t Type) *ast.BinaryExpr {
 		}
 
 		// make sure the RHS is not a constant expression
-		if vi, ok := eb.scope.RandVarSubType(t2, eb.rs); ok {
+		if vi, ok := eb.scope.RandVarSubType(t2, eb.pb.rs); ok {
 			ue.Y = eb.SubTypeExpr(vi.Name, vi.Type, t2)
 		} else { // otherwise, cast from an int
-			vi, ok := eb.scope.GetRandomVarOfType(BasicType{"int"}, eb.rs)
+			vi, ok := eb.scope.GetRandomVarOfType(BasicType{"int"}, eb.pb.rs)
 			if !ok {
 				panic("BinaryExpr: no int in scope")
 			}
@@ -570,7 +570,7 @@ func (eb *ExprBuilder) CallExpr(t Type, cet CallExprType) *ast.CallExpr {
 
 		// if we are in a defer, optionally add a recover call before
 		// the return statement.
-		if cet == DEFER && eb.rs.Intn(4) == 0 {
+		if cet == DEFER && eb.pb.rs.Intn(4) == 0 {
 			fl.Body.List = []ast.Stmt{
 				&ast.ExprStmt{&ast.CallExpr{Fun: &ast.Ident{Name: "recover"}}},
 				fl.Body.List[0],
@@ -611,7 +611,7 @@ func (eb *ExprBuilder) MakeFuncCall(v Variable) *ast.CallExpr {
 func (eb *ExprBuilder) MakeLenCall() *ast.CallExpr {
 	// for a len call, we want a string or an array
 	var typ Type
-	if eb.rs.Intn(2) == 0 {
+	if eb.pb.rs.Intn(2) == 0 {
 		typ = ArrayOf(RandType())
 	} else {
 		typ = BasicType{"string"}
