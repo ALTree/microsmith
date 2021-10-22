@@ -247,14 +247,16 @@ func (sb *StmtBuilder) BlockStmt() *ast.BlockStmt {
 
 	// And a few vars of the type parameters available in the
 	// function.
-	if sb.pb.ctx.constraints != nil {
-		// TODO(alb): implement
-		// for i := 0; i < 1+sb.pb.rs.Intn(3); i++ {
-		// 	randTypeParam := sb.pb.ctx.typeparams[0]
-		// 	ds, idents := sb.DeclStmt(1+sb.pb.rs.Intn(2), randTypeParam)
-		// 	stmts = append(stmts, ds)
-		// 	newVars = append(newVars, idents...)
-		// }
+	if tp := sb.pb.ctx.typeparams; tp != nil && len(*tp) > 0 {
+		for i := 0; i < 1+sb.pb.rs.Intn(3); i++ {
+			tpvar := (*tp)[sb.pb.rs.Intn(len(*tp))]
+			ds, idents := sb.DeclStmt(
+				1+sb.pb.rs.Intn(2),
+				MakeTypeParam(tpvar),
+			)
+			stmts = append(stmts, ds)
+			newVars = append(newVars, idents...)
+		}
 	}
 
 	var nStmts int
@@ -423,7 +425,7 @@ func (sb *StmtBuilder) DeclStmt(nVars int, t Type) (*ast.DeclStmt, []*ast.Ident)
 				fl.Body = sb.BlockStmt()
 				sb.inloop = oil
 			} else {
-				n := 2 + sb.pb.rs.Intn(3) // 2 to 4 stmts
+				n := 2 + sb.pb.rs.Intn(3)
 				stl := make([]ast.Stmt, 0, n)
 				for i := 0; i < n; i++ {
 					stl = append(stl, sb.AssignStmt())
@@ -450,27 +452,12 @@ func (sb *StmtBuilder) DeclStmt(nVars int, t Type) (*ast.DeclStmt, []*ast.Ident)
 		sb.labels = oldLabels
 
 	case TypeParam:
-		// for _, tp := range sb.currfunc.Type.TypeParams.List {
-		// 	fmt.Println(tp.Type.(*ast.Ident).Name, t2.N.Name, tp.Names[0].Name)
-		// 	if tp.Type.(*ast.Ident).Name == t2.N.Name {
-		// 		typ = &ast.Ident{
-		// 			Name: tp.Names[0].Name,
-		// 		}
-		// 		break
-		// 	}
-		// }
-
-		// TODO(alb): this is wrong, we don't declare a variable of
-		// the type t passed as an arg to the function we're in.
-		typ = &ast.Ident{
-			Name: fmt.Sprintf("G%v", 0),
-		}
+		typ = t2.Ast()
 
 	default:
 		panic("DeclStmt bad type " + t.Name())
 	}
 
-	// generate nVars ast.Idents
 	idents := make([]*ast.Ident, 0, nVars)
 	for i := 0; i < nVars; i++ {
 		idents = append(idents, sb.S().NewIdent(t))

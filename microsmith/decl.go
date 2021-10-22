@@ -75,7 +75,7 @@ func (pb *ProgramBuilder) FuncDecl(i int, pkg string) *ast.FuncDecl {
 
 	// If typeparams requested, use a few of the available one in the
 	// function signature, and add them to scope.
-	types, tps := make(Scope, 0, 4), []*ast.Field{}
+	tp, tps := make(Scope, 0, 4), []*ast.Field{}
 	for i := 0; i < 1+rand.Intn(3); i++ {
 		ident := &ast.Ident{Name: fmt.Sprintf("G%v", i)}
 		typ := pb.ctx.constraints[pb.rs.Intn(len(pb.ctx.constraints))]
@@ -83,9 +83,9 @@ func (pb *ProgramBuilder) FuncDecl(i int, pkg string) *ast.FuncDecl {
 			tps,
 			&ast.Field{Names: []*ast.Ident{ident}, Type: typ.N},
 		)
-		// types.AddVariable(ident, typ) // TODO(alb)
+		tp.AddVariable(ident, typ) // TODO(alb)
 	}
-	pb.ctx.types = &types
+	pb.ctx.typeparams = &tp
 
 	fd.Type.TypeParams = &ast.FieldList{List: tps}
 	pb.sb.currfunc = fd // this needs to be before the BlockStmt()

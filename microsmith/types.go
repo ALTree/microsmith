@@ -3,15 +3,16 @@ package microsmith
 import (
 	"fmt"
 	"go/ast"
+	"strings"
 )
 
 type Type interface {
-	Addressable() bool
-	Ast() ast.Expr
-	Equal(Type) bool
-	Name() string
-	Sliceable() bool
-	Contains(t Type) bool
+	Addressable() bool    // in the go specification sense
+	Ast() ast.Expr        // suitable for type declaration in the ast
+	Equal(t Type) bool    // is t of the same type
+	Name() string         // human-readable type name
+	Sliceable() bool      // can []
+	Contains(t Type) bool // does the type contain type t
 }
 
 // Name to use for variable of type t
@@ -61,15 +62,15 @@ func Ident(t Type) string {
 	case PointerType:
 		return "p" + Ident(t.Btype)
 	case TypeParam:
-		return "x"
+		return strings.ToLower(t.N.Name) + "_"
 	default:
 		panic("Ident: unknown type " + t.Name())
 	}
 }
 
-// -------------------------------- //
-//   basic                          //
-// -------------------------------- //
+// --------------------------------
+//   basic
+// --------------------------------
 
 type BasicType struct {
 	N string
@@ -80,7 +81,7 @@ func (t BasicType) Addressable() bool {
 }
 
 func (t BasicType) Ast() ast.Expr {
-	return TypeIdent(t.Name())
+	return TypeIdent(t.N)
 }
 
 func (t BasicType) Contains(t2 Type) bool {
@@ -121,9 +122,9 @@ func IsUint(t Type) bool {
 	}
 }
 
-// -------------------------------- //
-//   pointer                        //
-// -------------------------------- //
+// --------------------------------
+//   pointer
+// --------------------------------
 
 type PointerType struct {
 	Btype Type
@@ -169,9 +170,9 @@ func PointerOf(t Type) PointerType {
 	return PointerType{t}
 }
 
-// -------------------------------- //
-//   array                          //
-// -------------------------------- //
+// --------------------------------
+//   array
+// --------------------------------
 
 type ArrayType struct {
 	Etype Type
@@ -217,9 +218,9 @@ func ArrayOf(t Type) ArrayType {
 	return ArrayType{t}
 }
 
-// -------------------------------- //
-//   struct                         //
-// -------------------------------- //
+// --------------------------------
+//   struct
+// --------------------------------
 
 type StructType struct {
 	N      string
@@ -293,9 +294,9 @@ func (st StructType) Sliceable() bool {
 	return false
 }
 
-// -------------------------------- //
-//   func                           //
-// -------------------------------- //
+// --------------------------------
+//   func
+// --------------------------------
 
 type FuncType struct {
 	N     string
@@ -482,9 +483,9 @@ var PredeclaredFuncs = []FuncType{
 	MathLdexp,
 }
 
-// -------------------------------- //
-//   chan                           //
-// -------------------------------- //
+// --------------------------------
+//   Chan
+// --------------------------------
 
 type ChanType struct {
 	T Type
@@ -533,9 +534,9 @@ func ChanOf(t Type) ChanType {
 	return ChanType{t}
 }
 
-// -------------------------------- //
-//   map                            //
-// -------------------------------- //
+// --------------------------------
+//   map
+// --------------------------------
 
 type MapType struct {
 	KeyT, ValueT Type
@@ -580,13 +581,70 @@ func MapOf(kt, vt Type) MapType {
 	return MapType{kt, vt}
 }
 
-// ------------------------------------ //
-//   Type Parameter                     //
-// ------------------------------------ //
+// --------------------------------
+//   Contraint
+// --------------------------------
+
+// type I0 {        <---- N
+//   int | string   <-- Types
+// }
+type Constraint struct {
+	N     *ast.Ident
+	Types []Type
+}
+
+func (c Constraint) Addressable() bool {
+	return true
+}
+
+func (c Constraint) Ast() ast.Expr {
+	return c.N // TODO(alb): right?
+}
+
+func (c Constraint) Equal(t Type) bool {
+	if t2, ok := t.(Constraint); !ok {
+		return false
+	} else {
+		if len(c.Types) != len(t2.Types) {
+			return false
+		}
+		for i := range c.Types {
+			if !c.Types[i].Equal(t2.Types[i]) { // TODO(alb): fix, needs sorting
+				return false
+			}
+		}
+		return true
+	}
+}
+
+func (c Constraint) Name() string {
+	return c.N.Name
+}
+
+func (c Constraint) Sliceable() bool {
+	return false
+}
+
+func (c Constraint) Contains(t Type) bool {
+	return c.Equal(t)
+}
+
+func (c Constraint) String() string {
+	str := "{" + c.N.Name + " "
+	for _, t := range c.Types {
+		str += t.Name() + "|"
+	}
+	str = str[:len(str)-1] + "}"
+	return str
+}
+
+// --------------------------------
+//   TypeParam
+// --------------------------------
 
 type TypeParam struct {
-	Types []Type
-	N     *ast.Ident
+	N          *ast.Ident
+	Constraint Constraint
 }
 
 func (tp TypeParam) Addressable() bool {
@@ -601,20 +659,12 @@ func (tp TypeParam) Equal(t Type) bool {
 	if t2, ok := t.(TypeParam); !ok {
 		return false
 	} else {
-		if len(tp.Types) != len(t2.Types) {
-			return false
-		}
-		for i := range tp.Types {
-			if !tp.Types[i].Equal(t2.Types[i]) { // TODO(alb): fix, needs sorting
-				return false
-			}
-		}
-		return true
+		return tp.N.Name == t2.N.Name
 	}
 }
 
 func (tp TypeParam) Name() string {
-	return tp.String()
+	return tp.N.Name
 }
 
 func (tp TypeParam) Sliceable() bool {
@@ -625,25 +675,8 @@ func (tp TypeParam) Contains(t Type) bool {
 	return tp.Equal(t)
 }
 
-func (tp TypeParam) String() string {
-	str := "{" + tp.N.Name + " "
-	for _, t := range tp.Types {
-		str += t.Name() + "|"
-	}
-	str = str[:len(str)-1] + "}"
-	return str
-}
-
-// ------------------------------------ //
-//   Contraints                         //
-// ------------------------------------ //
-
-// type I0 {        <---- N
-//   int | string   <-- Types
-// }
-type Constraint struct {
-	N     *ast.Ident
-	Types []Type
+func MakeTypeParam(v Variable) TypeParam {
+	return TypeParam{N: v.Name, Constraint: v.Type.(Constraint)}
 }
 
 // ------------------------------------ //

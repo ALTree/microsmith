@@ -66,7 +66,7 @@ func (ls Scope) String() string {
 
 // NewIdent adds to the scope a new variable of Type t, and return a
 // pointer to it
-func (s *Scope) NewIdent(t Type) *ast.Ident {
+func (s *Scope) NewIdent(t Type, cid ...*ast.Ident) *ast.Ident {
 	tc := 0
 	switch t.(type) {
 	case FuncType:
@@ -112,9 +112,9 @@ func (s *Scope) NewIdent(t Type) *ast.Ident {
 			}
 		}
 
-	case TypeParam:
+	case Constraint:
 		for _, v := range *s {
-			if _, ok := v.Type.(TypeParam); ok {
+			if _, ok := v.Type.(Constraint); ok {
 				tc++
 			}
 		}

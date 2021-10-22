@@ -154,7 +154,7 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 			return eb.CallExpr(t, NOTDEFER)
 		}
 
-	case ArrayType, ChanType, FuncType, MapType, StructType:
+	case ArrayType, ChanType, FuncType, MapType, StructType, Constraint:
 		return eb.VarOrLit(t)
 
 	case PointerType:
