@@ -265,8 +265,20 @@ func MakeInt() *ast.GenDecl {
 }
 
 func (pb *ProgramBuilder) MakeRandConstraint(name string) (*ast.GenDecl, Constraint) {
-	types := make([]Type, len(AllTypes))
-	copy(types, AllTypes)
+	// types := make([]Type, len(AllTypes))
+	// copy(types, AllTypes)
+
+	types := []Type{
+		BasicType{"int"},
+		BasicType{"byte"},
+		BasicType{"int8"},
+		BasicType{"int16"},
+		BasicType{"int32"},
+		BasicType{"int64"},
+		BasicType{"uint"},
+		BasicType{"rune"},
+	}
+
 	pb.rs.Shuffle(len(types), func(i, j int) { types[i], types[j] = types[j], types[i] })
 
 	types = types[:2+pb.rs.Intn(len(types)-2)]

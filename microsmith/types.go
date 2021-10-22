@@ -3,6 +3,7 @@ package microsmith
 import (
 	"fmt"
 	"go/ast"
+	"math/rand"
 	"strings"
 )
 
@@ -673,6 +674,11 @@ func (tp TypeParam) Sliceable() bool {
 
 func (tp TypeParam) Contains(t Type) bool {
 	return tp.Equal(t)
+}
+
+func (tp TypeParam) RandomSubType() Type {
+	cs := tp.Constraint.Types
+	return cs[rand.Intn(len(cs))]
 }
 
 func MakeTypeParam(v Variable) TypeParam {

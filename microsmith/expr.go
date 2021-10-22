@@ -1,7 +1,6 @@
 package microsmith
 
 import (
-	"fmt"
 	"go/ast"
 	"go/token"
 	"strconv"
@@ -154,8 +153,18 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 			return eb.CallExpr(t, NOTDEFER)
 		}
 
-	case ArrayType, ChanType, FuncType, MapType, StructType, Constraint:
+	case ArrayType, ChanType, FuncType, MapType, StructType:
 		return eb.VarOrLit(t)
+
+	case TypeParam:
+		switch eb.pb.rs.Intn(3) {
+		case 0:
+			return eb.UnaryExpr(t)
+		case 1:
+			return eb.BinaryExpr(t)
+		default:
+			return eb.VarOrLit(t)
+		}
 
 	case PointerType:
 		// Either return a literal of the requested pointer type, &x
@@ -202,14 +211,6 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 			return &ast.Ident{Name: "nil"}
 		}
 
-	case TypeParam:
-		v, ok := eb.S().RandVarSubType(t, eb.pb.rs)
-		if !ok {
-			fmt.Println(eb.S())
-			panic("Not typeparams in scope")
-		}
-		return v.Name
-
 	default:
 		panic("Unimplemented type " + t.Name())
 	}
@@ -244,8 +245,14 @@ func (eb *ExprBuilder) VarOrLit(t Type) ast.Expr {
 			}
 		case PointerType, FuncType:
 			return &ast.Ident{Name: "nil"}
+		case TypeParam:
+			return &ast.CallExpr{
+				Fun:  t.Ast(),
+				Args: []ast.Expr{eb.BasicLit(t.RandomSubType().(BasicType))},
+			}
+
 		default:
-			panic("unsupported type " + t.Name())
+			panic("unhandles type " + t.Name())
 		}
 	}
 
@@ -284,7 +291,7 @@ func (eb *ExprBuilder) SubTypeExpr(e ast.Expr, t, target Type) ast.Expr {
 	case StructType:
 		return eb.SubTypeExpr(eb.StructFieldExpr(e, t, target), target, target)
 	default:
-		panic("unreachable")
+		panic("unhandled type " + t.Name())
 	}
 }
 
@@ -402,7 +409,11 @@ func (eb *ExprBuilder) UnaryExpr(t Type) *ast.UnaryExpr {
 	case "bool":
 		ue.Op = eb.chooseToken([]token.Token{token.NOT})
 	default:
-		panic("Unhandled type " + t.Name())
+		if _, ok := t.(TypeParam); ok {
+			ue.Op = eb.chooseToken([]token.Token{token.ADD, token.SUB, token.XOR})
+		} else {
+			panic("Unhandled type " + t.Name())
+		}
 	}
 
 	if eb.Deepen() {
@@ -474,9 +485,20 @@ func (eb *ExprBuilder) BinaryExpr(t Type) *ast.BinaryExpr {
 			ue.Op = eb.chooseToken([]token.Token{token.LAND, token.LOR})
 		}
 	case "string":
-		ue.Op = eb.chooseToken([]token.Token{token.ADD})
+		ue.Op = token.ADD
 	default:
-		panic("Unhandled type " + t.Name())
+		// TODO(alb): give Type an Ops method that lists the allowed op
+		if _, ok := t.(TypeParam); ok {
+			ue.Op = eb.chooseToken([]token.Token{
+				token.ADD, token.AND, token.AND_NOT, token.MUL,
+				token.OR, token.QUO, token.REM, token.SHL, token.SHR,
+				token.SUB, token.XOR,
+			})
+		} else {
+			panic("Unhandled type " + t.Name())
+
+		}
+
 	}
 
 	t2 := t
