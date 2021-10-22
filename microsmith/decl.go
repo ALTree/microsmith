@@ -25,10 +25,6 @@ var AllTypes = []Type{
 	BasicType{"string"},
 }
 
-func RandType() Type {
-	return AllTypes[rand.Intn(len(AllTypes))]
-}
-
 type ProgramBuilder struct {
 	ctx *Context
 	rs  *rand.Rand
@@ -145,7 +141,7 @@ func (pb *ProgramBuilder) File(pkg string, id uint64) *ast.File {
 
 	// Now half a dozen top-level variables
 	for i := 1; i <= 6; i++ {
-		t := RandType()
+		t := AllTypes[rand.Intn(len(AllTypes))]
 		if pb.rs.Intn(3) == 0 {
 			t = PointerOf(t)
 		}

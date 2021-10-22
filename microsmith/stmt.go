@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"go/ast"
 	"go/token"
-	"strconv"
 )
 
 // --------------------------------
@@ -239,24 +238,10 @@ func (sb *StmtBuilder) BlockStmt() *ast.BlockStmt {
 	// A new block means opening a new scope. Declare a few new vars
 	// of random types.
 	var newVars []*ast.Ident
-	for _, t := range sb.RandomTypes(3 + sb.pb.rs.Intn(6)) {
+	for _, t := range sb.pb.RandTypes(3 + sb.pb.rs.Intn(6)) {
 		newDecl, nv := sb.DeclStmt(1+sb.pb.rs.Intn(3), t)
 		stmts = append(stmts, newDecl)
 		newVars = append(newVars, nv...)
-	}
-
-	// And a few vars of the type parameters available in the
-	// function.
-	if tp := sb.pb.ctx.typeparams; tp != nil && len(*tp) > 0 {
-		for i := 0; i < 1+sb.pb.rs.Intn(3); i++ {
-			tpvar := (*tp)[sb.pb.rs.Intn(len(*tp))]
-			ds, idents := sb.DeclStmt(
-				1+sb.pb.rs.Intn(2),
-				MakeTypeParam(tpvar),
-			)
-			stmts = append(stmts, ds)
-			newVars = append(newVars, idents...)
-		}
 	}
 
 	var nStmts int
@@ -283,69 +268,6 @@ func (sb *StmtBuilder) BlockStmt() *ast.BlockStmt {
 
 	bs.List = stmts
 	return bs
-}
-
-func (sb *StmtBuilder) RandomTypes(n int) []Type {
-	if n < 1 {
-		panic("n < 1")
-	}
-
-	types := make([]Type, 0, n)
-	for i := 0; i < n; i++ {
-		types = append(types, sb.RandomType(false))
-	}
-
-	return types
-}
-
-func (sb *StmtBuilder) RandomType(comp bool) Type {
-	switch sb.pb.rs.Intn(14) {
-	case 0, 1:
-		if comp {
-			return RandType()
-		} else {
-			return ArrayOf(sb.RandomType(true))
-		}
-	case 2:
-		return ChanOf(sb.RandomType(true))
-	case 3, 4:
-		return MapOf(
-			RandType(), // map keys need to be comparable
-			sb.RandomType(true),
-		)
-	case 5, 6:
-		return PointerOf(sb.RandomType(true))
-	case 7:
-		return sb.RandStructType(comp)
-	case 8:
-		return sb.RandFuncType()
-	default:
-		return RandType()
-	}
-}
-
-func (sb *StmtBuilder) RandStructType(comparable bool) StructType {
-	st := StructType{"ST", []Type{}, []string{}}
-	for i := 0; i < sb.pb.rs.Intn(6); i++ {
-		t := sb.RandomType(true)
-		st.Ftypes = append(st.Ftypes, t)
-		st.Fnames = append(st.Fnames, Ident(t)+strconv.Itoa(i))
-	}
-	return st
-}
-
-func (sb *StmtBuilder) RandFuncType() FuncType {
-	args := make([]Type, 0, sb.pb.rs.Intn(5))
-
-	// arguments
-	for i := 0; i < cap(args); i++ {
-		args = append(args, sb.RandomType(true))
-	}
-
-	// return type
-	ret := []Type{sb.RandomType(true)}
-
-	return FuncType{"FU", args, ret, true}
 }
 
 // DeclStmt returns a DeclStmt where nVars new variables of type kind
@@ -586,7 +508,7 @@ func (sb *StmtBuilder) DeferStmt() *ast.DeferStmt {
 	if v, ok := sb.E().pb.ctx.scope.GetRandomFuncAnyType(); ok && sb.pb.rs.Intn(4) > 0 {
 		return &ast.DeferStmt{Call: sb.E().MakeFuncCall(v)}
 	} else {
-		return &ast.DeferStmt{Call: sb.E().CallExpr(RandType(), DEFER)}
+		return &ast.DeferStmt{Call: sb.E().CallExpr(sb.pb.RandBaseType(), DEFER)}
 	}
 }
 
@@ -613,7 +535,7 @@ func (sb *StmtBuilder) SwitchStmt() *ast.SwitchStmt {
 	sb.depth++
 	defer func() { sb.depth-- }()
 
-	t := RandType()
+	t := sb.pb.RandBaseType()
 	if sb.pb.rs.Intn(2) == 0 && sb.S().HasType(PointerOf(t)) {
 		// sometimes switch on a pointer value
 		t = PointerOf(t)
@@ -657,7 +579,7 @@ func (sb *StmtBuilder) SendStmt() *ast.SendStmt {
 		// no channels in scope, but we can send to a brand new one,
 		// i.e. generate
 		//   make(chan int) <- 1
-		t := RandType()
+		t := sb.pb.RandBaseType()
 		st.Chan = sb.E().VarOrLit(ChanType{T: t})
 		st.Value = sb.E().Expr(t)
 	} else {
@@ -698,7 +620,7 @@ func (sb *StmtBuilder) CommClause(def bool) *ast.CommClause {
 		// when no chan is in scope, we select from a newly made channel,
 		// i.e. we build and return
 		//    select <-make(chan <random type>)
-		t := RandType()
+		t := sb.pb.RandBaseType()
 		return &ast.CommClause{
 			Comm: &ast.ExprStmt{
 				X: &ast.UnaryExpr{
@@ -737,7 +659,7 @@ func (sb *StmtBuilder) ExprStmt() *ast.ExprStmt {
 
 	// len() is not allowed (it's not really a function), DEFER here
 	// prevents CallExpr to choose len as the function to call.
-	return &ast.ExprStmt{sb.E().CallExpr(RandType(), DEFER)}
+	return &ast.ExprStmt{sb.E().CallExpr(sb.pb.RandBaseType(), DEFER)}
 }
 
 var noName = ast.Ident{Name: "_"}
