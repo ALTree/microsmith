@@ -62,6 +62,11 @@ func (pb *ProgramBuilder) FuncDecl(i int, pkg string) *ast.FuncDecl {
 		},
 	}
 
+	defer func() {
+		// only available inside the function body
+		pb.ctx.typeparams = nil
+	}()
+
 	// if not using typeparams, generate a body and return
 	if !pb.Conf().TypeParams || pkg != "main" {
 		pb.sb.currfunc = fd
