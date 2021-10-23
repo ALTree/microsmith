@@ -99,7 +99,7 @@ func main() {
 	startTime := time.Now()
 
 	for i := uint64(1); i <= *pF; i++ {
-		go Fuzz(i, fz)
+		go Fuzz(fz)
 	}
 
 	ticker := time.Tick(30 * time.Second)
@@ -123,16 +123,14 @@ var crashWhitelist = []*regexp.Regexp{
 	//regexp.MustCompile("found illegal assignment"),
 }
 
-func Fuzz(id uint64, bo microsmith.BuildOptions) {
+func Fuzz(bo microsmith.BuildOptions) {
 	conf := microsmith.ProgramConf{
 		MultiPkg:   *multiPkgF,
 		TypeParams: *tpF,
 	}
 
 	for {
-
 		gp := microsmith.NewProgram(conf)
-
 		err := gp.Check()
 		if err != nil {
 			fmt.Printf("Program failed typechecking: %s\n%s", err, gp)
@@ -141,7 +139,7 @@ func Fuzz(id uint64, bo microsmith.BuildOptions) {
 
 		err = gp.WriteToDisk(*workdirF)
 		if err != nil {
-			fmt.Printf("Could not write program to file: %s", err)
+			fmt.Printf("Could not write program to disk: %s", err)
 			os.Exit(2)
 		}
 
@@ -151,7 +149,7 @@ func Fuzz(id uint64, bo microsmith.BuildOptions) {
 				60*time.Second,
 				func() {
 					gp.MoveCrasher()
-					fmt.Printf("%v took more than 60s to compile [GOARCH=%v]\n", gp.Name(), arch)
+					fmt.Printf("%v took too long to compile [GOARCH=%v]\n", gp.Name(), arch)
 					os.Exit(2)
 				},
 			)
