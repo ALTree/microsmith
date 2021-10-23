@@ -4,7 +4,7 @@ used to stress-test Go compilers.
 
 #### Bugs found
 
-##### gc compiler crashes (37)
+##### gc compiler crashes (38)
 
 - [#23504 internal compiler error: panic during layout](https://github.com/golang/go/issues/23504)
 - [#23889 panic: branch too far on arm64](https://github.com/golang/go/issues/23889)
@@ -43,6 +43,7 @@ used to stress-test Go compilers.
 - [#47723 internal compiler error: .dict already has a location](https://github.com/golang/go/issues/47723)
 - [#48026 internal compiler error: arg does not dominate](https://github.com/golang/go/issues/48026)
 - [#48191 data race in compiler building generic program](https://github.com/golang/go/issues/48191)
+- [#49122 internal compiler error: can't find source for MOVBload](https://github.com/golang/go/issues/49122)
 
 ##### gccgo (2)
 
