@@ -279,7 +279,6 @@ func (pb *ProgramBuilder) MakeRandConstraint(name string) (*ast.GenDecl, Constra
 		BasicType{"uint"},
 		BasicType{"float32"},
 		BasicType{"float64"},
-		// BasicType{"string"},
 	}
 
 	pb.rs.Shuffle(len(types), func(i, j int) { types[i], types[j] = types[j], types[i] })

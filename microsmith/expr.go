@@ -145,7 +145,7 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 			if t.Name() == "string" {
 				return eb.VarOrLit(t)
 			} else {
-				return eb.BinaryExpr(t)
+				return eb.UnaryExpr(t)
 			}
 		case 2, 3, 4, 5: // binary
 			return eb.BinaryExpr(t)
@@ -157,11 +157,13 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 		return eb.VarOrLit(t)
 
 	case TypeParam:
-		switch eb.pb.rs.Intn(3) {
+		switch eb.pb.rs.Intn(4) {
 		case 0:
 			return eb.UnaryExpr(t)
 		case 1:
 			return eb.BinaryExpr(t)
+		case 2:
+			return eb.CallExpr(t, NOTDEFER)
 		default:
 			return eb.VarOrLit(t)
 		}
@@ -246,9 +248,15 @@ func (eb *ExprBuilder) VarOrLit(t Type) ast.Expr {
 		case PointerType, FuncType:
 			return &ast.Ident{Name: "nil"}
 		case TypeParam:
-			return &ast.CallExpr{
-				Fun:  t.Ast(),
-				Args: []ast.Expr{eb.BasicLit(t.RandomSubType().(BasicType))},
+			st := t.RandomSubType()
+			switch t2 := st.(type) {
+			case BasicType:
+				return &ast.CallExpr{
+					Fun:  t.Ast(),
+					Args: []ast.Expr{eb.BasicLit(t2)},
+				}
+			default:
+				panic("TODO(alb)")
 			}
 
 		default:
@@ -399,7 +407,12 @@ func (eb *ExprBuilder) UnaryExpr(t Type) *ast.UnaryExpr {
 		return ue
 	}
 
-	ue.Op = eb.chooseToken(UnaryOps(t))
+	ops := UnaryOps(t)
+	if len(ops) > 0 {
+		ue.Op = eb.chooseToken(ops)
+	} else {
+		panic("TODO(alb)")
+	}
 
 	if eb.Deepen() {
 		ue.X = eb.Expr(t)

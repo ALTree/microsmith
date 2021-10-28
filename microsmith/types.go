@@ -742,7 +742,7 @@ func UnaryOps(t Type) []token.Token {
 	case TypeParam:
 		return t2.CommonOps(UnaryOps)
 	default:
-		panic("Unhandled Type " + t.Name())
+		return []token.Token{}
 	}
 }
 
