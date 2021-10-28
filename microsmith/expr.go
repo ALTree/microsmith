@@ -393,28 +393,13 @@ func (eb *ExprBuilder) UnaryExpr(t Type) *ast.UnaryExpr {
 	// dereferencing it with chance 0.5
 	if eb.pb.rs.Intn(2) == 0 && eb.S().HasType(PointerOf(t)) {
 		ue.Op = token.MUL
-		// See comment in Expr() for PointerType for why we can
-		// only rely on Expr() here.
+		// See comment in Expr() for PointerType on why we must call
+		// Expr() here.
 		ue.X = eb.Expr(PointerOf(t))
 		return ue
 	}
 
-	switch t.Name() {
-	case "byte", "uint":
-		ue.Op = eb.chooseToken([]token.Token{token.ADD})
-	case "int", "rune", "int8", "int16", "int32", "int64":
-		ue.Op = eb.chooseToken([]token.Token{token.ADD, token.SUB, token.XOR})
-	case "float32", "float64", "complex128":
-		ue.Op = eb.chooseToken([]token.Token{token.ADD, token.SUB})
-	case "bool":
-		ue.Op = eb.chooseToken([]token.Token{token.NOT})
-	default:
-		if _, ok := t.(TypeParam); ok {
-			ue.Op = eb.chooseToken([]token.Token{token.ADD, token.SUB, token.XOR})
-		} else {
-			panic("Unhandled type " + t.Name())
-		}
-	}
+	ue.Op = eb.chooseToken(UnaryOps(t))
 
 	if eb.Deepen() {
 		ue.X = eb.Expr(t)
@@ -428,78 +413,19 @@ func (eb *ExprBuilder) UnaryExpr(t Type) *ast.UnaryExpr {
 func (eb *ExprBuilder) BinaryExpr(t Type) *ast.BinaryExpr {
 	ue := new(ast.BinaryExpr)
 
-	switch t.Name() {
-	case "byte", "uint", "int8", "int16", "int32", "int64":
-		ue.Op = eb.chooseToken([]token.Token{
-			token.ADD, token.AND, token.AND_NOT, token.MUL,
-			token.OR, token.QUO, token.REM, token.SHL, token.SHR,
-			token.SUB, token.XOR,
-		})
-	case "int":
-		// We can't generate shifts for ints, because int expressions
-		// are used as args for float64() conversions, and in this:
-		//
-		//   var i int = 2
-		// 	 float64(8 >> i)
-		//
-		// 8 is actually of type float64; because, from the spec:
-		//
-		//   If the left operand of a non-constant shift expression is
-		//   an untyped constant, it is first implicitly converted to
-		//   the type it would assume if the shift expression were
-		//   replaced by its left operand alone.
-		//
-		// ans apparently in float64(8), 8 is a float64. So
-		//
-		//   float64(8 >> i)
-		//
-		// fails to compile with error:
-		//
-		//   invalid operation: 8 >> i (shift of type float64)
-		ue.Op = eb.chooseToken([]token.Token{
-			token.ADD, token.AND, token.AND_NOT, token.MUL,
-			token.OR, token.QUO, token.REM, /*token.SHL, token.SHR,*/
-			token.SUB, token.XOR,
-		})
-	case "rune":
-		ue.Op = eb.chooseToken([]token.Token{
-			token.ADD, token.AND, token.AND_NOT,
-			token.OR, token.SHR, token.SUB, token.XOR,
-		})
-	case "float32", "float64":
-		ue.Op = eb.chooseToken([]token.Token{token.ADD, token.SUB, token.MUL, token.QUO})
-	case "complex128":
-		ue.Op = eb.chooseToken([]token.Token{token.ADD, token.SUB, token.MUL})
-	case "bool":
-		if eb.pb.rs.Intn(2) == 0 {
-			t = eb.pb.RandBaseType()
-			ops := []token.Token{token.EQL, token.NEQ}
-			if name := t.Name(); name != "bool" && name != "complex128" {
-				ops = append(ops, []token.Token{
-					token.LSS, token.LEQ,
-					token.GTR, token.GEQ,
-				}...)
-			}
-			ue.Op = eb.chooseToken(ops)
-		} else {
-			ue.Op = eb.chooseToken([]token.Token{token.LAND, token.LOR})
+	ops := BinOps(t)
+	if t.Name() == "bool" && eb.pb.rs.Intn(2) == 0 {
+		// for booleans, we 50/50 between <bool> BOOL_OP <bool> and
+		// <any comparable> COMPARISON <any comparable>.
+		t = eb.pb.RandBaseType()
+		ops = []token.Token{token.EQL, token.NEQ}
+		if t.Name() != "bool" && t.Name() != "complex128" {
+			ops = append(ops, []token.Token{
+				token.LSS, token.LEQ,
+				token.GTR, token.GEQ}...)
 		}
-	case "string":
-		ue.Op = token.ADD
-	default:
-		// TODO(alb): give Type an Ops method that lists the allowed op
-		if _, ok := t.(TypeParam); ok {
-			ue.Op = eb.chooseToken([]token.Token{
-				token.ADD, token.AND, token.AND_NOT, token.MUL,
-				token.OR, token.QUO, token.REM, token.SHL, token.SHR,
-				token.SUB, token.XOR,
-			})
-		} else {
-			panic("Unhandled type " + t.Name())
-
-		}
-
 	}
+	ue.Op = eb.chooseToken(ops)
 
 	t2 := t
 	if ue.Op == token.SHR { // ensure rhs > 0 for shifts

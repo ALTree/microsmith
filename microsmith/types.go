@@ -3,6 +3,7 @@ package microsmith
 import (
 	"fmt"
 	"go/ast"
+	"go/token"
 	"math/rand"
 	"strings"
 )
@@ -716,3 +717,110 @@ func TypeIdent(t string) *ast.Ident {
 var LenIdent = &ast.Ident{Name: "len"}
 var TrueIdent = &ast.Ident{Name: "true"}
 var FalseIdent = &ast.Ident{Name: "false"}
+
+// ------------------------------------ //
+//   Ops                                //
+// ------------------------------------ //
+
+func UnaryOps(t Type) []token.Token {
+	switch t2 := t.(type) {
+	case BasicType:
+		switch t.Name() {
+		case "byte", "uint":
+			return []token.Token{token.ADD}
+		case "int", "rune", "int8", "int16", "int32", "int64":
+			return []token.Token{token.ADD, token.SUB, token.XOR}
+		case "float32", "float64", "complex128":
+			return []token.Token{token.ADD, token.SUB}
+		case "bool":
+			return []token.Token{token.NOT}
+		case "string":
+			return []token.Token{}
+		default:
+			panic("Unhandled BasicType " + t.Name())
+		}
+	case TypeParam:
+		return t2.CommonOps(UnaryOps)
+	default:
+		panic("Unhandled Type " + t.Name())
+	}
+}
+
+func BinOps(t Type) []token.Token {
+	switch t2 := t.(type) {
+
+	case BasicType:
+		switch t.Name() {
+		case "byte", "uint", "int8", "int16", "int32", "int64":
+			return []token.Token{
+				token.ADD, token.AND, token.AND_NOT, token.MUL,
+				token.OR, token.QUO, token.REM, token.SHL, token.SHR,
+				token.SUB, token.XOR,
+			}
+		case "int":
+			// We can't generate shifts for ints, because int expressions
+			// are used as args for float64() conversions, and in this:
+			//
+			//   var i int = 2
+			// 	 float64(8 >> i)
+			//
+			// 8 is actually of type float64; because, from the spec:
+			//
+			//   If the left operand of a non-constant shift expression is
+			//   an untyped constant, it is first implicitly converted to
+			//   the type it would assume if the shift expression were
+			//   replaced by its left operand alone.
+			//
+			// ans apparently in float64(8), 8 is a float64. So
+			//
+			//   float64(8 >> i)
+			//
+			// fails to compile with error:
+			//
+			//   invalid operation: 8 >> i (shift of type float64)
+			return []token.Token{
+				token.ADD, token.AND, token.AND_NOT, token.MUL,
+				token.OR, token.QUO, token.REM, /*token.SHL, token.SHR,*/
+				token.SUB, token.XOR,
+			}
+		case "rune":
+			return []token.Token{
+				token.ADD, token.AND, token.AND_NOT,
+				token.OR, token.SHR, token.SUB, token.XOR,
+			}
+		case "float32", "float64":
+			return []token.Token{token.ADD, token.SUB, token.MUL, token.QUO}
+		case "complex128":
+			return []token.Token{token.ADD, token.SUB, token.MUL}
+		case "bool":
+			return []token.Token{token.LAND, token.LOR}
+		case "string":
+			return []token.Token{token.ADD}
+		default:
+			panic("Unhandled BasicType " + t.Name())
+		}
+
+	case TypeParam:
+		return t2.CommonOps(BinOps)
+
+	default:
+		return []token.Token{}
+	}
+}
+
+func (t TypeParam) CommonOps(fn func(t Type) []token.Token) []token.Token {
+	// TODO(alb): cache this
+	m := make(map[token.Token]int)
+	for _, st := range t.Constraint.Types {
+		for _, t2 := range fn(st) {
+			m[t2]++
+		}
+	}
+	res := make([]token.Token, 0, 8)
+	for i, k := range m {
+		if k == len(t.Constraint.Types) {
+			res = append(res, i)
+		}
+	}
+	return res
+}
