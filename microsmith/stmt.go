@@ -52,7 +52,6 @@ func (sb *StmtBuilder) CanNest() bool {
 
 func (sb *StmtBuilder) Stmt() ast.Stmt {
 
-	// Assign statements don't deepen the hyerarchy.
 	if !sb.CanNest() {
 		return sb.AssignStmt()
 	}
@@ -505,7 +504,7 @@ func (sb *StmtBuilder) RangeStmt(arr Variable) *ast.RangeStmt {
 }
 
 func (sb *StmtBuilder) DeferStmt() *ast.DeferStmt {
-	if v, ok := sb.E().pb.ctx.scope.GetRandomFuncAnyType(); ok && sb.pb.rs.Intn(4) > 0 {
+	if v, ok := sb.S().GetRandomFuncAnyType(); ok && sb.pb.rs.Intn(4) > 0 {
 		return &ast.DeferStmt{Call: sb.E().MakeFuncCall(v)}
 	} else {
 		return &ast.DeferStmt{Call: sb.E().CallExpr(sb.pb.RandBaseType(), DEFER)}
