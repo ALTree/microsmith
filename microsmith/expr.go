@@ -520,20 +520,23 @@ func (eb *ExprBuilder) CallExpr(t Type, cet CallExprType) *ast.CallExpr {
 		} else {
 			retExpr = eb.VarOrLit(t)
 		}
-		retStmt := &ast.ReturnStmt{Results: []ast.Expr{retExpr}}
+
 		p, r := ft.MakeFieldLists(false, 0)
 		fl := &ast.FuncLit{
 			Type: &ast.FuncType{Params: p, Results: r},
-			Body: &ast.BlockStmt{List: []ast.Stmt{retStmt}},
+			Body: &ast.BlockStmt{List: []ast.Stmt{
+				eb.pb.sb.AssignStmt(),                         // one Stmt
+				&ast.ReturnStmt{Results: []ast.Expr{retExpr}}, // the return
+			}},
 		}
 
 		// if we are in a defer, optionally add a recover call before
 		// the return statement.
 		if cet == DEFER && eb.pb.rs.Intn(4) == 0 {
-			fl.Body.List = []ast.Stmt{
-				&ast.ExprStmt{&ast.CallExpr{Fun: &ast.Ident{Name: "recover"}}},
-				fl.Body.List[0],
-			}
+			fl.Body.List = append(
+				[]ast.Stmt{&ast.ExprStmt{&ast.CallExpr{Fun: &ast.Ident{Name: "recover"}}}},
+				fl.Body.List...,
+			)
 		}
 
 		// and then call it
