@@ -76,8 +76,8 @@ func (pb *ProgramBuilder) FuncDecl(i int, pkg string) *ast.FuncDecl {
 
 	// If typeparams requested, use a few of the available one in the
 	// function signature, and add them to scope.
-	tp, tps := make(Scope, 0, 4), []*ast.Field{}
-	for i := 0; i < 1+rand.Intn(3); i++ {
+	tp, tps := make(Scope, 0, 8), []*ast.Field{}
+	for i := 0; i < 1+rand.Intn(8); i++ {
 		ident := &ast.Ident{Name: fmt.Sprintf("G%v", i)}
 		typ := pb.ctx.constraints[pb.rs.Intn(len(pb.ctx.constraints))]
 		tps = append(
@@ -284,7 +284,7 @@ func (pb *ProgramBuilder) MakeRandConstraint(name string) (*ast.GenDecl, Constra
 
 	pb.rs.Shuffle(len(types), func(i, j int) { types[i], types[j] = types[j], types[i] })
 
-	types = types[:2+pb.rs.Intn(len(types)-2)]
+	types = types[:1+pb.rs.Intn(len(types)-1)]
 
 	// rune overlaps with int32, not allowed in constraints. Must
 	// remove rune if it's in the list.

@@ -55,7 +55,7 @@ func (pb ProgramBuilder) RandTypes(n int) []Type {
 // Returns a single random type (including structs, array, maps,
 // chans).
 func (pb ProgramBuilder) RandType(comp bool) Type {
-	switch pb.rs.Intn(14) {
+	switch pb.rs.Intn(20) {
 	case 0, 1:
 		if comp {
 			return pb.RandBaseType()
@@ -71,9 +71,9 @@ func (pb ProgramBuilder) RandType(comp bool) Type {
 		)
 	case 5, 6:
 		return PointerOf(pb.RandType(true))
-	case 7:
+	case 7, 8:
 		return pb.RandStructType(comp)
-	case 8:
+	case 9, 10:
 		return pb.RandFuncType()
 	default:
 		return pb.RandBaseType()
