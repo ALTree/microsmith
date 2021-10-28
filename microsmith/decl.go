@@ -277,29 +277,31 @@ func (pb *ProgramBuilder) MakeRandConstraint(name string) (*ast.GenDecl, Constra
 		BasicType{"int32"},
 		BasicType{"int64"},
 		BasicType{"uint"},
-		BasicType{"rune"},
 	}
 
 	pb.rs.Shuffle(len(types), func(i, j int) { types[i], types[j] = types[j], types[i] })
 
 	types = types[:2+pb.rs.Intn(len(types)-2)]
 
-	// runte overlaps with int32, not allowed in constraints. Must
+	// rune overlaps with int32, not allowed in constraints. Must
 	// remove rune if it's in the list.
-	ri := -1
-	for i := range types {
-		if types[i].Name() == "rune" {
-			ri = i
-			break
-		}
-	}
-	if ri != -1 {
-		types = append(types[:ri], types[ri+1:]...)
-	}
+	// ri := -1
+	// for i := range types {
+	// 	if types[i].Name() == "rune" {
+	// 		ri = i
+	// 		break
+	// 	}
+	// }
+	// if ri != -1 {
+	// 	types = append(types[:ri], types[ri+1:]...)
+	// }
 
 	src := "package p\n"
 	src += "type " + name + " interface{\n"
 	for _, t := range types {
+		if pb.rs.Intn(3) == 0 {
+			src += "~"
+		}
 		src += t.Name() + "|"
 	}
 	src = strings.TrimRight(src, "|")
