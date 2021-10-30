@@ -508,6 +508,8 @@ func (eb *ExprBuilder) CallExpr(t Type, cet CallExprType) *ast.CallExpr {
 		switch {
 		case name == "len":
 			return eb.MakeLenCall()
+		case name == "copy":
+			return eb.MakeCopyCall()
 		case strings.HasPrefix(name, "math."):
 			return eb.MakeMathCall(v)
 		default:
@@ -584,19 +586,30 @@ func (eb *ExprBuilder) MakeFuncCall(v Variable) *ast.CallExpr {
 }
 
 func (eb *ExprBuilder) MakeLenCall() *ast.CallExpr {
-	// for a len call, we want a string or an array
 	var typ Type
 	if eb.pb.rs.Intn(2) == 0 {
 		typ = ArrayOf(eb.pb.RandBaseType())
 	} else {
 		typ = BasicType{"string"}
 	}
-
 	ce := &ast.CallExpr{Fun: LenIdent}
 	if eb.Deepen() {
 		ce.Args = []ast.Expr{eb.Expr(typ)}
 	} else {
 		ce.Args = []ast.Expr{eb.VarOrLit(typ)}
+	}
+
+	return ce
+}
+
+func (eb *ExprBuilder) MakeCopyCall() *ast.CallExpr {
+	// TODO(alb): copy([]byte, string) is also allowed
+	typ := ArrayOf(eb.pb.RandBaseType())
+	ce := &ast.CallExpr{Fun: CopyIdent}
+	if eb.Deepen() {
+		ce.Args = []ast.Expr{eb.Expr(typ), eb.Expr(typ)}
+	} else {
+		ce.Args = []ast.Expr{eb.VarOrLit(typ), eb.VarOrLit(typ)}
 	}
 
 	return ce

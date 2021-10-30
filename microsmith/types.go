@@ -388,6 +388,11 @@ var LenFun FuncType = FuncType{
 	Args: nil, // custom handling
 	Ret:  []Type{BasicType{"int"}},
 }
+var CopyFun FuncType = FuncType{
+	N:    "copy",
+	Args: nil, // custom handling
+	Ret:  []Type{BasicType{"int"}},
+}
 
 var Float32Float64Conv FuncType = FuncType{
 	N:    "float32",
@@ -468,6 +473,7 @@ var MathLdexp FuncType = FuncType{
 
 var PredeclaredFuncs = []FuncType{
 	LenFun,
+	CopyFun,
 	Float32Float64Conv,
 	Float64Float32Conv,
 	IntFloat64Conv,
@@ -715,6 +721,7 @@ func TypeIdent(t string) *ast.Ident {
 }
 
 var LenIdent = &ast.Ident{Name: "len"}
+var CopyIdent = &ast.Ident{Name: "copy"}
 var TrueIdent = &ast.Ident{Name: "true"}
 var FalseIdent = &ast.Ident{Name: "false"}
 
