@@ -56,7 +56,7 @@ func (sb *StmtBuilder) Stmt() ast.Stmt {
 		return sb.AssignStmt()
 	}
 
-	switch sb.pb.rs.Intn(10) {
+	switch sb.pb.rs.Intn(11) {
 	case 0:
 		return sb.AssignStmt()
 	case 1:
@@ -108,9 +108,11 @@ func (sb *StmtBuilder) Stmt() ast.Stmt {
 	case 8:
 		return sb.DeferStmt()
 	case 9:
+		return sb.GoStmt()
+	case 10:
 		return sb.ExprStmt()
 	default:
-		panic("bad Stmt index")
+		panic("bad Intn value")
 	}
 }
 
@@ -508,6 +510,14 @@ func (sb *StmtBuilder) DeferStmt() *ast.DeferStmt {
 		return &ast.DeferStmt{Call: sb.E().MakeFuncCall(v)}
 	} else {
 		return &ast.DeferStmt{Call: sb.E().CallExpr(sb.pb.RandBaseType(), DEFER)}
+	}
+}
+
+func (sb *StmtBuilder) GoStmt() *ast.GoStmt {
+	if v, ok := sb.S().GetRandomFuncAnyType(); ok && sb.pb.rs.Intn(4) > 0 {
+		return &ast.GoStmt{Call: sb.E().MakeFuncCall(v)}
+	} else {
+		return &ast.GoStmt{Call: sb.E().CallExpr(sb.pb.RandBaseType(), DEFER)}
 	}
 }
 
