@@ -104,7 +104,7 @@ func main() {
 
 	ticker := time.Tick(30 * time.Second)
 	for _ = range ticker {
-		fmt.Printf("Built %4d (%5.1f/min)  |  %v crashes",
+		fmt.Printf("Built %4d (%5.1f/min)  |  crashes: %v",
 			atomic.LoadInt64(&BuildCount),
 			float64(atomic.LoadInt64(&BuildCount))/time.Since(startTime).Minutes(),
 			atomic.LoadInt64(&CrashCount),
