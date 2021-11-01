@@ -582,7 +582,7 @@ func (eb *ExprBuilder) MakeFuncCall(v Variable) *ast.CallExpr {
 		}
 	}
 
-	panic("non-func v in MakeFuncCall")
+	panic("unreachable")
 }
 
 func (eb *ExprBuilder) MakeLenCall() *ast.CallExpr {
@@ -603,13 +603,19 @@ func (eb *ExprBuilder) MakeLenCall() *ast.CallExpr {
 }
 
 func (eb *ExprBuilder) MakeCopyCall() *ast.CallExpr {
-	// TODO(alb): copy([]byte, string) is also allowed
-	typ := ArrayOf(eb.pb.RandBaseType())
+	var typ1, typ2 Type
+	if eb.pb.rs.Intn(3) == 0 {
+		typ1, typ2 = ArrayOf(BasicType{N: "byte"}), BasicType{N: "string"}
+	} else {
+		typ1 = ArrayOf(eb.pb.RandBaseType())
+		typ2 = typ1
+	}
+
 	ce := &ast.CallExpr{Fun: CopyIdent}
 	if eb.Deepen() {
-		ce.Args = []ast.Expr{eb.Expr(typ), eb.Expr(typ)}
+		ce.Args = []ast.Expr{eb.Expr(typ1), eb.Expr(typ2)}
 	} else {
-		ce.Args = []ast.Expr{eb.VarOrLit(typ), eb.VarOrLit(typ)}
+		ce.Args = []ast.Expr{eb.VarOrLit(typ1), eb.VarOrLit(typ2)}
 	}
 
 	return ce
