@@ -660,12 +660,25 @@ func (sb *StmtBuilder) CommClause(def bool) *ast.CommClause {
 }
 
 func (sb *StmtBuilder) ExprStmt() *ast.ExprStmt {
-	if ch, ok := sb.S().GetRandomVarChan(sb.pb.rs); ok {
-		return &ast.ExprStmt{
-			X: sb.E().ChanReceiveExpr(ch.Name),
+
+	// Close(ch) or <-ch.
+	if ch, ok := sb.S().GetRandomVarChan(sb.pb.rs); ok && sb.pb.rs.Intn(2) == 0 {
+		if sb.pb.rs.Intn(2) == 0 {
+			return &ast.ExprStmt{
+				X: sb.E().ChanReceiveExpr(ch.Name),
+			}
+		} else {
+			return &ast.ExprStmt{
+				X: &ast.CallExpr{
+					Fun:  CloseIdent,
+					Args: []ast.Expr{ch.Name},
+				},
+			}
 		}
 	}
 
+	// Call a random function.
+	//
 	// len() is not allowed (it's not really a function), DEFER here
 	// prevents CallExpr to choose len as the function to call.
 	return &ast.ExprStmt{sb.E().CallExpr(sb.pb.RandBaseType(), DEFER)}

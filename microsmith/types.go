@@ -722,6 +722,7 @@ func TypeIdent(t string) *ast.Ident {
 
 var LenIdent = &ast.Ident{Name: "len"}
 var CopyIdent = &ast.Ident{Name: "copy"}
+var CloseIdent = &ast.Ident{Name: "close"}
 var TrueIdent = &ast.Ident{Name: "true"}
 var FalseIdent = &ast.Ident{Name: "false"}
 
