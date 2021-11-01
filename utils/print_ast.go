@@ -9,14 +9,9 @@ import (
 var src string = `
 package p
 
-func f[G1 I1, G2 I2]() {
-
+func f() {
+  a := []int{5: 1}
 }
-
-func main() {
-  f[int32, float32]()
-}
-
 `
 
 func main() {

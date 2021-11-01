@@ -81,14 +81,27 @@ func (eb *ExprBuilder) CompositeLit(t Type) *ast.CompositeLit {
 	case BasicType:
 		panic("No CompositeLit of type " + t.Name())
 	case ArrayType:
-		// TODO(alb): also use []int{17: 999} syntax
 		cl := &ast.CompositeLit{Type: t.Ast()}
 		elems := []ast.Expr{}
-		for i := 0; i < eb.pb.rs.Intn(5); i++ {
+		if eb.pb.rs.Intn(4) > 0 { // plain array literal
+			for i := 0; i < eb.pb.rs.Intn(5); i++ {
+				if eb.Deepen() {
+					elems = append(elems, eb.Expr(t.Base()))
+				} else {
+					elems = append(elems, eb.VarOrLit(t.Base()))
+				}
+			}
+		} else { // keyed literal (a single one, since dups are a compile error)
 			if eb.Deepen() {
-				elems = append(elems, eb.Expr(t.Base()))
+				elems = append(elems, &ast.KeyValueExpr{
+					Key:   eb.BasicLit(BasicType{N: "int"}),
+					Value: eb.Expr(t.Base()),
+				})
 			} else {
-				elems = append(elems, eb.VarOrLit(t.Base()))
+				elems = append(elems, &ast.KeyValueExpr{
+					Key:   eb.BasicLit(BasicType{N: "int"}),
+					Value: eb.VarOrLit(t.Base()),
+				})
 			}
 		}
 		cl.Elts = elems
