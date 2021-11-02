@@ -456,6 +456,11 @@ var UintptrIntConv FuncType = FuncType{
 	Args: []Type{BasicType{"int"}},
 	Ret:  []Type{BasicType{"uintptr"}},
 }
+var Int32UintptrConv FuncType = FuncType{
+	N:    "int32",
+	Args: []Type{BasicType{"uintptr"}},
+	Ret:  []Type{BasicType{"int32"}},
+}
 
 var MathSqrt FuncType = FuncType{
 	N:    "math.Sqrt",
@@ -483,6 +488,11 @@ var Sizeof FuncType = FuncType{
 	Args: nil, // custom handling
 	Ret:  []Type{BasicType{"uintptr"}},
 }
+var Alignof FuncType = FuncType{
+	N:    "unsafe.Alignof",
+	Args: nil, // custom handling
+	Ret:  []Type{BasicType{"uintptr"}},
+}
 
 var PredeclaredFuncs = []FuncType{
 	LenFun,
@@ -504,6 +514,7 @@ var PredeclaredFuncs = []FuncType{
 	MathNaN,
 	MathLdexp,
 	Sizeof,
+	Alignof,
 }
 
 // --------------------------------

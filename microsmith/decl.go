@@ -297,6 +297,7 @@ func (pb *ProgramBuilder) MakeRandConstraint(name string) (*ast.GenDecl, Constra
 		BasicType{"int32"},
 		BasicType{"int64"},
 		BasicType{"uint"},
+		BasicType{"uintptr"},
 		BasicType{"float32"},
 		BasicType{"float64"},
 	}

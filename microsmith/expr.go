@@ -523,8 +523,8 @@ func (eb *ExprBuilder) CallExpr(t Type, cet CallExprType) *ast.CallExpr {
 			return eb.MakeLenCall()
 		case name == "copy":
 			return eb.MakeCopyCall()
-		case name == "unsafe.Sizeof":
-			return eb.MakeSizeofCall()
+		case strings.HasPrefix(name, "unsafe."):
+			return eb.MakeUnsafeCall(v)
 		case strings.HasPrefix(name, "math."):
 			return eb.MakeMathCall(v)
 		default:
@@ -636,11 +636,11 @@ func (eb *ExprBuilder) MakeCopyCall() *ast.CallExpr {
 	return ce
 }
 
-func (eb *ExprBuilder) MakeSizeofCall() *ast.CallExpr {
+func (eb *ExprBuilder) MakeUnsafeCall(fun Variable) *ast.CallExpr {
 	ce := &ast.CallExpr{
 		Fun: &ast.SelectorExpr{
 			X:   &ast.Ident{Name: "unsafe"},
-			Sel: &ast.Ident{Name: "Sizeof"},
+			Sel: &ast.Ident{Name: fun.Name.Name[len("unsafe."):]},
 		},
 	}
 
