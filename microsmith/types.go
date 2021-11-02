@@ -38,6 +38,8 @@ func Ident(t Type) string {
 			return "i"
 		case "uint":
 			return "u"
+		case "uintptr":
+			return "up"
 		case "float32":
 			return "h"
 		case "float64":
@@ -449,6 +451,11 @@ var IntInt64Conv FuncType = FuncType{
 	Args: []Type{BasicType{"int64"}},
 	Ret:  []Type{BasicType{"int"}},
 }
+var UintptrIntConv FuncType = FuncType{
+	N:    "uintptr",
+	Args: []Type{BasicType{"int"}},
+	Ret:  []Type{BasicType{"uintptr"}},
+}
 
 var MathSqrt FuncType = FuncType{
 	N:    "math.Sqrt",
@@ -474,7 +481,7 @@ var MathLdexp FuncType = FuncType{
 var Sizeof FuncType = FuncType{
 	N:    "unsafe.Sizeof",
 	Args: nil, // custom handling
-	Ret:  []Type{BasicType{"uint"}},
+	Ret:  []Type{BasicType{"uintptr"}},
 }
 
 var PredeclaredFuncs = []FuncType{
@@ -491,6 +498,7 @@ var PredeclaredFuncs = []FuncType{
 	Int32Int8Conv,
 	Int8UintConv,
 	IntInt64Conv,
+	UintptrIntConv,
 	MathSqrt,
 	MathMax,
 	MathNaN,
@@ -712,6 +720,7 @@ var Idents = map[string]*ast.Ident{
 	"int32":      &ast.Ident{Name: "int32"},
 	"int64":      &ast.Ident{Name: "int64"},
 	"uint":       &ast.Ident{Name: "uint"},
+	"uintptr":    &ast.Ident{Name: "uintptr"},
 	"float32":    &ast.Ident{Name: "float32"},
 	"float64":    &ast.Ident{Name: "float64"},
 	"complex128": &ast.Ident{Name: "complex128"},
@@ -742,7 +751,7 @@ func UnaryOps(t Type) []token.Token {
 	switch t2 := t.(type) {
 	case BasicType:
 		switch t.Name() {
-		case "byte", "uint":
+		case "byte", "uint", "uintptr":
 			return []token.Token{token.ADD}
 		case "int", "rune", "int8", "int16", "int32", "int64":
 			return []token.Token{token.ADD, token.SUB, token.XOR}
@@ -772,6 +781,11 @@ func BinOps(t Type) []token.Token {
 				token.ADD, token.AND, token.AND_NOT, token.MUL,
 				token.OR, token.QUO, token.REM, token.SHL, token.SHR,
 				token.SUB, token.XOR,
+			}
+		case "uintptr":
+			return []token.Token{
+				token.ADD, token.AND, token.AND_NOT, token.MUL,
+				token.OR, token.XOR,
 			}
 		case "int":
 			// We can't generate shifts for ints, because int expressions

@@ -47,7 +47,7 @@ func (eb *ExprBuilder) chooseToken(tokens []token.Token) token.Token {
 func (eb *ExprBuilder) BasicLit(t BasicType) ast.Expr {
 	bl := new(ast.BasicLit)
 	switch t.Name() {
-	case "byte", "uint", "int", "int8", "int16", "int32", "int64":
+	case "byte", "uint", "uintptr", "int", "int8", "int16", "int32", "int64":
 		bl.Kind = token.INT
 		bl.Value = strconv.Itoa(eb.pb.rs.Intn(100))
 	case "rune":
@@ -241,7 +241,7 @@ func (eb *ExprBuilder) VarOrLit(t Type) ast.Expr {
 			bl := eb.BasicLit(t)
 			if t.Name() == "byte" ||
 				t.Name() == "int8" || t.Name() == "int16" || t.Name() == "int32" || t.Name() == "int64" ||
-				t.Name() == "uint" || t.Name() == "float32" {
+				t.Name() == "uint" || t.Name() == "uintptr" || t.Name() == "float32" {
 				bl = &ast.CallExpr{
 					Fun:  t.Ast(),
 					Args: []ast.Expr{bl},
@@ -651,7 +651,7 @@ func (eb *ExprBuilder) MakeSizeofCall() *ast.CallExpr {
 		ce.Args = []ast.Expr{eb.VarOrLit(typ)}
 	}
 
-	return &ast.CallExpr{Fun: BasicType{N: "uint"}.Ast(), Args: []ast.Expr{ce}}
+	return ce
 }
 
 func (eb *ExprBuilder) MakeMathCall(fun Variable) *ast.CallExpr {

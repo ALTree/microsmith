@@ -18,6 +18,7 @@ var AllTypes = []Type{
 	BasicType{"int32"},
 	BasicType{"int64"},
 	BasicType{"uint"},
+	BasicType{"uintptr"},
 	BasicType{"float32"},
 	BasicType{"float64"},
 	BasicType{"complex128"},
