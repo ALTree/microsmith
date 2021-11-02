@@ -123,11 +123,13 @@ func (pb *ProgramBuilder) File(pkg string, id uint64) *ast.File {
 	}
 
 	af.Decls = append(af.Decls, MakeImport(`"math"`))
+	af.Decls = append(af.Decls, MakeImport(`"unsafe"`))
 
 	// eg:
 	//   var _ = math.Sqrt
 	// (to avoid "unused package" errors)
 	af.Decls = append(af.Decls, MakeUsePakage(`"math"`))
+	af.Decls = append(af.Decls, MakeUsePakage(`"unsafe"`))
 
 	tp := pb.Conf().TypeParams
 	if tp && pkg == "main" {
@@ -236,6 +238,23 @@ func MakeUsePakage(p string) *ast.GenDecl {
 	case `"math"`:
 		se.X = &ast.Ident{Name: "math"}
 		se.Sel = &ast.Ident{Name: "Sqrt"}
+	case `"unsafe"`:
+		// var _ = unsafe.Sizeof is not allowed, we need to call it.
+		return &ast.GenDecl{
+			Tok: token.VAR,
+			Specs: []ast.Spec{
+				&ast.ValueSpec{
+					Names: []*ast.Ident{&ast.Ident{Name: "_"}},
+					Values: []ast.Expr{&ast.CallExpr{
+						Fun: &ast.SelectorExpr{
+							X:   &ast.Ident{Name: "unsafe"},
+							Sel: &ast.Ident{Name: "Sizeof"},
+						},
+						Args: []ast.Expr{&ast.Ident{Name: "0"}},
+					}},
+				},
+			},
+		}
 	default:
 		panic("MakeUsePackage: bad package " + p)
 	}
