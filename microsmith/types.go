@@ -795,8 +795,7 @@ func BinOps(t Type) []token.Token {
 			}
 		case "uintptr":
 			return []token.Token{
-				token.ADD, token.AND, token.AND_NOT, token.MUL,
-				token.OR, token.XOR,
+				token.ADD, token.AND, token.AND_NOT, token.OR, token.XOR,
 			}
 		case "int":
 			// We can't generate shifts for ints, because int expressions
