@@ -44,6 +44,11 @@ func (eb *ExprBuilder) chooseToken(tokens []token.Token) token.Token {
 	return tokens[eb.pb.rs.Intn(len(tokens))]
 }
 
+func (eb *ExprBuilder) Const() *ast.BasicLit {
+	// TODO(alb): generalize
+	return &ast.BasicLit{Kind: token.INT, Value: "77"}
+}
+
 func (eb *ExprBuilder) BasicLit(t BasicType) ast.Expr {
 	bl := new(ast.BasicLit)
 	switch t.Name() {
@@ -262,18 +267,18 @@ func (eb *ExprBuilder) VarOrLit(t Type) ast.Expr {
 			return &ast.Ident{Name: "nil"}
 		case TypeParam:
 			st := t.RandomSubType()
-			switch t2 := st.(type) {
+			switch st.(type) {
 			case BasicType:
 				return &ast.CallExpr{
 					Fun:  t.Ast(),
-					Args: []ast.Expr{eb.BasicLit(t2)},
+					Args: []ast.Expr{eb.Const()},
 				}
 			default:
-				panic("TODO(alb)")
+				panic("not yet implemented")
 			}
 
 		default:
-			panic("unhandles type " + t.Name())
+			panic("unhandled type " + t.Name())
 		}
 	}
 
