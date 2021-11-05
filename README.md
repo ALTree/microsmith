@@ -4,7 +4,7 @@ used to stress-test Go compilers.
 
 #### Bugs found
 
-##### gc compiler crashes (39)
+##### gc compiler crashes (40)
 
 - [#23504 internal compiler error: panic during layout](https://github.com/golang/go/issues/23504)
 - [#23889 panic: branch too far on arm64](https://github.com/golang/go/issues/23889)
@@ -45,6 +45,7 @@ used to stress-test Go compilers.
 - [#48191 data race in compiler building generic program](https://github.com/golang/go/issues/48191)
 - [#49122 internal compiler error: can't find source for MOVBload](https://github.com/golang/go/issues/49122)
 - [#49242 internal compiler error: found illegal assignment](https://github.com/golang/go/issues/49242)
+- [#49249 internal compiler error: panic during expand calls](https://github.com/golang/go/issues/49249)
 
 ##### gccgo (2)
 
