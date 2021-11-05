@@ -360,6 +360,10 @@ type EllipsisType struct {
 	Base Type
 }
 
+func (e EllipsisType) Ast() ast.Expr {
+	return &ast.Ellipsis{Elt: e.Base.Ast()}
+}
+
 func (e EllipsisType) Equal(t Type) bool {
 	if t, ok := t.(EllipsisType); !ok {
 		return false
@@ -369,7 +373,6 @@ func (e EllipsisType) Equal(t Type) bool {
 }
 
 func (e EllipsisType) Addressable() bool    { panic("don't call") }
-func (e EllipsisType) Ast() ast.Expr        { panic("don't call") }
 func (e EllipsisType) Name() string         { panic("don't call") }
 func (e EllipsisType) Sliceable() bool      { panic("don't call") }
 func (e EllipsisType) Contains(t Type) bool { panic("don't call") }
@@ -383,13 +386,7 @@ func (ft FuncType) MakeFieldLists(named bool, s int) (*ast.FieldList, *ast.Field
 		List: make([]*ast.Field, 0, len(ft.Args)),
 	}
 	for i, arg := range ft.Args {
-		var p ast.Field
-		if t2, ok := arg.(EllipsisType); ok {
-			p = ast.Field{Type: &ast.Ellipsis{Elt: t2.Base.Ast()}}
-		} else {
-			p = ast.Field{Type: arg.Ast()}
-		}
-
+		p := ast.Field{Type: arg.Ast()}
 		if named {
 			p.Names = []*ast.Ident{
 				&ast.Ident{Name: fmt.Sprintf("p%d", s+i)},
