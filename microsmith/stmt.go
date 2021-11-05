@@ -336,7 +336,12 @@ func (sb *StmtBuilder) DeclStmt(nVars int, t Type) (*ast.DeclStmt, []*ast.Ident)
 
 			// add the parameters to the scope
 			for i, param := range fl.Type.Params.List {
-				sb.S().AddVariable(param.Names[0], t2.Args[i])
+				if ep, ok := t2.Args[i].(EllipsisType); ok {
+					sb.S().AddVariable(param.Names[0], ArrayOf(ep.Base))
+				} else {
+					sb.S().AddVariable(param.Names[0], t2.Args[i])
+				}
+
 				sb.funcp++
 			}
 

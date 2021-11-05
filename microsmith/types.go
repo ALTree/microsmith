@@ -354,6 +354,26 @@ func (ft FuncType) Sliceable() bool {
 	return false
 }
 
+// Internal implementation detail for variadic parameters in
+// functions. Should never be generated or be part of a scope.
+type EllipsisType struct {
+	Base Type
+}
+
+func (e EllipsisType) Equal(t Type) bool {
+	if t, ok := t.(EllipsisType); !ok {
+		return false
+	} else {
+		return e.Base.Equal(t.Base)
+	}
+}
+
+func (e EllipsisType) Addressable() bool    { panic("don't call") }
+func (e EllipsisType) Ast() ast.Expr        { panic("don't call") }
+func (e EllipsisType) Name() string         { panic("don't call") }
+func (e EllipsisType) Sliceable() bool      { panic("don't call") }
+func (e EllipsisType) Contains(t Type) bool { panic("don't call") }
+
 // Build two ast.FieldList object (one for params, the other for
 // results) from a FuncType, to use in function declarations and
 // function literals. If named is true, it gives the function
@@ -363,7 +383,13 @@ func (ft FuncType) MakeFieldLists(named bool, s int) (*ast.FieldList, *ast.Field
 		List: make([]*ast.Field, 0, len(ft.Args)),
 	}
 	for i, arg := range ft.Args {
-		p := ast.Field{Type: arg.Ast()}
+		var p ast.Field
+		if t2, ok := arg.(EllipsisType); ok {
+			p = ast.Field{Type: &ast.Ellipsis{Elt: t2.Base.Ast()}}
+		} else {
+			p = ast.Field{Type: arg.Ast()}
+		}
+
 		if named {
 			p.Names = []*ast.Ident{
 				&ast.Ident{Name: fmt.Sprintf("p%d", s+i)},

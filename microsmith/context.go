@@ -112,6 +112,11 @@ func (pb ProgramBuilder) RandFuncType() FuncType {
 		args = append(args, pb.RandType(true))
 	}
 
+	// 0.25 of making the last parameter variadic
+	if len(args) > 0 && pb.rs.Intn(4) == 0 {
+		args[len(args)-1] = EllipsisType{Base: args[len(args)-1]}
+	}
+
 	// return type
 	ret := []Type{pb.RandType(true)}
 

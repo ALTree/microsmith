@@ -587,6 +587,11 @@ func (eb *ExprBuilder) MakeFuncCall(v Variable) *ast.CallExpr {
 	if fnc, ok := v.Type.(FuncType); ok {
 		args := make([]ast.Expr, 0, len(fnc.Args))
 		for _, arg := range fnc.Args {
+			arg := arg
+			if ep, ok := arg.(EllipsisType); ok {
+				arg = ep.Base
+			}
+
 			if eb.Deepen() && fnc.Local {
 				// Cannot call Expr with casts, because Expr could
 				// return UnaryExpr(Literal) like -11 which cannot
