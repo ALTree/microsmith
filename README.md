@@ -4,7 +4,7 @@ used to stress-test Go compilers.
 
 #### Bugs found
 
-##### gc
+##### Go Compiler
 
 - [#23504 internal compiler error: panic during layout](https://github.com/golang/go/issues/23504)
 - [#23889 panic: branch too far on arm64](https://github.com/golang/go/issues/23889)
