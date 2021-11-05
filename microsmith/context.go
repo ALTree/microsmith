@@ -72,7 +72,7 @@ func (pb ProgramBuilder) RandType(comp bool) Type {
 	case 5, 6:
 		return PointerOf(pb.RandType(true))
 	case 7, 8:
-		return pb.RandStructType(comp)
+		return pb.RandStructType()
 	case 9:
 		return pb.RandFuncType()
 	default:
@@ -94,7 +94,7 @@ func (pb ProgramBuilder) RandBaseType() Type {
 	}
 }
 
-func (pb ProgramBuilder) RandStructType(comparable bool) StructType {
+func (pb ProgramBuilder) RandStructType() StructType {
 	st := StructType{"ST", []Type{}, []string{}}
 	for i := 0; i < pb.rs.Intn(6); i++ {
 		t := pb.RandType(true)

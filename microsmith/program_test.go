@@ -131,35 +131,6 @@ func GetToolchain() string {
 	}
 }
 
-func TestMultiPkg(t *testing.T) {
-	if _, err := os.Stat(WorkDir); os.IsNotExist(err) {
-		err := os.MkdirAll(WorkDir, os.ModePerm)
-		if err != nil {
-			t.Fatalf("%v", err)
-		}
-	}
-
-	conf := microsmith.ProgramConf{
-		MultiPkg: true,
-	}
-	gp := microsmith.NewProgram(conf)
-	err := gp.WriteToDisk(WorkDir)
-	if err != nil {
-		t.Fatalf("Could not write to file: %s", err)
-	}
-	bo := microsmith.BuildOptions{
-		GetToolchain(),
-		false, false, false, false,
-	}
-	out, err := gp.Compile("amd64", bo)
-	if err != nil {
-		os.RemoveAll(WorkDir)
-		t.Fatalf("Program did not compile: %s %s", out, err)
-	}
-
-	os.RemoveAll(WorkDir)
-}
-
 // Check generated programs with gc (from file).
 func compile(t *testing.T, conf microsmith.ProgramConf) {
 	lim := 10
