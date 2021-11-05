@@ -126,6 +126,15 @@ func IsUint(t Type) bool {
 	}
 }
 
+func (t BasicType) NeedsCast() bool {
+	switch t.N {
+	case "byte", "int8", "int16", "int32", "int64", "uint", "uintptr", "float32":
+		return true
+	default:
+		return false
+	}
+}
+
 // --------------------------------
 //   pointer
 // --------------------------------

@@ -244,13 +244,8 @@ func (eb *ExprBuilder) VarOrLit(t Type) ast.Expr {
 		switch t := t.(type) {
 		case BasicType:
 			bl := eb.BasicLit(t)
-			if t.Name() == "byte" ||
-				t.Name() == "int8" || t.Name() == "int16" || t.Name() == "int32" || t.Name() == "int64" ||
-				t.Name() == "uint" || t.Name() == "uintptr" || t.Name() == "float32" {
-				bl = &ast.CallExpr{
-					Fun:  t.Ast(),
-					Args: []ast.Expr{bl},
-				}
+			if t.NeedsCast() {
+				bl = &ast.CallExpr{Fun: t.Ast(), Args: []ast.Expr{bl}}
 			}
 			return bl
 		case ArrayType, StructType, MapType:
