@@ -4,7 +4,7 @@ used to stress-test Go compilers.
 
 #### Bugs found
 
-##### gc compiler crashes (40)
+##### gc
 
 - [#23504 internal compiler error: panic during layout](https://github.com/golang/go/issues/23504)
 - [#23889 panic: branch too far on arm64](https://github.com/golang/go/issues/23889)
@@ -46,12 +46,14 @@ used to stress-test Go compilers.
 - [#49122 internal compiler error: can't find source for MOVBload](https://github.com/golang/go/issues/49122)
 - [#49242 internal compiler error: found illegal assignment](https://github.com/golang/go/issues/49242)
 - [#49249 internal compiler error: panic during expand calls](https://github.com/golang/go/issues/49249)
+- [#49282 internal compiler error: Op...LECall and OpDereference have mismatched mem](https://github.com/golang/go/issues/49282)
+- [#49378 internal compiler error: Expand calls interface data problem](https://github.com/golang/go/issues/49378)
 
-##### gccgo (2)
+##### gccgo
 
 - [#44383 internal compiler error: Segmentation fault during GIMPLE pass ealias](https://github.com/golang/go/issues/44383)
 - [#47130 internal compiler error: in write_equal_function](https://github.com/golang/go/issues/47130)
 
-##### tinygo (1)
+##### tinygo
 
 - [#1653 LLVM ERROR: Cannot select: intrinsic %llvm.coro.size](https://github.com/tinygo-org/tinygo/issues/1653)
