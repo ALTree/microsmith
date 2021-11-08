@@ -94,6 +94,7 @@ func (pb ProgramBuilder) RandAddressableType() Type {
 			}
 		}
 	}
+
 	return types[pb.rs.Intn(len(types))]
 }
 

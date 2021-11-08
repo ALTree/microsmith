@@ -257,15 +257,12 @@ func (eb *ExprBuilder) VarOrLit(t Type) ast.Expr {
 		case PointerType, FuncType:
 			return &ast.Ident{Name: "nil"}
 		case TypeParam:
-			st := t.RandomSubType()
-			switch st.(type) {
-			case BasicType:
-				return &ast.CallExpr{
-					Fun:  t.Ast(),
-					Args: []ast.Expr{eb.Const()},
-				}
-			default:
-				panic("not yet implemented")
+			// TODO(alb): this works for now because 77 is a valid
+			// literal for every typeparameter's subtype we generate.
+			// Will need better logic if we start using other types.
+			return &ast.CallExpr{
+				Fun:  t.Ast(),
+				Args: []ast.Expr{eb.Const()},
 			}
 
 		default:

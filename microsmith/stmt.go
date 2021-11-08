@@ -581,7 +581,7 @@ func (sb *StmtBuilder) SwitchStmt() *ast.SwitchStmt {
 	sb.depth++
 	defer func() { sb.depth-- }()
 
-	t := sb.pb.RandBaseType()
+	t := sb.pb.RandAddressableType()
 	if sb.pb.rs.Intn(2) == 0 && sb.S().HasType(PointerOf(t)) {
 		// sometimes switch on a pointer value
 		t = PointerOf(t)

@@ -662,6 +662,11 @@ type Constraint struct {
 }
 
 func (c Constraint) Addressable() bool {
+	for _, t := range c.Types {
+		if !t.Addressable() {
+			return false
+		}
+	}
 	return true
 }
 
@@ -716,12 +721,8 @@ type TypeParam struct {
 }
 
 func (tp TypeParam) Addressable() bool {
-	for _, t := range tp.Constraint.Types {
-		if !t.Addressable() {
-			return false
-		}
-	}
-	return true
+	return tp.Constraint.Addressable()
+
 }
 
 func (tp TypeParam) Ast() ast.Expr {

@@ -307,7 +307,7 @@ func (pb *ProgramBuilder) MakeRandConstraint(name string) (*ast.GenDecl, Constra
 	src := "package p\n"
 	src += "type " + name + " interface{\n"
 	for _, t := range types {
-		if pb.rs.Intn(3) == 0 {
+		if pb.rs.Intn(3) == 0 && t.Name() != "any" {
 			src += "~"
 		}
 		src += t.Name() + "|"
