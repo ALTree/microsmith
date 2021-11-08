@@ -286,9 +286,6 @@ func MakeInt() *ast.GenDecl {
 }
 
 func (pb *ProgramBuilder) MakeRandConstraint(name string) (*ast.GenDecl, Constraint) {
-	// types := make([]Type, len(AllTypes))
-	// copy(types, AllTypes)
-
 	types := []Type{
 		BasicType{"int"},
 		BasicType{"byte"},
@@ -300,24 +297,11 @@ func (pb *ProgramBuilder) MakeRandConstraint(name string) (*ast.GenDecl, Constra
 		BasicType{"uintptr"},
 		BasicType{"float32"},
 		BasicType{"float64"},
+		BasicType{"string"},
 	}
 
 	pb.rs.Shuffle(len(types), func(i, j int) { types[i], types[j] = types[j], types[i] })
-
 	types = types[:1+pb.rs.Intn(len(types)-1)]
-
-	// rune overlaps with int32, not allowed in constraints. Must
-	// remove rune if it's in the list.
-	// ri := -1
-	// for i := range types {
-	// 	if types[i].Name() == "rune" {
-	// 		ri = i
-	// 		break
-	// 	}
-	// }
-	// if ri != -1 {
-	// 	types = append(types[:ri], types[ri+1:]...)
-	// }
 
 	src := "package p\n"
 	src += "type " + name + " interface{\n"

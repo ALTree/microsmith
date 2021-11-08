@@ -159,15 +159,11 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 
 	case BasicType:
 		switch eb.pb.rs.Intn(7) {
-		case 0, 1: // unary
-			if t.Name() == "string" {
-				return eb.VarOrLit(t)
-			} else {
-				return eb.UnaryExpr(t)
-			}
-		case 2, 3, 4, 5: // binary
+		case 0, 1:
+			return eb.UnaryExpr(t)
+		case 2, 3, 4, 5:
 			return eb.BinaryExpr(t)
-		default: // function call
+		default:
 			return eb.CallExpr(t, NOTDEFER)
 		}
 
@@ -407,7 +403,9 @@ func (eb *ExprBuilder) SliceExpr(v Variable) *ast.SliceExpr {
 	}
 }
 
-func (eb *ExprBuilder) UnaryExpr(t Type) *ast.UnaryExpr {
+// returns an *ast.UnaryExpr of type t, or a VarOrLit as fallback if
+// type t has no unary operators.
+func (eb *ExprBuilder) UnaryExpr(t Type) ast.Expr {
 	ue := new(ast.UnaryExpr)
 
 	// if there are pointers to t in scope, generate a t by
@@ -420,11 +418,10 @@ func (eb *ExprBuilder) UnaryExpr(t Type) *ast.UnaryExpr {
 		return ue
 	}
 
-	ops := UnaryOps(t)
-	if len(ops) > 0 {
+	if ops := UnaryOps(t); len(ops) > 0 {
 		ue.Op = eb.chooseToken(ops)
 	} else {
-		panic("TODO(alb)")
+		return eb.VarOrLit(t)
 	}
 
 	if eb.Deepen() {
