@@ -50,8 +50,10 @@ func Ident(t Type) string {
 			return "s"
 		case "rune":
 			return "r"
+		case "any":
+			return "an"
 		default:
-			panic("unhandled type: " + t.N)
+			panic("unhandled type " + t.N)
 		}
 	case ArrayType:
 		return "a" + Ident(t.Etype)
@@ -81,7 +83,7 @@ type BasicType struct {
 }
 
 func (t BasicType) Addressable() bool {
-	return true
+	return t.N != "any"
 }
 
 func (t BasicType) Ast() ast.Expr {
@@ -128,7 +130,7 @@ func IsUint(t Type) bool {
 
 func (t BasicType) NeedsCast() bool {
 	switch t.N {
-	case "byte", "int8", "int16", "int32", "int64", "uint", "uintptr", "float32":
+	case "byte", "int8", "int16", "int32", "int64", "uint", "uintptr", "float32", "any":
 		return true
 	default:
 		return false
@@ -714,6 +716,11 @@ type TypeParam struct {
 }
 
 func (tp TypeParam) Addressable() bool {
+	for _, t := range tp.Constraint.Types {
+		if !t.Addressable() {
+			return false
+		}
+	}
 	return true
 }
 
@@ -802,7 +809,7 @@ func UnaryOps(t Type) []token.Token {
 			return []token.Token{token.ADD, token.SUB}
 		case "bool":
 			return []token.Token{token.NOT}
-		case "string":
+		case "string", "any":
 			return []token.Token{}
 		default:
 			panic("Unhandled BasicType " + t.Name())
@@ -868,6 +875,8 @@ func BinOps(t Type) []token.Token {
 			return []token.Token{token.LAND, token.LOR}
 		case "string":
 			return []token.Token{token.ADD}
+		case "any":
+			return []token.Token{}
 		default:
 			panic("Unhandled BasicType " + t.Name())
 		}

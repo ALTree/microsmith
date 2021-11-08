@@ -52,7 +52,7 @@ func (eb *ExprBuilder) Const() *ast.BasicLit {
 func (eb *ExprBuilder) BasicLit(t BasicType) ast.Expr {
 	bl := new(ast.BasicLit)
 	switch t.Name() {
-	case "byte", "uint", "uintptr", "int", "int8", "int16", "int32", "int64":
+	case "byte", "uint", "uintptr", "int", "int8", "int16", "int32", "int64", "any":
 		bl.Kind = token.INT
 		bl.Value = strconv.Itoa(eb.pb.rs.Intn(100))
 	case "rune":
@@ -433,7 +433,7 @@ func (eb *ExprBuilder) UnaryExpr(t Type) ast.Expr {
 	return ue
 }
 
-func (eb *ExprBuilder) BinaryExpr(t Type) *ast.BinaryExpr {
+func (eb *ExprBuilder) BinaryExpr(t Type) ast.Expr {
 	ue := new(ast.BinaryExpr)
 
 	ops := BinOps(t)
@@ -442,13 +442,17 @@ func (eb *ExprBuilder) BinaryExpr(t Type) *ast.BinaryExpr {
 		// <any comparable> COMPARISON <any comparable>.
 		t = eb.pb.RandBaseType()
 		ops = []token.Token{token.EQL, token.NEQ}
-		if t.Name() != "bool" && t.Name() != "complex128" {
+		if t.Name() != "bool" && t.Name() != "complex128" && t.Name() != "any" { // TODO(alb): t.Ordered()
 			ops = append(ops, []token.Token{
 				token.LSS, token.LEQ,
 				token.GTR, token.GEQ}...)
 		}
 	}
-	ue.Op = eb.chooseToken(ops)
+	if len(ops) > 0 {
+		ue.Op = eb.chooseToken(ops)
+	} else {
+		return eb.VarOrLit(t)
+	}
 
 	t2 := t
 	if ue.Op == token.SHR { // ensure rhs > 0 for shifts

@@ -66,7 +66,7 @@ func (pb ProgramBuilder) RandType(comp bool) Type {
 		return ChanOf(pb.RandType(true))
 	case 3, 4:
 		return MapOf(
-			pb.RandBaseType(), // map keys need to be comparable
+			pb.RandAddressableType(),
 			pb.RandType(true),
 		)
 	case 5, 6:
@@ -78,6 +78,27 @@ func (pb ProgramBuilder) RandType(comp bool) Type {
 	default:
 		return pb.RandBaseType()
 	}
+}
+
+func (pb ProgramBuilder) RandAddressableType() Type {
+	types := make([]Type, 0, 32)
+
+	// collect addressable Base Types
+	for _, t := range AllTypes {
+		if t.Addressable() {
+			types = append(types, t)
+		}
+	}
+
+	// look for addressable type parameters
+	if tp := pb.ctx.typeparams; tp != nil {
+		for _, v := range *tp {
+			if v.Type.Addressable() {
+				types = append(types, MakeTypeParam(v))
+			}
+		}
+	}
+	return types[pb.rs.Intn(len(types))]
 }
 
 // Returns a single BaseType (primitives, or a type parameter).

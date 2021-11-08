@@ -24,6 +24,7 @@ var AllTypes = []Type{
 	BasicType{"complex128"},
 	BasicType{"rune"},
 	BasicType{"string"},
+	BasicType{"any"},
 }
 
 type ProgramBuilder struct {
