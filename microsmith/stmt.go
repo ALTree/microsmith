@@ -135,11 +135,43 @@ func (sb *StmtBuilder) AssignStmt() *ast.AssignStmt {
 			}
 		} else {
 			// v.field = <expr>
-			fieldType := t.Ftypes[sb.pb.rs.Intn(len(t.Fnames))]
+			//
+			// we need to avoid getting to a chan receive here, i.e. we
+			// need to avoid generating:
+			//
+			//   <-st.c = ...
+			//
+			// for a st struct{ c chan int } (at any depth), because
+			// that will fail to compile with error:
+			//
+			//   cannot assign to <-st.c (comma, ok expression of type int)
+			//
+			// So, only in AssignStmt, never go deeper than 1 level
+			// inside structs, and assign directly to a depth-1 field
+			// (that is not a chan).
+			//
+			// TODO(alb): this can be changed to go to arbitrary-depth
+			// as long as it avoids channels. Doable?
+			fis := make([]int, 0, len(t.Ftypes))
+			for i, ft := range t.Ftypes {
+				if _, ok := ft.(ChanType); !ok {
+					fis = append(fis, i)
+				}
+			}
+
+			if len(fis) == 0 { // fallback to v = struct{ ... }
+				return &ast.AssignStmt{
+					Lhs: []ast.Expr{v.Name},
+					Tok: token.ASSIGN,
+					Rhs: []ast.Expr{sb.E().CompositeLit(t)},
+				}
+			}
+
+			fi := fis[sb.pb.rs.Intn(len(fis))]
 			return &ast.AssignStmt{
-				Lhs: []ast.Expr{sb.E().StructFieldExpr(v.Name, t, fieldType)},
+				Lhs: []ast.Expr{&ast.SelectorExpr{X: v.Name, Sel: &ast.Ident{Name: t.Fnames[fi]}}},
 				Tok: token.ASSIGN,
-				Rhs: []ast.Expr{sb.E().Expr(fieldType)},
+				Rhs: []ast.Expr{sb.E().Expr(t.Ftypes[fi])},
 			}
 		}
 

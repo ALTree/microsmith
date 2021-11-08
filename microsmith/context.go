@@ -47,30 +47,26 @@ type ProgramConf struct {
 func (pb ProgramBuilder) RandTypes(n int) []Type {
 	types := make([]Type, n)
 	for i := 0; i < n; i++ {
-		types[i] = pb.RandType(false)
+		types[i] = pb.RandType()
 	}
 	return types
 }
 
 // Returns a single random type (including structs, array, maps,
 // chans).
-func (pb ProgramBuilder) RandType(comp bool) Type {
+func (pb ProgramBuilder) RandType() Type {
 	switch pb.rs.Intn(15) {
 	case 0, 1:
-		if comp {
-			return pb.RandBaseType()
-		} else {
-			return ArrayOf(pb.RandType(true))
-		}
+		return ArrayOf(pb.RandType())
 	case 2:
-		return ChanOf(pb.RandType(true))
+		return ChanOf(pb.RandType())
 	case 3, 4:
 		return MapOf(
 			pb.RandAddressableType(),
-			pb.RandType(true),
+			pb.RandType(),
 		)
 	case 5, 6:
-		return PointerOf(pb.RandType(true))
+		return PointerOf(pb.RandType())
 	case 7, 8:
 		return pb.RandStructType()
 	case 9:
@@ -118,7 +114,7 @@ func (pb ProgramBuilder) RandBaseType() Type {
 func (pb ProgramBuilder) RandStructType() StructType {
 	st := StructType{"ST", []Type{}, []string{}}
 	for i := 0; i < pb.rs.Intn(6); i++ {
-		t := pb.RandType(true)
+		t := pb.RandType()
 		st.Ftypes = append(st.Ftypes, t)
 		st.Fnames = append(st.Fnames, Ident(t)+strconv.Itoa(i))
 	}
@@ -130,7 +126,7 @@ func (pb ProgramBuilder) RandFuncType() FuncType {
 
 	// arguments
 	for i := 0; i < cap(args); i++ {
-		args = append(args, pb.RandType(true))
+		args = append(args, pb.RandType())
 	}
 
 	// 0.25 of making the last parameter variadic
@@ -139,7 +135,7 @@ func (pb ProgramBuilder) RandFuncType() FuncType {
 	}
 
 	// return type
-	ret := []Type{pb.RandType(true)}
+	ret := []Type{pb.RandType()}
 
 	return FuncType{"FU", args, ret, true}
 }

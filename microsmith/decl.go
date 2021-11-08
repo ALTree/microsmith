@@ -10,7 +10,7 @@ import (
 )
 
 var AllTypes = []Type{
-	BasicType{"int"}, // always enabled, leave in first position
+	BasicType{"int"},
 	BasicType{"bool"},
 	BasicType{"byte"},
 	BasicType{"int8"},
