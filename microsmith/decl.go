@@ -9,29 +9,12 @@ import (
 	"strings"
 )
 
-var AllTypes = []Type{
-	BasicType{"int"},
-	BasicType{"bool"},
-	BasicType{"byte"},
-	BasicType{"int8"},
-	BasicType{"int16"},
-	BasicType{"int32"},
-	BasicType{"int64"},
-	BasicType{"uint"},
-	BasicType{"uintptr"},
-	BasicType{"float32"},
-	BasicType{"float64"},
-	BasicType{"complex128"},
-	BasicType{"rune"},
-	BasicType{"string"},
-	BasicType{"any"},
-}
-
 type ProgramBuilder struct {
-	ctx *Context
-	rs  *rand.Rand
-	sb  *StmtBuilder
-	eb  *ExprBuilder
+	ctx       *Context
+	rs        *rand.Rand
+	sb        *StmtBuilder
+	eb        *ExprBuilder
+	BaseTypes []Type
 }
 
 func NewProgramBuilder(conf ProgramConf) *ProgramBuilder {
@@ -50,6 +33,28 @@ func NewProgramBuilder(conf ProgramConf) *ProgramBuilder {
 	// Create the Stmt and Expr builders
 	pb.sb = NewStmtBuilder(&pb)
 	pb.eb = NewExprBuilder(&pb)
+
+	// Add predeclared base types
+	pb.BaseTypes = []Type{
+		BasicType{"int"},
+		BasicType{"bool"},
+		BasicType{"byte"},
+		BasicType{"int8"},
+		BasicType{"int16"},
+		BasicType{"int32"},
+		BasicType{"int64"},
+		BasicType{"uint"},
+		BasicType{"uintptr"},
+		BasicType{"float32"},
+		BasicType{"float64"},
+		BasicType{"complex128"},
+		BasicType{"rune"},
+		BasicType{"string"},
+	}
+	if conf.TypeParams {
+		pb.BaseTypes = append(pb.BaseTypes, BasicType{"any"})
+	}
+
 	return &pb
 }
 
@@ -150,7 +155,7 @@ func (pb *ProgramBuilder) File(pkg string, id uint64) *ast.File {
 
 	// Now half a dozen top-level variables
 	for i := 1; i <= 6; i++ {
-		t := AllTypes[rand.Intn(len(AllTypes))]
+		t := pb.BaseTypes[rand.Intn(len(pb.BaseTypes))]
 		if pb.rs.Intn(3) == 0 {
 			t = PointerOf(t)
 		}
