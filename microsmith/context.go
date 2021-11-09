@@ -55,6 +55,13 @@ func (pb ProgramBuilder) RandTypes(n int) []Type {
 // Returns a single random type (including structs, array, maps,
 // chans).
 func (pb ProgramBuilder) RandType() Type {
+	pb.typedepth++
+	defer func() { pb.typedepth-- }()
+
+	if pb.typedepth >= 5 {
+		return pb.RandBaseType()
+	}
+
 	switch pb.rs.Intn(15) {
 	case 0, 1:
 		return ArrayOf(pb.RandType())
@@ -123,14 +130,14 @@ func (pb ProgramBuilder) RandStructType() StructType {
 }
 
 func (pb ProgramBuilder) RandFuncType() FuncType {
-	args := make([]Type, 0, pb.rs.Intn(5))
+	args := make([]Type, 0, pb.rs.Intn(8))
 
 	// arguments
 	for i := 0; i < cap(args); i++ {
 		args = append(args, pb.RandType())
 	}
 
-	// 0.25 of making the last parameter variadic
+	// optionally make the last parameter variadic
 	if len(args) > 0 && pb.rs.Intn(4) == 0 {
 		args[len(args)-1] = EllipsisType{Base: args[len(args)-1]}
 	}

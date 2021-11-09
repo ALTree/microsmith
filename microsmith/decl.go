@@ -15,6 +15,7 @@ type ProgramBuilder struct {
 	sb        *StmtBuilder
 	eb        *ExprBuilder
 	BaseTypes []Type
+	typedepth int
 }
 
 func NewProgramBuilder(conf ProgramConf) *ProgramBuilder {

@@ -151,9 +151,6 @@ func (eb *ExprBuilder) CompositeLit(t Type) *ast.CompositeLit {
 func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 	eb.depth++
 	defer func() { eb.depth-- }()
-	if eb.depth > 32 {
-		panic("eb.depth > 32")
-	}
 
 	switch t := t.(type) {
 
