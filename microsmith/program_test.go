@@ -1,7 +1,6 @@
 package microsmith_test
 
 import (
-	"go/ast"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -198,23 +197,4 @@ func TestCompileMultiPkgTypeParams(t *testing.T) {
 			MultiPkg:   true,
 			TypeParams: true,
 		})
-}
-
-var gp *ast.File
-
-func BenchmarkProgram(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		db := microsmith.NewProgramBuilder(microsmith.ProgramConf{})
-		gp = db.File("a", 0)
-	}
-}
-
-var sink string
-
-func BenchmarkRandString(b *testing.B) {
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		sink = microsmith.RandString()
-	}
 }

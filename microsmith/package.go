@@ -9,7 +9,9 @@ import (
 	"strings"
 )
 
-type ProgramBuilder struct {
+type PackageBuilder struct {
+	pb        *ProgramBuilder
+	pkg       string
 	ctx       *Context
 	rs        *rand.Rand
 	sb        *StmtBuilder
@@ -18,10 +20,12 @@ type ProgramBuilder struct {
 	typedepth int
 }
 
-func NewProgramBuilder(conf ProgramConf) *ProgramBuilder {
-	pb := ProgramBuilder{
+func NewPackageBuilder(conf ProgramConf, pkg string, progb *ProgramBuilder) *PackageBuilder {
+	pb := PackageBuilder{
+		pkg: pkg,
 		ctx: NewContext(conf),
 		rs:  rand.New(rand.NewSource(rand.Int63())),
+		pb:  progb,
 	}
 
 	// Initialize Context.Scope with the predeclared functions:
@@ -59,7 +63,7 @@ func NewProgramBuilder(conf ProgramConf) *ProgramBuilder {
 	return &pb
 }
 
-func (pb *ProgramBuilder) FuncDecl(i int, pkg string) *ast.FuncDecl {
+func (pb *PackageBuilder) FuncDecl(i int, pkg string) *ast.FuncDecl {
 
 	fd := &ast.FuncDecl{
 		Name: pb.FuncIdent(i),
@@ -102,7 +106,7 @@ func (pb *ProgramBuilder) FuncDecl(i int, pkg string) *ast.FuncDecl {
 	return fd
 }
 
-func (pb *ProgramBuilder) FuncIdent(i int) *ast.Ident {
+func (pb *PackageBuilder) FuncIdent(i int) *ast.Ident {
 	id := new(ast.Ident)
 	id.Obj = &ast.Object{
 		Kind: ast.Fun,
@@ -113,21 +117,21 @@ func (pb *ProgramBuilder) FuncIdent(i int) *ast.Ident {
 	return id
 }
 
-func (pb *ProgramBuilder) Conf() ProgramConf {
+func (pb *PackageBuilder) Conf() ProgramConf {
 	return pb.ctx.programConf
 }
 
-func (pb *ProgramBuilder) Scope() *Scope {
+func (pb *PackageBuilder) Scope() *Scope {
 	return pb.ctx.scope
 }
 
-func (pb *ProgramBuilder) File(pkg string, id uint64) *ast.File {
+func (pb *PackageBuilder) File() *ast.File {
 	af := new(ast.File)
-	af.Name = &ast.Ident{0, pkg, nil}
+	af.Name = &ast.Ident{0, pb.pkg, nil}
 	af.Decls = []ast.Decl{}
 
-	if pkg == "main" && pb.Conf().MultiPkg {
-		af.Decls = append(af.Decls, MakeImport(fmt.Sprintf(`"prog%v_a"`, id)))
+	if pb.pkg == "main" && pb.Conf().MultiPkg {
+		af.Decls = append(af.Decls, MakeImport(fmt.Sprintf(`"%v_a"`, pb.pb.id)))
 	}
 
 	af.Decls = append(af.Decls, MakeImport(`"math"`))
@@ -169,12 +173,12 @@ func (pb *ProgramBuilder) File(pkg string, id uint64) *ast.File {
 
 	// Declare top-level functions
 	for i := 0; i < 4+pb.rs.Intn(5); i++ {
-		af.Decls = append(af.Decls, pb.FuncDecl(i, pkg))
+		af.Decls = append(af.Decls, pb.FuncDecl(i, pb.pkg)) // TODO(alb): no need to pass
 	}
 
 	// If we're not building a main package, we're done. Otherwise,
 	// add a main func.
-	if pkg != "main" {
+	if pb.pkg != "main" {
 		return af
 	}
 
@@ -292,7 +296,7 @@ func MakeInt() *ast.GenDecl {
 	}
 }
 
-func (pb *ProgramBuilder) MakeRandConstraint(name string) (*ast.GenDecl, Constraint) {
+func (pb *PackageBuilder) MakeRandConstraint(name string) (*ast.GenDecl, Constraint) {
 	types := []Type{
 		BasicType{"int"},
 		BasicType{"byte"},
@@ -326,7 +330,7 @@ func (pb *ProgramBuilder) MakeRandConstraint(name string) (*ast.GenDecl, Constra
 	return decl, Constraint{Types: types, N: &ast.Ident{Name: name}}
 }
 
-func (pb *ProgramBuilder) MakeVar(t Type, i int) *ast.GenDecl {
+func (pb *PackageBuilder) MakeVar(t Type, i int) *ast.GenDecl {
 	return &ast.GenDecl{
 		Tok: token.VAR,
 		Specs: []ast.Spec{

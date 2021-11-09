@@ -6,13 +6,13 @@ import (
 )
 
 // Context holds all the contextual information needed while
-// generating a random program.
-type Context struct {
+// generating a random package.
+type Context struct { // TODO(alb): rename to PackageContext
 
 	// program-wide settings for the fuzzer
 	programConf ProgramConf
 
-	// all the Costraints available declared in the program
+	// all the Costraints available declared in the package
 	constraints []Constraint
 
 	// package-wide scope of vars and func available to the code in a
@@ -44,7 +44,7 @@ type ProgramConf struct {
 
 // Returns a slice of n random types, including composite types
 // (structs, array, maps, chans).
-func (pb ProgramBuilder) RandTypes(n int) []Type {
+func (pb PackageBuilder) RandTypes(n int) []Type {
 	types := make([]Type, n)
 	for i := 0; i < n; i++ {
 		types[i] = pb.RandType()
@@ -54,7 +54,7 @@ func (pb ProgramBuilder) RandTypes(n int) []Type {
 
 // Returns a single random type (including structs, array, maps,
 // chans).
-func (pb ProgramBuilder) RandType() Type {
+func (pb PackageBuilder) RandType() Type {
 	pb.typedepth++
 	defer func() { pb.typedepth-- }()
 
@@ -83,7 +83,7 @@ func (pb ProgramBuilder) RandType() Type {
 	}
 }
 
-func (pb ProgramBuilder) RandAddressableType() Type {
+func (pb PackageBuilder) RandAddressableType() Type {
 	types := make([]Type, 0, 32)
 
 	// collect addressable Base Types
@@ -106,7 +106,7 @@ func (pb ProgramBuilder) RandAddressableType() Type {
 }
 
 // Returns a single BaseType (primitives, or a type parameter).
-func (pb ProgramBuilder) RandBaseType() Type {
+func (pb PackageBuilder) RandBaseType() Type {
 	if tp := pb.ctx.typeparams; tp != nil {
 		i := pb.rs.Intn(len(pb.BaseTypes) + len(*tp))
 		if i < len(pb.BaseTypes) {
@@ -119,7 +119,7 @@ func (pb ProgramBuilder) RandBaseType() Type {
 	}
 }
 
-func (pb ProgramBuilder) RandStructType() StructType {
+func (pb PackageBuilder) RandStructType() StructType {
 	st := StructType{"ST", []Type{}, []string{}}
 	for i := 0; i < pb.rs.Intn(6); i++ {
 		t := pb.RandType()
@@ -129,7 +129,7 @@ func (pb ProgramBuilder) RandStructType() StructType {
 	return st
 }
 
-func (pb ProgramBuilder) RandFuncType() FuncType {
+func (pb PackageBuilder) RandFuncType() FuncType {
 	args := make([]Type, 0, pb.rs.Intn(8))
 
 	// arguments

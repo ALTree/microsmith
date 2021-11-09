@@ -11,9 +11,9 @@ import (
 // --------------------------------
 
 type StmtBuilder struct {
-	pb *ProgramBuilder
+	pb *PackageBuilder
 
-	// TODO(alb): move all of these into Context or ProgramBuilder)
+	// TODO(alb): move all of these into Context or PackageBuilder)
 	currfunc *ast.FuncDecl // signature of func we're in
 	depth    int           // how deep the stmt hyerarchy is
 	funcp    int           // counter for function param names
@@ -22,7 +22,7 @@ type StmtBuilder struct {
 	label    int // counter for labels names
 }
 
-func NewStmtBuilder(pb *ProgramBuilder) *StmtBuilder {
+func NewStmtBuilder(pb *PackageBuilder) *StmtBuilder {
 	sb := new(StmtBuilder)
 	sb.pb = pb
 	return sb

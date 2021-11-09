@@ -12,11 +12,11 @@ import (
 // --------------------------------
 
 type ExprBuilder struct {
-	pb    *ProgramBuilder
+	pb    *PackageBuilder
 	depth int // how deep the expr hierarchy is
 }
 
-func NewExprBuilder(pb *ProgramBuilder) *ExprBuilder {
+func NewExprBuilder(pb *PackageBuilder) *ExprBuilder {
 	return &ExprBuilder{
 		pb: pb,
 	}

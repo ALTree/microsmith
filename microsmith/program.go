@@ -17,28 +17,51 @@ import (
 	"strings"
 )
 
-type Program struct {
-	id      uint64      // random id used in the names of the Program files
-	workdir string      // directory where the Program files are written
-	files   []*File     // the program's files
-	conf    ProgramConf // settings driving what kind of program is generated
+// ----------------------------------------------------------------
+//   ProgramBuilder
+// ----------------------------------------------------------------
+
+type ProgramBuilder struct {
+	conf ProgramConf
+	id   uint64
 }
 
-type File struct {
-	pkg    string
-	source []byte
-	name   string
-	path   *os.File
+func NewProgramBuilder(conf ProgramConf, id uint64) *ProgramBuilder {
+	return &ProgramBuilder{
+		conf: conf,
+		id:   id,
+	}
+}
+
+func (pb *ProgramBuilder) NewPackage(pkg string) *Package {
+	db := NewPackageBuilder(pb.conf, pkg, pb)
+	var buf bytes.Buffer
+	printer.Fprint(&buf, token.NewFileSet(), db.File())
+	src := bytes.ReplaceAll(buf.Bytes(), []byte("func "), []byte("\nfunc "))
+	return &Package{name: pkg, source: src}
+}
+
+// ----------------------------------------------------------------
+//   Program
+// ----------------------------------------------------------------
+
+type Program struct {
+	workdir string     // directory where the Program files are written
+	pkgs    []*Package // the program's packages
+	id      uint64     // random id used in the names of the Program files
+}
+
+type Package struct {
+	name     string
+	source   []byte
+	filename string
+	path     *os.File
 }
 
 type BuildOptions struct {
 	Toolchain             string
 	Noopt, Race, Ssacheck bool
 	Unified               bool
-}
-
-type CodeOptions struct {
-	Typeparams bool
 }
 
 var CheckSeed int
@@ -48,61 +71,54 @@ func init() {
 }
 
 func NewProgram(conf ProgramConf) *Program {
+	id := rand.Uint64()
+	pb := NewProgramBuilder(conf, id)
 	pg := &Program{
-		id:    rand.Uint64(),
-		conf:  conf,
-		files: make([]*File, 0),
+		id:   id,
+		pkgs: make([]*Package, 0),
 	}
 
-	if pg.conf.MultiPkg {
-		pg.files = append(pg.files, pg.NewFile("a"))
+	if conf.MultiPkg {
+		pg.pkgs = append(pg.pkgs, pb.NewPackage("a"))
 	}
-	pg.files = append(pg.files, pg.NewFile("main"))
+	pg.pkgs = append(pg.pkgs, pb.NewPackage("main"))
 
 	return pg
 }
 
-func (gp *Program) NewFile(pkg string) *File {
-	db := NewProgramBuilder(gp.conf)
-	var buf bytes.Buffer
-	printer.Fprint(&buf, token.NewFileSet(), db.File(pkg, gp.id))
-	src := bytes.ReplaceAll(buf.Bytes(), []byte("func "), []byte("\nfunc "))
-	return &File{pkg: pkg, source: src}
-}
-
-func (gp *Program) WriteToDisk(path string) error {
-	gp.workdir = path
-	for i, f := range gp.files {
-		fileName := fmt.Sprintf("prog%v_%v.go", gp.id, f.pkg)
+func (prog *Program) WriteToDisk(path string) error {
+	prog.workdir = path
+	for i, pkg := range prog.pkgs {
+		fileName := fmt.Sprintf("%v_%v.go", prog.id, pkg.name)
 		fh, err := os.Create(path + "/" + fileName)
 		defer fh.Close()
 		if err != nil {
 			return err
 		}
 
-		fh.Write(f.source)
-		gp.files[i].name = fileName
-		gp.files[i].path = fh
+		fh.Write(pkg.source)
+		prog.pkgs[i].filename = fileName
+		prog.pkgs[i].path = fh
 	}
 	return nil
 }
 
 // Check uses go/parser and go/types to parse and typecheck gp
 // in-memory.
-func (gp *Program) Check() error {
-	if len(gp.files) > 1 {
+func (prog *Program) Check() error {
+	if len(prog.pkgs) > 1 {
 		// multi-package program, skip typechecking
 		return nil
 	}
 
-	file, fset := gp.files[0], token.NewFileSet()
-	f, err := parser.ParseFile(fset, file.name, file.source, 0)
+	pkg, fset := prog.pkgs[0], token.NewFileSet()
+	f, err := parser.ParseFile(fset, pkg.filename, pkg.source, 0)
 	if err != nil {
 		return err // parse error
 	}
 
 	conf := types.Config{Importer: importer.Default()}
-	_, err = conf.Check(file.name, fset, []*ast.File{f}, nil)
+	_, err = conf.Check(pkg.filename, fset, []*ast.File{f}, nil)
 	if err != nil {
 		return err // typecheck error
 	}
@@ -116,12 +132,12 @@ func (gp *Program) Check() error {
 // If the compilation subprocess exits with an error code, Compile
 // returns the error message printed by the toolchain and the
 // subprocess error code.
-func (gp *Program) Compile(arch string, bo BuildOptions) (string, error) {
-	if len(gp.files) == 0 {
-		return "", errors.New("cannot compile program with no files")
+func (prog *Program) Compile(arch string, bo BuildOptions) (string, error) {
+	if len(prog.pkgs) == 0 {
+		return "", errors.New("Program has no packages")
 	}
 
-	baseName := fmt.Sprintf("prog%v", gp.id)
+	baseName := fmt.Sprintf("%v", prog.id)
 	arcName := baseName + "_main.o"
 
 	switch {
@@ -132,7 +148,7 @@ func (gp *Program) Compile(arch string, bo BuildOptions) (string, error) {
 			oFlag = "-Og"
 		}
 		cmd := exec.Command(bo.Toolchain, oFlag, "-o", arcName, baseName+"_main.go")
-		cmd.Dir = gp.workdir
+		cmd.Dir = prog.workdir
 		out, err := cmd.CombinedOutput()
 		if err != nil {
 			return string(out), err
@@ -145,7 +161,7 @@ func (gp *Program) Compile(arch string, bo BuildOptions) (string, error) {
 		} else {
 			cmd = exec.Command(bo.Toolchain, "build", "-o", arcName, baseName+"_main.go")
 		}
-		cmd.Dir = gp.workdir
+		cmd.Dir = prog.workdir
 		out, err := cmd.CombinedOutput()
 		if err != nil {
 			return string(out), err
@@ -183,17 +199,17 @@ func (gp *Program) Compile(arch string, bo BuildOptions) (string, error) {
 		}
 
 		// Compile
-		for _, file := range gp.files {
+		for _, pkg := range prog.pkgs {
 			var cmdArgs []string
-			if file.pkg == "main" {
+			if pkg.name == "main" {
 				cmdArgs = append(buildArgs, "-I=.")
-				cmdArgs = append(cmdArgs, file.name)
+				cmdArgs = append(cmdArgs, pkg.filename)
 			} else {
-				cmdArgs = append(buildArgs, file.name)
+				cmdArgs = append(buildArgs, pkg.filename)
 			}
 
 			cmd := exec.Command(bo.Toolchain, cmdArgs...)
-			cmd.Dir, cmd.Env = gp.workdir, env
+			cmd.Dir, cmd.Env = prog.workdir, env
 			out, err := cmd.CombinedOutput()
 			if err != nil {
 				return string(out), err
@@ -209,24 +225,24 @@ func (gp *Program) Compile(arch string, bo BuildOptions) (string, error) {
 
 		// Link
 		cmd := exec.Command(bo.Toolchain, linkArgs...)
-		cmd.Dir, cmd.Env = gp.workdir, env
+		cmd.Dir, cmd.Env = prog.workdir, env
 		out, err := cmd.CombinedOutput()
 		if err != nil {
 			return string(out), err
 		}
 	}
 
-	gp.DeleteBinaries()
+	prog.DeleteBinaries()
 	return "", nil
 }
 
 // DeleteBinaries deletes any binary file written on disk.
-func (gp Program) DeleteBinaries() {
-	basePath := gp.workdir + fmt.Sprintf("/prog%v", gp.id)
-	for _, file := range gp.files {
-		err := os.Remove(basePath + "_" + file.pkg + ".o")
+func (prog *Program) DeleteBinaries() {
+	basePath := prog.workdir + fmt.Sprintf("/%v", prog.id)
+	for _, pkg := range prog.pkgs {
+		err := os.Remove(basePath + "_" + pkg.name + ".o")
 		if err != nil {
-			log.Printf("could not remove %s: %s", basePath+"_"+file.pkg+".o", err)
+			log.Printf("could not remove %s: %s", basePath+"_"+pkg.name+".o", err)
 		}
 
 	}
@@ -237,7 +253,7 @@ func (gp Program) DeleteBinaries() {
 
 // DeleteSource deletes all gp files.
 func (gp Program) DeleteSource() {
-	for _, file := range gp.files {
+	for _, file := range gp.pkgs {
 		_ = os.Remove(file.path.Name())
 	}
 }
@@ -253,8 +269,8 @@ func (gp Program) MoveCrasher() {
 		}
 	}
 
-	for _, file := range gp.files {
-		err := os.Rename(file.path.Name(), fld+"/"+file.name)
+	for _, pkg := range gp.pkgs {
+		err := os.Rename(pkg.path.Name(), fld+"/"+pkg.filename)
 		if err != nil {
 			fmt.Printf("Could not move crasher: %v", err)
 			os.Exit(2)
@@ -262,17 +278,17 @@ func (gp Program) MoveCrasher() {
 	}
 }
 
-func (p Program) String() string {
+func (prog *Program) String() string {
 	var res string
-	for _, file := range p.files {
-		res += string(file.source)
-		if len(p.files) > 1 {
+	for _, pkg := range prog.pkgs {
+		res += string(pkg.source)
+		if len(prog.pkgs) > 1 {
 			res += "\n--------\n"
 		}
 	}
 	return res
 }
 
-func (p Program) Name() string {
-	return fmt.Sprintf("prog%v", p.id)
+func (prog *Program) Name() string {
+	return fmt.Sprintf("%v", prog.id)
 }
