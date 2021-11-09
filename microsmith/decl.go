@@ -140,7 +140,7 @@ func (pb *ProgramBuilder) File(pkg string, id uint64) *ast.File {
 	af.Decls = append(af.Decls, MakeUsePakage(`"unsafe"`))
 
 	tp := pb.Conf().TypeParams
-	if tp && pkg == "main" {
+	if tp {
 		for i := 0; i < 1+rand.Intn(6); i++ {
 			c, tp := pb.MakeRandConstraint(fmt.Sprintf("I%v", i))
 			af.Decls = append(af.Decls, c)
