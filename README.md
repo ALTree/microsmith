@@ -48,6 +48,7 @@ used to stress-test Go compilers.
 - [#49249 internal compiler error: panic during expand calls](https://github.com/golang/go/issues/49249)
 - [#49282 internal compiler error: Op...LECall and OpDereference have mismatched mem](https://github.com/golang/go/issues/49282)
 - [#49378 internal compiler error: Expand calls interface data problem](https://github.com/golang/go/issues/49378)
+- [#49619 cmd/link: panic: index out of range](https://github.com/golang/go/issues/49619)
 
 ##### gccgo
 
