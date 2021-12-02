@@ -114,6 +114,7 @@ func (prog *Program) WriteToDisk(path string) error {
 func (prog *Program) Check() error {
 	if len(prog.pkgs) > 1 {
 		// multi-package program, skip typechecking
+		// TODO(alb): find a way to enable this for multipkg
 		return nil
 	}
 

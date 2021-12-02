@@ -154,11 +154,13 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 
 	switch t := t.(type) {
 
-	case BasicType:
-		switch eb.pb.rs.Intn(7) {
+	case BasicType, TypeParam:
+		switch eb.pb.rs.Intn(10) {
 		case 0, 1:
 			return eb.UnaryExpr(t)
-		case 2, 3, 4, 5:
+		case 2, 3:
+			return eb.UnaryExpr(t)
+		case 4, 5, 6, 7:
 			return eb.BinaryExpr(t)
 		default:
 			return eb.CallExpr(t, NOTDEFER)
@@ -166,18 +168,6 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 
 	case ArrayType, ChanType, FuncType, MapType, StructType:
 		return eb.VarOrLit(t)
-
-	case TypeParam:
-		switch eb.pb.rs.Intn(4) {
-		case 0:
-			return eb.UnaryExpr(t)
-		case 1:
-			return eb.BinaryExpr(t)
-		case 2:
-			return eb.CallExpr(t, NOTDEFER)
-		default:
-			return eb.VarOrLit(t)
-		}
 
 	case PointerType:
 		// Either return a literal of the requested pointer type, &x

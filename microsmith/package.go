@@ -97,7 +97,7 @@ func (pb *PackageBuilder) FuncDecl() *ast.FuncDecl {
 			tps,
 			&ast.Field{Names: []*ast.Ident{ident}, Type: typ.N},
 		)
-		tp.AddVariable(ident, typ) // TODO(alb)
+		tp.AddVariable(ident, typ)
 	}
 	pb.ctx.typeparams = &tp
 
