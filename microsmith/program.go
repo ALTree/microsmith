@@ -24,6 +24,7 @@ import (
 type ProgramBuilder struct {
 	conf ProgramConf
 	id   uint64
+	pkgs []*PackageBuilder
 }
 
 func NewProgramBuilder(conf ProgramConf, id uint64) *ProgramBuilder {
@@ -35,6 +36,7 @@ func NewProgramBuilder(conf ProgramConf, id uint64) *ProgramBuilder {
 
 func (pb *ProgramBuilder) NewPackage(pkg string) *Package {
 	db := NewPackageBuilder(pb.conf, pkg, pb)
+	pb.pkgs = append(pb.pkgs, db)
 	var buf bytes.Buffer
 	printer.Fprint(&buf, token.NewFileSet(), db.File())
 	src := bytes.ReplaceAll(buf.Bytes(), []byte("func "), []byte("\nfunc "))

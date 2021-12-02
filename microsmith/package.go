@@ -81,7 +81,7 @@ func (pb *PackageBuilder) FuncDecl() *ast.FuncDecl {
 	}()
 
 	// if not using typeparams, generate a body and return
-	if !pb.Conf().TypeParams || pb.pkg != "main" {
+	if !pb.Conf().TypeParams {
 		pb.sb.currfunc = fd
 		fd.Body = pb.sb.BlockStmt()
 		return fd
@@ -137,15 +137,10 @@ func (pb *PackageBuilder) File() *ast.File {
 
 	af.Decls = append(af.Decls, MakeImport(`"math"`))
 	af.Decls = append(af.Decls, MakeImport(`"unsafe"`))
-
-	// eg:
-	//   var _ = math.Sqrt
-	// (to avoid "unused package" errors)
 	af.Decls = append(af.Decls, MakeUsePakage(`"math"`))
 	af.Decls = append(af.Decls, MakeUsePakage(`"unsafe"`))
 
-	tp := pb.Conf().TypeParams
-	if tp {
+	if pb.Conf().TypeParams {
 		for i := 0; i < 1+rand.Intn(6); i++ {
 			c, tp := pb.MakeRandConstraint(fmt.Sprintf("I%v", i))
 			af.Decls = append(af.Decls, c)
@@ -153,9 +148,9 @@ func (pb *PackageBuilder) File() *ast.File {
 		}
 	}
 
-	// In the global scope:
+	// Outside any func:
 	//   var i int
-	// So we always have an int available
+	// So we always have an int variable in scope.
 	af.Decls = append(af.Decls, MakeInt())
 	pb.Scope().AddVariable(&ast.Ident{Name: "i"}, BasicType{"int"})
 
@@ -185,56 +180,67 @@ func (pb *PackageBuilder) File() *ast.File {
 		pb.funcs = append(pb.funcs, fd)
 	}
 
-	// If we're not building a main package, we're done. Otherwise,
-	// add a main func.
+	// If we're not building the main package, we're done.
 	if pb.pkg != "main" {
 		return af
 	}
 
+	// build a main function
 	mainF := &ast.FuncDecl{
 		Name: &ast.Ident{Name: "main"},
 		Type: &ast.FuncType{Params: &ast.FieldList{}},
 		Body: &ast.BlockStmt{},
 	}
 
-	// call all the functions declared in this package
-	for _, f := range pb.funcs {
-		var ce ast.CallExpr
-		if tp {
-			// for each typeparam attached to the function, find
-			// its typelist, choose a subtype at random, and use
-			// it in the call.
-			var indices []ast.Expr
-			for _, typ := range f.Type.TypeParams.List {
-				types := FindByName(pb.ctx.constraints, typ.Type.(*ast.Ident).Name).Types
-				indices = append(indices, types[rand.Intn(len(types))].Ast())
-			}
-			ce.Fun = &ast.IndexListExpr{X: f.Name, Indices: indices}
-		} else {
-			ce.Fun = f.Name
-		}
-
-		mainF.Body.List = append(
-			mainF.Body.List,
-			&ast.ExprStmt{&ce},
-		)
-	}
-
-	// call the func in package a
+	// call the the funcs defined here (main package) and in the other
+	// packages
 	if pb.Conf().MultiPkg {
-		var ce ast.CallExpr
-		ce.Fun = &ast.SelectorExpr{
-			X:   &ast.Ident{Name: "a"},
-			Sel: pb.FuncIdent(0),
+		for _, p := range pb.pb.pkgs {
+			if p.pkg == "main" {
+				mainF.Body.List = append(mainF.Body.List, p.MakeFuncCalls(false)...)
+			} else {
+				mainF.Body.List = append(mainF.Body.List, p.MakeFuncCalls(true)...)
+			}
 		}
-		mainF.Body.List = append(
-			mainF.Body.List,
-			&ast.ExprStmt{&ce},
-		)
 	}
 
 	af.Decls = append(af.Decls, mainF)
 	return af
+}
+
+// Returns a slice of ast.ExprStms with calls to every top-level
+// function of the receiver. Takes care of adding explicit type
+// parameters, in necessary.
+//
+// If sel is true, generates <pkg>.F[ ]( ) instead of F[ ]( ), to make
+// the calls work from a different package.
+func (p *PackageBuilder) MakeFuncCalls(sel bool) []ast.Stmt {
+	calls := make([]ast.Stmt, 0, len(p.funcs))
+	for _, f := range p.funcs {
+		var ce ast.CallExpr
+		ce.Fun = f.Name
+
+		// prepend <pkg> to F()
+		if sel {
+			ce.Fun = &ast.SelectorExpr{
+				X:   &ast.Ident{Name: p.pkg},
+				Sel: f.Name,
+			}
+		}
+
+		// instantiate type parameters at random
+		if p.Conf().TypeParams {
+			var indices []ast.Expr
+			for _, typ := range f.Type.TypeParams.List {
+				types := FindByName(p.ctx.constraints, typ.Type.(*ast.Ident).Name).Types
+				indices = append(indices, types[rand.Intn(len(types))].Ast())
+			}
+			ce.Fun = &ast.IndexListExpr{X: ce.Fun, Indices: indices}
+		}
+
+		calls = append(calls, &ast.ExprStmt{&ce})
+	}
+	return calls
 }
 
 // Builds this:
