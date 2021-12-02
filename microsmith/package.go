@@ -16,8 +16,9 @@ type PackageBuilder struct {
 	rs        *rand.Rand
 	sb        *StmtBuilder
 	eb        *ExprBuilder
-	BaseTypes []Type
+	baseTypes []Type
 	typedepth int
+	funcs     []*ast.FuncDecl // top level funcs declared in the package
 }
 
 func NewPackageBuilder(conf ProgramConf, pkg string, progb *ProgramBuilder) *PackageBuilder {
@@ -40,7 +41,7 @@ func NewPackageBuilder(conf ProgramConf, pkg string, progb *ProgramBuilder) *Pac
 	pb.eb = NewExprBuilder(&pb)
 
 	// Add predeclared base types
-	pb.BaseTypes = []Type{
+	pb.baseTypes = []Type{
 		BasicType{"int"},
 		BasicType{"bool"},
 		BasicType{"byte"},
@@ -57,16 +58,16 @@ func NewPackageBuilder(conf ProgramConf, pkg string, progb *ProgramBuilder) *Pac
 		BasicType{"string"},
 	}
 	if conf.TypeParams {
-		pb.BaseTypes = append(pb.BaseTypes, BasicType{"any"})
+		pb.baseTypes = append(pb.baseTypes, BasicType{"any"})
 	}
 
 	return &pb
 }
 
-func (pb *PackageBuilder) FuncDecl(i int, pkg string) *ast.FuncDecl {
+func (pb *PackageBuilder) FuncDecl() *ast.FuncDecl {
 
 	fd := &ast.FuncDecl{
-		Name: pb.FuncIdent(i),
+		Name: pb.FuncIdent(len(pb.funcs)),
 		Type: &ast.FuncType{
 			Func:    0,
 			Params:  new(ast.FieldList),
@@ -80,7 +81,7 @@ func (pb *PackageBuilder) FuncDecl(i int, pkg string) *ast.FuncDecl {
 	}()
 
 	// if not using typeparams, generate a body and return
-	if !pb.Conf().TypeParams || pkg != "main" {
+	if !pb.Conf().TypeParams || pb.pkg != "main" {
 		pb.sb.currfunc = fd
 		fd.Body = pb.sb.BlockStmt()
 		return fd
@@ -160,7 +161,7 @@ func (pb *PackageBuilder) File() *ast.File {
 
 	// Now half a dozen top-level variables
 	for i := 1; i <= 6; i++ {
-		t := pb.BaseTypes[rand.Intn(len(pb.BaseTypes))]
+		t := pb.baseTypes[rand.Intn(len(pb.baseTypes))]
 		if pb.rs.Intn(3) == 0 {
 			t = PointerOf(t)
 		}
@@ -173,7 +174,15 @@ func (pb *PackageBuilder) File() *ast.File {
 
 	// Declare top-level functions
 	for i := 0; i < 4+pb.rs.Intn(5); i++ {
-		af.Decls = append(af.Decls, pb.FuncDecl(i, pb.pkg)) // TODO(alb): no need to pass
+		fd := pb.FuncDecl()
+
+		// append the function (decl and body) to the file
+		af.Decls = append(af.Decls, fd)
+
+		// save pointer to the decl in funcs, so we can list the
+		// top level functions withoup having to loop on the whole
+		// ast.File looking for func ast objects.
+		pb.funcs = append(pb.funcs, fd)
 	}
 
 	// If we're not building a main package, we're done. Otherwise,
@@ -188,29 +197,27 @@ func (pb *PackageBuilder) File() *ast.File {
 		Body: &ast.BlockStmt{},
 	}
 
-	// call all local functions
-	for _, decl := range af.Decls {
-		if f, ok := decl.(*ast.FuncDecl); ok {
-			var ce ast.CallExpr
-			if tp {
-				// for each typeparam attached to the function, find
-				// its typelist, choose a subtype at random, and use
-				// it in the call.
-				var indices []ast.Expr
-				for _, typ := range f.Type.TypeParams.List {
-					types := FindByName(pb.ctx.constraints, typ.Type.(*ast.Ident).Name).Types
-					indices = append(indices, types[rand.Intn(len(types))].Ast())
-				}
-				ce.Fun = &ast.IndexListExpr{X: f.Name, Indices: indices}
-			} else {
-				ce.Fun = f.Name
+	// call all the functions declared in this package
+	for _, f := range pb.funcs {
+		var ce ast.CallExpr
+		if tp {
+			// for each typeparam attached to the function, find
+			// its typelist, choose a subtype at random, and use
+			// it in the call.
+			var indices []ast.Expr
+			for _, typ := range f.Type.TypeParams.List {
+				types := FindByName(pb.ctx.constraints, typ.Type.(*ast.Ident).Name).Types
+				indices = append(indices, types[rand.Intn(len(types))].Ast())
 			}
-
-			mainF.Body.List = append(
-				mainF.Body.List,
-				&ast.ExprStmt{&ce},
-			)
+			ce.Fun = &ast.IndexListExpr{X: f.Name, Indices: indices}
+		} else {
+			ce.Fun = f.Name
 		}
+
+		mainF.Body.List = append(
+			mainF.Body.List,
+			&ast.ExprStmt{&ce},
+		)
 	}
 
 	// call the func in package a

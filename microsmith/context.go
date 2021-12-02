@@ -87,7 +87,7 @@ func (pb PackageBuilder) RandAddressableType() Type {
 	types := make([]Type, 0, 32)
 
 	// collect addressable Base Types
-	for _, t := range pb.BaseTypes {
+	for _, t := range pb.baseTypes {
 		if t.Addressable() {
 			types = append(types, t)
 		}
@@ -108,14 +108,14 @@ func (pb PackageBuilder) RandAddressableType() Type {
 // Returns a single BaseType (primitives, or a type parameter).
 func (pb PackageBuilder) RandBaseType() Type {
 	if tp := pb.ctx.typeparams; tp != nil {
-		i := pb.rs.Intn(len(pb.BaseTypes) + len(*tp))
-		if i < len(pb.BaseTypes) {
-			return pb.BaseTypes[i]
+		i := pb.rs.Intn(len(pb.baseTypes) + len(*tp))
+		if i < len(pb.baseTypes) {
+			return pb.baseTypes[i]
 		} else {
-			return MakeTypeParam((*tp)[i-len(pb.BaseTypes)])
+			return MakeTypeParam((*tp)[i-len(pb.baseTypes)])
 		}
 	} else {
-		return pb.BaseTypes[rand.Intn(len(pb.BaseTypes))]
+		return pb.baseTypes[rand.Intn(len(pb.baseTypes))]
 	}
 }
 
