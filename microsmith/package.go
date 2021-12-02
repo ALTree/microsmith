@@ -132,7 +132,12 @@ func (pb *PackageBuilder) File() *ast.File {
 	af.Decls = []ast.Decl{}
 
 	if pb.pkg == "main" && pb.Conf().MultiPkg {
-		af.Decls = append(af.Decls, MakeImport(fmt.Sprintf(`"%v_a"`, pb.pb.id)))
+		for _, p := range pb.pb.pkgs {
+			if p.pkg == "main" {
+				continue
+			}
+			af.Decls = append(af.Decls, MakeImport(fmt.Sprintf(`"%v_%s"`, pb.pb.id, p.pkg)))
+		}
 	}
 
 	af.Decls = append(af.Decls, MakeImport(`"math"`))

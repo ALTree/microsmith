@@ -83,6 +83,10 @@ func NewProgram(conf ProgramConf) *Program {
 	if conf.MultiPkg {
 		pg.pkgs = append(pg.pkgs, pb.NewPackage("a"))
 	}
+
+	// main has to be last because it calls functions from the other
+	// packages, which need to already exist in order for it to see
+	// them.
 	pg.pkgs = append(pg.pkgs, pb.NewPackage("main"))
 
 	return pg
