@@ -196,7 +196,7 @@ func debugRun() {
 	err := gp.Check()
 	fmt.Println(gp)
 	if err != nil {
-		fmt.Printf("Program failed typechecking\n%s\n", err)
+		fmt.Printf("Program failed typechecking with error:\n%s\n", err)
 		os.Exit(2)
 	}
 }

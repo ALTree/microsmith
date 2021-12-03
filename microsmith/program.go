@@ -113,8 +113,23 @@ func (prog *Program) WriteToDisk(path string) error {
 // in-memory.
 func (prog *Program) Check() error {
 	if len(prog.pkgs) > 1 {
-		// multi-package program, skip typechecking
-		// TODO(alb): find a way to enable this for multipkg
+		if _, err := os.Stat("work"); os.IsNotExist(err) {
+			err := os.MkdirAll("work", os.ModePerm)
+			if err != nil {
+				return (err)
+			}
+		}
+		defer func() { os.RemoveAll("work") }()
+
+		prog.WriteToDisk("work")
+		tc := "go"
+		if bin := os.Getenv("GO_TC"); bin != "" {
+			tc = bin
+		}
+		msg, err := prog.Compile("amd64", BuildOptions{Toolchain: tc})
+		if err != nil {
+			return errors.New(msg)
+		}
 		return nil
 	}
 
@@ -134,7 +149,7 @@ func (prog *Program) Check() error {
 }
 
 // Compile uses the given toolchain to build gp. It assumes that gp's
-// source is already written to disk by gp.WriteToFile.
+// source is already written to disk by Program.WriteToDisk.
 //
 // If the compilation subprocess exits with an error code, Compile
 // returns the error message printed by the toolchain and the
@@ -290,7 +305,7 @@ func (prog *Program) String() string {
 	for _, pkg := range prog.pkgs {
 		res += string(pkg.source)
 		if len(prog.pkgs) > 1 {
-			res += "\n--------\n"
+			res += "\n--------------------------------------------------\n"
 		}
 	}
 	return res
