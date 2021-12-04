@@ -97,14 +97,14 @@ func (pb PackageBuilder) RandType() Type {
 func (pb PackageBuilder) RandComparableType() Type {
 	types := make([]Type, 0, 32)
 
-	// collect addressable Base Types
+	// from Base Types
 	for _, t := range pb.baseTypes {
 		if t.Comparable() {
 			types = append(types, t)
 		}
 	}
 
-	// look for addressable type parameters
+	// from type parameters
 	if tp := pb.ctx.typeparams; tp != nil {
 		for _, v := range tp.vars {
 			if v.Type.Comparable() {

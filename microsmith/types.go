@@ -16,7 +16,7 @@ type Type interface {
 	Contains(t Type) bool // does the type contain type t
 }
 
-// Name to use for variable of type t
+// Name to use for variables of type t
 func Ident(t Type) string {
 	switch t := t.(type) {
 	case BasicType:

@@ -329,7 +329,9 @@ func (pb *PackageBuilder) MakeRandConstraint(name string) (*ast.GenDecl, Constra
 		BasicType{"string"},
 	}
 
+	// shuffle, then select at least one of them
 	pb.rs.Shuffle(len(types), func(i, j int) { types[i], types[j] = types[j], types[i] })
+	types = types[:1+pb.rs.Intn(len(types)-1)]
 
 	src := "package p\n"
 	src += "type " + name + " interface{\n"

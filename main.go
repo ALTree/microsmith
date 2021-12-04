@@ -24,7 +24,7 @@ var (
 	debugF    = flag.Bool("debug", false, "Run in debug mode")
 	multiPkgF = flag.Bool("multipkg", false, "Generate multipkg programs")
 	nooptF    = flag.Bool("noopt", false, "Compile with optimizations disabled")
-	pF        = flag.Uint64("p", 1, "Number of workers")
+	pF        = flag.Int("p", 1, "Number of workers")
 	raceF     = flag.Bool("race", false, "Compile with -race")
 	ssacheckF = flag.Bool("ssacheck", false, "Compile with -d=ssa/check/on")
 	binF      = flag.String("bin", "", "Go toolchain to fuzz")
@@ -74,7 +74,13 @@ func main() {
 		os.Exit(2)
 	}
 
-	fz := microsmith.BuildOptions{*binF, *nooptF, *raceF, *ssacheckF, *tpuF}
+	fz := microsmith.BuildOptions{
+		Toolchain: *binF,
+		Noopt:     *nooptF,
+		Race:      *raceF,
+		Ssacheck:  *ssacheckF,
+		Unified:   *tpuF,
+	}
 
 	archs = strings.Split(*archF, ",")
 
@@ -98,7 +104,7 @@ func main() {
 
 	startTime := time.Now()
 
-	for i := uint64(1); i <= *pF; i++ {
+	for i := 1; i <= *pF; i++ {
 		go Fuzz(fz)
 	}
 
