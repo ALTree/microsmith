@@ -84,23 +84,18 @@ func (s *Scope) DeleteIdentByName(name *ast.Ident) {
 // Returns a random Addressable variable in scope, that can be used in
 // the LHS of an AssignStmt. If nofunc is TRUE, ignore FuncType
 // variables.
-func (s Scope) RandomVar(nofunc bool) Variable {
+func (s Scope) RandAssignable() Variable {
 	vs := make([]Variable, 0, 256)
 	for _, v := range s.vars {
-		// Maps are NOT addressable, but it doesn't matter here
-		// because the only RandomVar caller (AssignStmt), always
-		// assigns to maps as m[...] = , and that is allowed. What is
-		// not allowed is m[...].i =.
+		// Maps are not assignable in general, but the only caller
+		// (AssignStmt) always assigns to maps as m[...] =, which is
+		// allowed. What is not allowed is m[...].i =.
 		if _, ok := v.Type.(MapType); ok {
 			vs = append(vs, v)
 			continue
 		}
 		if v.Type.Addressable() {
-			if nofunc {
-				if _, ok := v.Type.(FuncType); !ok {
-					vs = append(vs, v)
-				}
-			} else {
+			if _, ok := v.Type.(FuncType); !ok {
 				vs = append(vs, v)
 			}
 		}

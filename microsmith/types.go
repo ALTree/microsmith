@@ -145,7 +145,7 @@ type PointerType struct {
 }
 
 func (t PointerType) Addressable() bool {
-	return t.Base().Addressable()
+	return true
 }
 
 func (t PointerType) Ast() ast.Expr {
@@ -610,7 +610,7 @@ type MapType struct {
 }
 
 func (t MapType) Addressable() bool {
-	return false
+	return true
 }
 
 func (t MapType) Ast() ast.Expr {

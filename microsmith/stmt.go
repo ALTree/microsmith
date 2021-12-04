@@ -119,7 +119,7 @@ func (sb *StmtBuilder) Stmt() ast.Stmt {
 // gets a random variable currently in scope (that we can assign to),
 // and builds an AssignStmt with a random Expr of its type on the RHS
 func (sb *StmtBuilder) AssignStmt() *ast.AssignStmt {
-	v := sb.S().RandomVar(true)
+	v := sb.S().RandAssignable()
 
 	switch t := v.Type.(type) {
 
