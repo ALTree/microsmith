@@ -30,7 +30,7 @@ func (s Scope) String() string {
 	for i := range s.vars {
 		str += s.vars[i].String() + "\n"
 	}
-	str = str[:len(s.vars)-1] + "\n}"
+	str = str[:len(str)-1] + "\n}"
 	return str
 }
 
@@ -86,17 +86,14 @@ func (s *Scope) DeleteIdentByName(name *ast.Ident) {
 func (s Scope) RandAssignable() Variable {
 	vs := make([]Variable, 0, 256)
 	for _, v := range s.vars {
-		// Maps are not assignable in general, but the only caller
-		// (AssignStmt) always assigns to maps as m[...] =, which is
-		// allowed. What is not allowed is m[...].i =.
-		if _, ok := v.Type.(MapType); ok {
-			vs = append(vs, v)
-			continue
-		}
-		if v.Type.Comparable() {
-			if _, ok := v.Type.(FuncType); !ok {
+		switch v.Type.(type) {
+		case FuncType:
+			// can't assign to len or math.Sqrt
+			if v.Type.(FuncType).Local {
 				vs = append(vs, v)
 			}
+		default:
+			vs = append(vs, v)
 		}
 	}
 

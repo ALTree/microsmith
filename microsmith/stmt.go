@@ -193,9 +193,6 @@ func (sb *StmtBuilder) AssignStmt() *ast.AssignStmt {
 			}
 		}
 
-	case ChanType:
-		panic("AssignStmt: requested addressable, got chan")
-
 	case MapType:
 		// For maps, 50/50 between
 		//   M[<expr>] = <expr>
@@ -213,9 +210,6 @@ func (sb *StmtBuilder) AssignStmt() *ast.AssignStmt {
 				Rhs: []ast.Expr{sb.E().Expr(v.Type)},
 			}
 		}
-
-	case FuncType:
-		panic("AssignStmt: not for functions")
 
 	default:
 		return &ast.AssignStmt{
