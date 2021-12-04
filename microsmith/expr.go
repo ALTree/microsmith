@@ -259,6 +259,11 @@ func (eb *ExprBuilder) VarOrLit(t Type) ast.Expr {
 			return eb.SliceExpr(vst)
 		}
 	}
+	if bt, ok := vst.Type.(BasicType); ok && bt.N == "string" {
+		if t.Equal(vst.Type) && eb.pb.rs.Intn(4) < 99 {
+			return eb.SliceExpr(vst)
+		}
+	}
 
 	return eb.SubTypeExpr(vst.Name, vst.Type, t)
 }
