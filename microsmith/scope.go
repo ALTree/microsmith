@@ -150,7 +150,7 @@ func (s Scope) RandRangeable() (Variable, bool) {
 }
 
 // Returns a chan (of any subtype)
-func (s Scope) GetRandomVarChan() (Variable, bool) {
+func (s Scope) RandChan() (Variable, bool) {
 	return s.RandPred(func(v Variable, _ ...Type) bool {
 		_, ischan := v.Type.(ChanType)
 		return ischan

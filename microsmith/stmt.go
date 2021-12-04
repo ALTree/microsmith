@@ -618,7 +618,7 @@ func (sb *StmtBuilder) IncDecStmt(t Type) *ast.IncDecStmt {
 func (sb *StmtBuilder) SendStmt() *ast.SendStmt {
 	st := new(ast.SendStmt)
 
-	ch, ok := sb.S().GetRandomVarChan()
+	ch, ok := sb.S().RandChan()
 	if !ok {
 		// no channels in scope, but we can send to a brand new one,
 		// i.e. generate
@@ -659,7 +659,7 @@ func (sb *StmtBuilder) CommClause(def bool) *ast.CommClause {
 		return &ast.CommClause{Body: stmtList}
 	}
 
-	ch, chanInScope := sb.S().GetRandomVarChan()
+	ch, chanInScope := sb.S().RandChan()
 	if !chanInScope {
 		// when no chan is in scope, we select from a newly made channel,
 		// i.e. we build and return
@@ -697,7 +697,7 @@ func (sb *StmtBuilder) CommClause(def bool) *ast.CommClause {
 func (sb *StmtBuilder) ExprStmt() *ast.ExprStmt {
 
 	// Close(ch) or <-ch.
-	if ch, ok := sb.S().GetRandomVarChan(); ok && sb.pb.rs.Intn(2) == 0 {
+	if ch, ok := sb.S().RandChan(); ok && sb.pb.rs.Intn(2) == 0 {
 		if sb.pb.rs.Intn(2) == 0 {
 			return &ast.ExprStmt{
 				X: sb.E().ChanReceiveExpr(ch.Name),
