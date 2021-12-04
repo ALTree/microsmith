@@ -390,7 +390,7 @@ func (eb *ExprBuilder) UnaryExpr(t Type) ast.Expr {
 
 	// if there are pointers to t in scope, generate a t by
 	// dereferencing it with chance 0.5
-	if eb.pb.rs.Intn(2) == 0 && eb.S().HasType(PointerOf(t)) {
+	if eb.pb.rs.Intn(2) == 0 && eb.S().Has(PointerOf(t)) {
 		ue.Op = token.MUL
 		// See comment in Expr() for PointerType on why we must call
 		// Expr() here.

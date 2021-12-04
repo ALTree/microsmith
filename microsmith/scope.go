@@ -3,6 +3,7 @@ package microsmith
 import (
 	"fmt"
 	"go/ast"
+	"reflect"
 )
 
 type Variable struct {
@@ -19,6 +20,65 @@ func (v Variable) String() string {
 type Scope struct {
 	pb   *PackageBuilder
 	vars []Variable
+}
+
+func (s Scope) String() string {
+	if len(s.vars) == 0 {
+		return "{empty scope}"
+	}
+	str := "{\n"
+	for i := range s.vars {
+		str += s.vars[i].String() + "\n"
+	}
+	str = str[:len(s.vars)-1] + "\n}"
+	return str
+}
+
+// Has returns true if the scope has at least one variable of Type t.
+func (s Scope) Has(t Type) bool {
+	for _, v := range s.vars {
+		if v.Type.Equal(t) {
+			return true
+		}
+	}
+	return false
+}
+
+// NewIdent adds a new variable of Type t to the scope, automatically
+// assigning it a name that is not already taken. It returns a pointer
+// to the new variable's ast.Ident.
+func (s *Scope) NewIdent(t Type) *ast.Ident {
+	tc := 0
+	for _, v := range s.vars {
+		if _, basic := t.(BasicType); basic && v.Type.Equal(t) {
+			tc++
+		} else if reflect.TypeOf(t) == reflect.TypeOf(v.Type) {
+			tc++
+		}
+	}
+	name := fmt.Sprintf("%s%v", Ident(t), tc)
+	id := &ast.Ident{Name: name}
+	s.vars = append(s.vars, Variable{t, id})
+	return id
+}
+
+// Adds v to the scope.
+func (s *Scope) AddVariable(i *ast.Ident, t Type) {
+	s.vars = append(s.vars, Variable{t, i})
+}
+
+func (s *Scope) DeleteIdentByName(name *ast.Ident) {
+	del := -1
+	for i := range s.vars {
+		if v := s.vars[i]; v.Name.Name == name.Name {
+			del = i
+			break
+		}
+	}
+
+	if del != -1 {
+		s.vars = append(s.vars[:del], s.vars[del+1:]...)
+	}
 }
 
 // Returns a random Addressable variable in scope, that can be used in
@@ -52,118 +112,6 @@ func (s Scope) RandomVar(nofunc bool) Variable {
 	}
 
 	return RandItem(s.pb.rs, vs)
-}
-
-func (s Scope) String() string {
-	if len(s.vars) == 0 {
-		return "{empty scope}"
-	}
-	str := "{\n"
-	for i := range s.vars {
-		str += s.vars[i].String() + "\n"
-	}
-	str = str[:len(s.vars)-1] + "\n}"
-	return str
-}
-
-// NewIdent adds to the scope a new variable of Type t, and return a
-// pointer to it
-func (s *Scope) NewIdent(t Type, cid ...*ast.Ident) *ast.Ident {
-	tc := 0
-	switch t.(type) {
-	case FuncType:
-		for _, v := range s.vars {
-			if ft, ok := v.Type.(FuncType); ok && ft.Local {
-				tc++
-			}
-		}
-
-	// StructType, ChanType, MapType, and ArrayType identifiers do not
-	// depend on the type contents (they are always named ST, CH, and
-	// M), so we increment the counter at each Struct or Chan Type.
-
-	case StructType:
-		for _, v := range s.vars {
-			if _, ok := v.Type.(StructType); ok {
-				tc++
-			}
-		}
-	case ChanType:
-		for _, v := range s.vars {
-			if _, ok := v.Type.(ChanType); ok {
-				tc++
-			}
-		}
-	case MapType:
-		for _, v := range s.vars {
-			if _, ok := v.Type.(MapType); ok {
-				tc++
-			}
-		}
-	case ArrayType:
-		for _, v := range s.vars {
-			if _, ok := v.Type.(ArrayType); ok {
-				tc++
-			}
-		}
-
-	case PointerType:
-		for _, v := range s.vars {
-			if _, ok := v.Type.(PointerType); ok {
-				tc++
-			}
-		}
-
-	case Constraint:
-		for _, v := range s.vars {
-			if _, ok := v.Type.(Constraint); ok {
-				tc++
-			}
-		}
-
-	default:
-		for _, v := range s.vars {
-			if v.Type.Equal(t) {
-				tc++
-			}
-		}
-	}
-
-	name := fmt.Sprintf("%s%v", Ident(t), tc)
-	id := &ast.Ident{Name: name}
-
-	s.vars = append(s.vars, Variable{t, id})
-	return id
-}
-
-// Adds v to the scope.
-func (s *Scope) AddVariable(i *ast.Ident, t Type) {
-	s.vars = append(s.vars, Variable{t, i})
-}
-
-func (s *Scope) DeleteIdentByName(name *ast.Ident) {
-	del := -1
-	for i := range s.vars {
-		if v := s.vars[i]; v.Name.Name == name.Name {
-			del = i
-			break
-		}
-	}
-
-	if del != -1 {
-		s.vars = append(s.vars[:del], s.vars[del+1:]...)
-	}
-}
-
-// HasType returns true if the current Scope ls has at least one
-// variable which type matches exactly t.
-func (s Scope) HasType(t Type) bool {
-	for _, v := range s.vars {
-		if v.Type.Equal(t) {
-			return true
-		}
-	}
-	return false
 }
 
 // Returns a function with return type t
