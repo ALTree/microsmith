@@ -30,9 +30,9 @@ func NewPackageBuilder(conf ProgramConf, pkg string, progb *ProgramBuilder) *Pac
 	}
 
 	// Initialize Context.Scope with the predeclared functions:
-	scope := make(Scope, 0, 64)
+	scope := Scope{pb: &pb, vars: make([]Variable, 0, 64)}
 	for _, f := range PredeclaredFuncs {
-		scope = append(scope, Variable{f, &ast.Ident{Name: f.Name()}})
+		scope.vars = append(scope.vars, Variable{f, &ast.Ident{Name: f.Name()}})
 	}
 	pb.ctx.scope = &scope
 
@@ -89,10 +89,10 @@ func (pb *PackageBuilder) FuncDecl() *ast.FuncDecl {
 
 	// If typeparams requested, use a few of the available one in the
 	// function signature, and add them to scope.
-	tp, tps := make(Scope, 0, 8), []*ast.Field{}
-	for i := 0; i < 1+rand.Intn(8); i++ {
+	tp, tps := Scope{pb: pb, vars: make([]Variable, 0, 8)}, []*ast.Field{}
+	for i := 0; i < 1+pb.rs.Intn(8); i++ {
 		ident := &ast.Ident{Name: fmt.Sprintf("G%v", i)}
-		typ := pb.ctx.constraints[pb.rs.Intn(len(pb.ctx.constraints))]
+		typ := RandItem(pb.rs, pb.ctx.constraints)
 		tps = append(
 			tps,
 			&ast.Field{Names: []*ast.Ident{ident}, Type: typ.N},
@@ -146,7 +146,7 @@ func (pb *PackageBuilder) File() *ast.File {
 	af.Decls = append(af.Decls, MakeUsePakage(`"unsafe"`))
 
 	if pb.Conf().TypeParams {
-		for i := 0; i < 1+rand.Intn(6); i++ {
+		for i := 0; i < 1+pb.rs.Intn(6); i++ {
 			c, tp := pb.MakeRandConstraint(fmt.Sprintf("I%v", i))
 			af.Decls = append(af.Decls, c)
 			pb.ctx.constraints = append(pb.ctx.constraints, tp)
@@ -161,7 +161,7 @@ func (pb *PackageBuilder) File() *ast.File {
 
 	// Now half a dozen top-level variables
 	for i := 1; i <= 6; i++ {
-		t := pb.baseTypes[rand.Intn(len(pb.baseTypes))]
+		t := RandItem(pb.rs, pb.baseTypes)
 		if pb.rs.Intn(3) == 0 {
 			t = PointerOf(t)
 		}
@@ -238,7 +238,7 @@ func (p *PackageBuilder) MakeFuncCalls(sel bool) []ast.Stmt {
 			var indices []ast.Expr
 			for _, typ := range f.Type.TypeParams.List {
 				types := FindByName(p.ctx.constraints, typ.Type.(*ast.Ident).Name).Types
-				indices = append(indices, types[rand.Intn(len(types))].Ast())
+				indices = append(indices, RandItem(p.rs, types).Ast())
 			}
 			ce.Fun = &ast.IndexListExpr{X: ce.Fun, Indices: indices}
 		}
@@ -330,7 +330,6 @@ func (pb *PackageBuilder) MakeRandConstraint(name string) (*ast.GenDecl, Constra
 	}
 
 	pb.rs.Shuffle(len(types), func(i, j int) { types[i], types[j] = types[j], types[i] })
-	types = types[:1+pb.rs.Intn(len(types)-1)]
 
 	src := "package p\n"
 	src += "type " + name + " interface{\n"

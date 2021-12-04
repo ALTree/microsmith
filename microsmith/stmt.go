@@ -64,7 +64,7 @@ func (sb *StmtBuilder) Stmt() ast.Stmt {
 	case 2:
 		// If at least one array or string is in scope, generate a for
 		// range loop with chance 0.5; otherwise generate a plain loop
-		arr, ok := sb.S().GetRandomRangeable(sb.pb.rs)
+		arr, ok := sb.S().GetRandomRangeable()
 		if ok && sb.pb.rs.Intn(2) == 0 {
 			if sb.pb.rs.Intn(4) == 0 { // 1 in 4 loops have a label
 				sb.label++
@@ -167,7 +167,7 @@ func (sb *StmtBuilder) AssignStmt() *ast.AssignStmt {
 				}
 			}
 
-			fi := fis[sb.pb.rs.Intn(len(fis))]
+			fi := RandItem(sb.pb.rs, fis)
 			return &ast.AssignStmt{
 				Lhs: []ast.Expr{&ast.SelectorExpr{X: v.Name, Sel: &ast.Ident{Name: t.Fnames[fi]}}},
 				Tok: token.ASSIGN,
@@ -620,7 +620,7 @@ func (sb *StmtBuilder) IncDecStmt(t Type) *ast.IncDecStmt {
 func (sb *StmtBuilder) SendStmt() *ast.SendStmt {
 	st := new(ast.SendStmt)
 
-	ch, ok := sb.S().GetRandomVarChan(sb.pb.rs)
+	ch, ok := sb.S().GetRandomVarChan()
 	if !ok {
 		// no channels in scope, but we can send to a brand new one,
 		// i.e. generate
@@ -661,7 +661,7 @@ func (sb *StmtBuilder) CommClause(def bool) *ast.CommClause {
 		return &ast.CommClause{Body: stmtList}
 	}
 
-	ch, chanInScope := sb.S().GetRandomVarChan(sb.pb.rs)
+	ch, chanInScope := sb.S().GetRandomVarChan()
 	if !chanInScope {
 		// when no chan is in scope, we select from a newly made channel,
 		// i.e. we build and return
@@ -699,7 +699,7 @@ func (sb *StmtBuilder) CommClause(def bool) *ast.CommClause {
 func (sb *StmtBuilder) ExprStmt() *ast.ExprStmt {
 
 	// Close(ch) or <-ch.
-	if ch, ok := sb.S().GetRandomVarChan(sb.pb.rs); ok && sb.pb.rs.Intn(2) == 0 {
+	if ch, ok := sb.S().GetRandomVarChan(); ok && sb.pb.rs.Intn(2) == 0 {
 		if sb.pb.rs.Intn(2) == 0 {
 			return &ast.ExprStmt{
 				X: sb.E().ChanReceiveExpr(ch.Name),

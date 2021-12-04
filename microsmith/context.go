@@ -39,6 +39,17 @@ type ProgramConf struct {
 }
 
 // --------------------------------
+//   Randomizers
+// --------------------------------
+
+func RandItem[T any](r *rand.Rand, a []T) T {
+	if r == nil {
+		panic("RandItem called with nil rand.Rand")
+	}
+	return a[r.Intn(len(a))]
+}
+
+// --------------------------------
 //   Types Randomizers
 // --------------------------------
 
@@ -95,27 +106,27 @@ func (pb PackageBuilder) RandAddressableType() Type {
 
 	// look for addressable type parameters
 	if tp := pb.ctx.typeparams; tp != nil {
-		for _, v := range *tp {
+		for _, v := range tp.vars {
 			if v.Type.Addressable() {
 				types = append(types, MakeTypeParam(v))
 			}
 		}
 	}
 
-	return types[pb.rs.Intn(len(types))]
+	return RandItem(pb.rs, types)
 }
 
 // Returns a single BaseType (primitives, or a type parameter).
 func (pb PackageBuilder) RandBaseType() Type {
 	if tp := pb.ctx.typeparams; tp != nil {
-		i := pb.rs.Intn(len(pb.baseTypes) + len(*tp))
+		i := pb.rs.Intn(len(pb.baseTypes) + len(tp.vars))
 		if i < len(pb.baseTypes) {
 			return pb.baseTypes[i]
 		} else {
-			return MakeTypeParam((*tp)[i-len(pb.baseTypes)])
+			return MakeTypeParam((tp.vars)[i-len(pb.baseTypes)])
 		}
 	} else {
-		return pb.baseTypes[rand.Intn(len(pb.baseTypes))]
+		return RandItem(pb.rs, pb.baseTypes)
 	}
 }
 
