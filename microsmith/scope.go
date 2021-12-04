@@ -81,155 +81,80 @@ func (s *Scope) DeleteIdentByName(name *ast.Ident) {
 	}
 }
 
-// Returns a random variable in scope that can be used in the LHS of
-// an assignment.
-func (s Scope) RandAssignable() Variable {
+// Returns a random variable in scope among the ones that satisfy
+// pred(v, t). If there isn't one, returns false as the second value.
+func (s Scope) RandPred(pred func(v Variable, t ...Type) bool, t ...Type) (Variable, bool) {
 	vs := make([]Variable, 0, 256)
 	for _, v := range s.vars {
-		switch v.Type.(type) {
-		case FuncType:
-			// can't assign to len or math.Sqrt
-			if v.Type.(FuncType).Local {
-				vs = append(vs, v)
-			}
-		default:
+		if pred(v, t...) {
 			vs = append(vs, v)
 		}
 	}
-
 	if len(vs) == 0 {
-		fmt.Println(s)
-		panic("RandomVar: no addressable variable in scope")
-	}
-
-	return RandItem(s.pb.rs, vs)
-}
-
-// Returns a function with return type t
-func (s Scope) GetRandomFunc(t Type) (Variable, bool) {
-	funcs := make([]Variable, 0, 32)
-	for _, v := range s.vars {
-		if ft, ok := v.Type.(FuncType); ok && ft.Ret[0].Equal(t) {
-			funcs = append(funcs, v)
-		}
-	}
-	if len(funcs) == 0 {
 		return Variable{}, false
 	}
-	return RandItem(s.pb.rs, funcs), true
+	return RandItem(s.pb.rs, vs), true
+}
+
+// Returns a random variable in scope that can be used in the LHS of
+// an assignment.
+func (s Scope) RandAssignable() (Variable, bool) {
+	return s.RandPred(func(v Variable, _ ...Type) bool {
+		f, fnc := v.Type.(FuncType)
+		return (fnc && f.Local) || !fnc
+	})
+}
+
+// Returns a random function with return type t
+func (s Scope) RandFuncRet(t Type) (Variable, bool) {
+	return s.RandPred(func(v Variable, t ...Type) bool {
+		f, fnc := v.Type.(FuncType)
+		return (fnc && f.Ret[0].Equal(t[0]))
+	}, t)
 }
 
 // Returns a random function in scope; but not a predefined one.
-func (s Scope) GetRandomFuncAnyType() (Variable, bool) {
-	funcs := make([]Variable, 0, 32)
-	for _, v := range s.vars {
-		if t, ok := v.Type.(FuncType); ok && t.Local {
-			funcs = append(funcs, v)
-		}
-	}
-	if len(funcs) == 0 {
-		return Variable{}, false
-	}
-	return RandItem(s.pb.rs, funcs), true
+func (s Scope) RandFunc() (Variable, bool) {
+	return s.RandPred(func(v Variable, _ ...Type) bool {
+		f, fnc := v.Type.(FuncType)
+		return (fnc && f.Local)
+	})
 }
 
-// Return a random Variable of type t (exact match)
-func (s Scope) GetRandomVarOfType(t Type) (Variable, bool) {
-	cnt := 0
-	for _, v := range s.vars {
-		if t.Equal(v.Type) {
-			cnt++
-		}
-	}
-
-	if cnt == 0 {
-		return Variable{}, false
-	}
-
-	rand := 1 + s.pb.rs.Intn(cnt)
-	cnt = 0
-	for _, v := range s.vars {
-		if t.Equal(v.Type) {
-			cnt++
-		}
-		if cnt == rand {
-			return v, true
-		}
-	}
-
-	panic("unreachable")
+// Return a random variable of type t (exact match)
+func (s Scope) RandVar(t Type) (Variable, bool) {
+	return s.RandPred(func(v Variable, t ...Type) bool {
+		return v.Type.Equal(t[0])
+	}, t)
 }
 
-func (s Scope) GetRandomRangeable() (Variable, bool) {
-	cnt := 0
-	for _, v := range s.vars {
-		if _, ok := v.Type.(ArrayType); ok {
-			cnt++
-		} else if t, ok := v.Type.(BasicType); ok && t.N == "string" {
-			cnt++
-		}
-	}
-
-	if cnt == 0 {
-		return Variable{}, false
-	}
-
-	rand := 1 + s.pb.rs.Intn(cnt)
-	cnt = 0
-	for _, v := range s.vars {
-		if _, ok := v.Type.(ArrayType); ok {
-			cnt++
-		} else if t, ok := v.Type.(BasicType); ok && t.N == "string" {
-			cnt++
-		}
-		if cnt == rand {
-			return v, true
-		}
-	}
-
-	panic("unreachable")
-}
-
+// Returns a variable containing t
 func (s Scope) RandVarSubType(t Type) (Variable, bool) {
-	vars := make([]Variable, 0, 32)
-	for _, v := range s.vars {
-		if v.Type.Contains(t) {
-			vars = append(vars, v)
-		}
-	}
-	if len(vars) == 0 {
-		return Variable{}, false
-	}
-	return RandItem(s.pb.rs, vars), true
+	return s.RandPred(func(v Variable, t ...Type) bool {
+		return v.Type.Contains(t[0])
+	}, t)
 }
 
-// return a chan (of any subtype). Useful as a replacement of
-// GetRandomVarOfType when we want a channel to receive on and the
-// underlying type doesn't matter.
+// Returns a random variable that can be ranged on
+func (s Scope) RandRangeable() (Variable, bool) {
+	return s.RandPred(func(v Variable, _ ...Type) bool {
+		switch v.Type.(type) {
+		case ArrayType:
+			return true
+		case BasicType:
+			return v.Type.(BasicType).N == "string"
+		default:
+			return false
+		}
+	})
+}
+
+// Returns a chan (of any subtype)
 func (s Scope) GetRandomVarChan() (Variable, bool) {
-	cnt := 0
-	for _, v := range s.vars {
-		if _, isChan := v.Type.(ChanType); isChan {
-			cnt++
-		}
-	}
-
-	if cnt == 0 {
-		return Variable{}, false
-	}
-
-	rand := 1 + s.pb.rs.Intn(cnt)
-	cnt = 0
-	for _, v := range s.vars {
-		if _, isChan := v.Type.(ChanType); isChan {
-			cnt++
-		}
-		if cnt == rand {
-			return v, true
-		}
-	}
-
-	panic("unreachable")
+	return s.RandPred(func(v Variable, _ ...Type) bool {
+		_, ischan := v.Type.(ChanType)
+		return ischan
+	})
 }
 
 func FindByName(tp []Constraint, name string) Constraint {

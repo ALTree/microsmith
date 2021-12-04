@@ -64,7 +64,7 @@ func (sb *StmtBuilder) Stmt() ast.Stmt {
 	case 2:
 		// If at least one array or string is in scope, generate a for
 		// range loop with chance 0.5; otherwise generate a plain loop
-		arr, ok := sb.S().GetRandomRangeable()
+		arr, ok := sb.S().RandRangeable()
 		if ok && sb.pb.rs.Intn(2) == 0 {
 			if sb.pb.rs.Intn(4) == 0 { // 1 in 4 loops have a label
 				sb.label++
@@ -119,7 +119,11 @@ func (sb *StmtBuilder) Stmt() ast.Stmt {
 // gets a random variable currently in scope (that we can assign to),
 // and builds an AssignStmt with a random Expr of its type on the RHS
 func (sb *StmtBuilder) AssignStmt() *ast.AssignStmt {
-	v := sb.S().RandAssignable()
+	v, ok := sb.S().RandAssignable()
+	if !ok {
+		fmt.Println(sb.S())
+		panic("No assignable variable in scope")
+	}
 
 	switch t := v.Type.(type) {
 
@@ -537,7 +541,7 @@ func (sb *StmtBuilder) RangeStmt(arr Variable) *ast.RangeStmt {
 }
 
 func (sb *StmtBuilder) DeferStmt() *ast.DeferStmt {
-	if v, ok := sb.S().GetRandomFuncAnyType(); ok && sb.pb.rs.Intn(4) > 0 {
+	if v, ok := sb.S().RandFunc(); ok && sb.pb.rs.Intn(4) > 0 {
 		return &ast.DeferStmt{Call: sb.E().MakeFuncCall(v)}
 	} else {
 		return &ast.DeferStmt{Call: sb.E().CallExpr(sb.pb.RandBaseType(), DEFER)}
@@ -545,7 +549,7 @@ func (sb *StmtBuilder) DeferStmt() *ast.DeferStmt {
 }
 
 func (sb *StmtBuilder) GoStmt() *ast.GoStmt {
-	if v, ok := sb.S().GetRandomFuncAnyType(); ok && sb.pb.rs.Intn(4) > 0 {
+	if v, ok := sb.S().RandFunc(); ok && sb.pb.rs.Intn(4) > 0 {
 		return &ast.GoStmt{Call: sb.E().MakeFuncCall(v)}
 	} else {
 		return &ast.GoStmt{Call: sb.E().CallExpr(sb.pb.RandBaseType(), DEFER)}

@@ -168,8 +168,8 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 	case PointerType:
 		// Either return a literal of the requested pointer type, &x
 		// with x of type t.Base(), or nil.
-		vt, typeInScope := eb.S().GetRandomVarOfType(t)
-		vst, baseInScope := eb.S().GetRandomVarOfType(t.Base())
+		vt, typeInScope := eb.S().RandVar(t)
+		vst, baseInScope := eb.S().RandVar(t.Base())
 		if typeInScope && baseInScope {
 			if eb.pb.rs.Intn(2) == 0 {
 				return vt.Name
@@ -345,7 +345,7 @@ func (eb *ExprBuilder) SliceExpr(v Variable) *ast.SliceExpr {
 	}
 
 	var low, high ast.Expr
-	indV, hasInt := eb.S().GetRandomVarOfType(BasicType{"int"})
+	indV, hasInt := eb.S().RandVar(BasicType{"int"})
 	if hasInt && eb.Deepen() {
 		if eb.pb.rs.Intn(8) > 0 {
 			low = &ast.BinaryExpr{
@@ -457,7 +457,7 @@ func (eb *ExprBuilder) BinaryExpr(t Type) ast.Expr {
 		if vi, ok := eb.S().RandVarSubType(t2); ok {
 			ue.Y = eb.SubTypeExpr(vi.Name, vi.Type, t2)
 		} else { // otherwise, cast from an int
-			vi, ok := eb.S().GetRandomVarOfType(BasicType{"int"})
+			vi, ok := eb.S().RandVar(BasicType{"int"})
 			if !ok {
 				panic("BinaryExpr: no int in scope")
 			}
@@ -497,7 +497,7 @@ const (
 // CallExpr returns a call expression with a function call that has
 // return value of type t.
 func (eb *ExprBuilder) CallExpr(t Type, cet CallExprType) *ast.CallExpr {
-	if v, ok := eb.S().GetRandomFunc(t); ok && (cet == NOTDEFER || v.Type.(FuncType).Local) {
+	if v, ok := eb.S().RandFuncRet(t); ok && (cet == NOTDEFER || v.Type.(FuncType).Local) {
 		name := v.Name.Name
 		switch {
 		case name == "len":
