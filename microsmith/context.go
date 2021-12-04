@@ -80,7 +80,7 @@ func (pb PackageBuilder) RandType() Type {
 		return ChanOf(pb.RandType())
 	case 3, 4:
 		return MapOf(
-			pb.RandAddressableType(),
+			pb.RandComparableType(),
 			pb.RandType(),
 		)
 	case 5, 6:
@@ -94,12 +94,12 @@ func (pb PackageBuilder) RandType() Type {
 	}
 }
 
-func (pb PackageBuilder) RandAddressableType() Type {
+func (pb PackageBuilder) RandComparableType() Type {
 	types := make([]Type, 0, 32)
 
 	// collect addressable Base Types
 	for _, t := range pb.baseTypes {
-		if t.Addressable() {
+		if t.Comparable() {
 			types = append(types, t)
 		}
 	}
@@ -107,7 +107,7 @@ func (pb PackageBuilder) RandAddressableType() Type {
 	// look for addressable type parameters
 	if tp := pb.ctx.typeparams; tp != nil {
 		for _, v := range tp.vars {
-			if v.Type.Addressable() {
+			if v.Type.Comparable() {
 				types = append(types, MakeTypeParam(v))
 			}
 		}

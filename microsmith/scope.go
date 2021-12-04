@@ -81,9 +81,8 @@ func (s *Scope) DeleteIdentByName(name *ast.Ident) {
 	}
 }
 
-// Returns a random Addressable variable in scope, that can be used in
-// the LHS of an AssignStmt. If nofunc is TRUE, ignore FuncType
-// variables.
+// Returns a random variable in scope that can be used in the LHS of
+// an assignment.
 func (s Scope) RandAssignable() Variable {
 	vs := make([]Variable, 0, 256)
 	for _, v := range s.vars {
@@ -94,7 +93,7 @@ func (s Scope) RandAssignable() Variable {
 			vs = append(vs, v)
 			continue
 		}
-		if v.Type.Addressable() {
+		if v.Type.Comparable() {
 			if _, ok := v.Type.(FuncType); !ok {
 				vs = append(vs, v)
 			}

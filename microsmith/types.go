@@ -8,7 +8,7 @@ import (
 )
 
 type Type interface {
-	Addressable() bool    // in the go specification sense
+	Comparable() bool     // in the go specification sense
 	Ast() ast.Expr        // suitable for type declaration in the ast
 	Equal(t Type) bool    // is t of the same type
 	Name() string         // human-readable type name
@@ -81,7 +81,7 @@ type BasicType struct {
 	N string
 }
 
-func (t BasicType) Addressable() bool {
+func (t BasicType) Comparable() bool {
 	return t.N != "any"
 }
 
@@ -144,7 +144,7 @@ type PointerType struct {
 	Btype Type
 }
 
-func (t PointerType) Addressable() bool {
+func (t PointerType) Comparable() bool {
 	return true
 }
 
@@ -192,7 +192,7 @@ type ArrayType struct {
 	Etype Type
 }
 
-func (t ArrayType) Addressable() bool {
+func (t ArrayType) Comparable() bool {
 	return true
 }
 
@@ -242,9 +242,9 @@ type StructType struct {
 	Fnames []string // field names
 }
 
-func (t StructType) Addressable() bool {
+func (t StructType) Comparable() bool {
 	for _, t := range t.Ftypes {
-		if !t.Addressable() {
+		if !t.Comparable() {
 			return false
 		}
 	}
@@ -319,7 +319,7 @@ type FuncType struct {
 	Local bool
 }
 
-func (t FuncType) Addressable() bool {
+func (t FuncType) Comparable() bool {
 	return t.Local
 }
 
@@ -382,7 +382,7 @@ func (e EllipsisType) Equal(t Type) bool {
 	}
 }
 
-func (e EllipsisType) Addressable() bool    { panic("don't call") }
+func (e EllipsisType) Comparable() bool     { panic("don't call") }
 func (e EllipsisType) Name() string         { panic("don't call") }
 func (e EllipsisType) Sliceable() bool      { panic("don't call") }
 func (e EllipsisType) Contains(t Type) bool { panic("don't call") }
@@ -558,7 +558,7 @@ type ChanType struct {
 	T Type
 }
 
-func (t ChanType) Addressable() bool {
+func (t ChanType) Comparable() bool {
 	return false
 }
 
@@ -609,7 +609,7 @@ type MapType struct {
 	KeyT, ValueT Type
 }
 
-func (t MapType) Addressable() bool {
+func (t MapType) Comparable() bool {
 	return true
 }
 
@@ -660,9 +660,9 @@ type Constraint struct {
 	Types []Type
 }
 
-func (c Constraint) Addressable() bool {
+func (c Constraint) Comparable() bool {
 	for _, t := range c.Types {
-		if !t.Addressable() {
+		if !t.Comparable() {
 			return false
 		}
 	}
@@ -719,8 +719,8 @@ type TypeParam struct {
 	Constraint Constraint
 }
 
-func (tp TypeParam) Addressable() bool {
-	return tp.Constraint.Addressable()
+func (tp TypeParam) Comparable() bool {
+	return tp.Constraint.Comparable()
 
 }
 
