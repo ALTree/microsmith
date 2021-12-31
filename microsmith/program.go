@@ -177,12 +177,11 @@ func (prog *Program) Compile(arch string, bo BuildOptions) (string, error) {
 		}
 
 	case strings.Contains(bo.Toolchain, "tinygo"):
-		var cmd *exec.Cmd
+		oFlag := "s"
 		if bo.Noopt {
-			cmd = exec.Command(bo.Toolchain, "build", "-opt", "z", "-o", arcName, baseName+"_main.go")
-		} else {
-			cmd = exec.Command(bo.Toolchain, "build", "-o", arcName, baseName+"_main.go")
+			oFlag = "0"
 		}
+		cmd := exec.Command(bo.Toolchain, "build", "-opt", oFlag, "-o", arcName, baseName+"_main.go")
 		cmd.Dir = prog.workdir
 		out, err := cmd.CombinedOutput()
 		if err != nil {
