@@ -10,7 +10,8 @@ var src string = `
 package p
 
 func f() {
-  a = append(a, b...)
+  a = make([]int, 0)
+  b = make(map[int]string, 0)
 }
 `
 

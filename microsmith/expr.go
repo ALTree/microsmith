@@ -235,7 +235,13 @@ func (eb *ExprBuilder) VarOrLit(t Type) ast.Expr {
 				bl = &ast.CallExpr{Fun: t.Ast(), Args: []ast.Expr{bl}}
 			}
 			return bl
-		case ArrayType, StructType, MapType:
+		case ArrayType, MapType:
+			if eb.pb.rs.Intn(3) == 0 {
+				return eb.MakeMakeCall(t)
+			} else {
+				return eb.CompositeLit(t)
+			}
+		case StructType:
 			return eb.CompositeLit(t)
 		case ChanType:
 			// No literal of type Chan, but we can return make(chan t)
@@ -650,6 +656,32 @@ func (eb *ExprBuilder) MakeLenCall() *ast.CallExpr {
 		ce.Args = []ast.Expr{eb.Expr(typ)}
 	} else {
 		ce.Args = []ast.Expr{eb.VarOrLit(typ)}
+	}
+
+	return ce
+}
+
+func (eb *ExprBuilder) MakeMakeCall(t Type) *ast.CallExpr {
+
+	ce := &ast.CallExpr{Fun: MakeIdent}
+
+	switch t := t.(type) {
+	case ArrayType:
+		tn := t.Base().Ast()
+		if eb.Deepen() {
+			ce.Args = []ast.Expr{&ast.ArrayType{Elt: tn}, eb.BinaryExpr(BasicType{"int"})}
+		} else {
+			ce.Args = []ast.Expr{&ast.ArrayType{Elt: tn}, eb.VarOrLit(BasicType{"int"})}
+		}
+	case MapType:
+		tk, tv := t.KeyT.Ast(), t.ValueT.Ast()
+		if eb.Deepen() {
+			ce.Args = []ast.Expr{&ast.MapType{Key: tk, Value: tv}, eb.BinaryExpr(BasicType{"int"})}
+		} else {
+			ce.Args = []ast.Expr{&ast.MapType{Key: tk, Value: tv}, eb.VarOrLit(BasicType{"int"})}
+		}
+	default:
+		panic("MakeMakeCall: invalid type " + t.Name())
 	}
 
 	return ce

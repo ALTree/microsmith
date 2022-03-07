@@ -418,6 +418,8 @@ func (ft FuncType) MakeFieldLists(named bool, s int) (*ast.FieldList, *ast.Field
 	return params, results
 }
 
+// TODO(alb): call panic
+
 var AppendFun FuncType = FuncType{
 	N:    "append",
 	Args: nil, // custom
@@ -790,6 +792,7 @@ func TypeIdent(t string) *ast.Ident {
 var AppendIdent = &ast.Ident{Name: "append"}
 var CopyIdent = &ast.Ident{Name: "copy"}
 var LenIdent = &ast.Ident{Name: "len"}
+var MakeIdent = &ast.Ident{Name: "make"}
 var CloseIdent = &ast.Ident{Name: "close"}
 var SizeofIdent = &ast.Ident{Name: "Sizeof"}
 var TrueIdent = &ast.Ident{Name: "true"}
