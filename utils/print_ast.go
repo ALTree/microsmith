@@ -10,7 +10,7 @@ var src string = `
 package p
 
 func f() {
-  a := []int{5: 1}
+  a = append(a, b...)
 }
 `
 

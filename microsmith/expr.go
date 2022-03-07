@@ -162,7 +162,15 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 			return eb.CallExpr(t, NOTDEFER)
 		}
 
-	case ArrayType, ChanType, FuncType, MapType, StructType:
+	case ArrayType:
+		switch eb.pb.rs.Intn(4) {
+		case 0:
+			return eb.MakeAppendCall(t)
+		default:
+			return eb.VarOrLit(t)
+		}
+
+	case ChanType, FuncType, MapType, StructType:
 		return eb.VarOrLit(t)
 
 	case PointerType:
@@ -505,10 +513,10 @@ func (eb *ExprBuilder) CallExpr(t Type, cet CallExprType) *ast.CallExpr {
 	if v, ok := eb.S().RandFuncRet(t); ok && (cet == NOTDEFER || v.Type.(FuncType).Local) {
 		name := v.Name.Name
 		switch {
-		case name == "len":
-			return eb.MakeLenCall()
 		case name == "copy":
 			return eb.MakeCopyCall()
+		case name == "len":
+			return eb.MakeLenCall()
 		case strings.HasPrefix(name, "unsafe."):
 			return eb.MakeUnsafeCall(v)
 		case strings.HasPrefix(name, "math."):
@@ -591,19 +599,22 @@ func (eb *ExprBuilder) MakeFuncCall(v Variable) *ast.CallExpr {
 	panic("unreachable")
 }
 
-func (eb *ExprBuilder) MakeLenCall() *ast.CallExpr {
-	var typ Type
-	if eb.pb.rs.Intn(2) == 0 {
-		typ = ArrayOf(eb.pb.RandBaseType())
-	} else {
-		typ = BasicType{"string"}
+func (eb *ExprBuilder) MakeAppendCall(t ArrayType) *ast.CallExpr {
+	ce := &ast.CallExpr{Fun: AppendIdent}
+
+	t2 := t.Base()
+	ellips := token.Pos(0)
+	if eb.pb.rs.Intn(3) == 0 { // 2nd arg is ...
+		t2 = t
+		ellips = token.Pos(1)
 	}
-	ce := &ast.CallExpr{Fun: LenIdent}
+
 	if eb.Deepen() {
-		ce.Args = []ast.Expr{eb.Expr(typ)}
+		ce.Args = []ast.Expr{eb.Expr(t), eb.Expr(t2)}
 	} else {
-		ce.Args = []ast.Expr{eb.VarOrLit(typ)}
+		ce.Args = []ast.Expr{eb.VarOrLit(t), eb.VarOrLit(t2)}
 	}
+	ce.Ellipsis = ellips
 
 	return ce
 }
@@ -622,6 +633,23 @@ func (eb *ExprBuilder) MakeCopyCall() *ast.CallExpr {
 		ce.Args = []ast.Expr{eb.Expr(typ1), eb.Expr(typ2)}
 	} else {
 		ce.Args = []ast.Expr{eb.VarOrLit(typ1), eb.VarOrLit(typ2)}
+	}
+
+	return ce
+}
+
+func (eb *ExprBuilder) MakeLenCall() *ast.CallExpr {
+	var typ Type
+	if eb.pb.rs.Intn(2) == 0 {
+		typ = ArrayOf(eb.pb.RandBaseType())
+	} else {
+		typ = BasicType{"string"}
+	}
+	ce := &ast.CallExpr{Fun: LenIdent}
+	if eb.Deepen() {
+		ce.Args = []ast.Expr{eb.Expr(typ)}
+	} else {
+		ce.Args = []ast.Expr{eb.VarOrLit(typ)}
 	}
 
 	return ce

@@ -418,13 +418,18 @@ func (ft FuncType) MakeFieldLists(named bool, s int) (*ast.FieldList, *ast.Field
 	return params, results
 }
 
-var LenFun FuncType = FuncType{
-	N:    "len",
-	Args: nil, // custom handling
-	Ret:  []Type{BasicType{"int"}},
+var AppendFun FuncType = FuncType{
+	N:    "append",
+	Args: nil, // custom
+	Ret:  nil, // handling
 }
 var CopyFun FuncType = FuncType{
 	N:    "copy",
+	Args: nil, // custom handling
+	Ret:  []Type{BasicType{"int"}},
+}
+var LenFun FuncType = FuncType{
+	N:    "len",
 	Args: nil, // custom handling
 	Ret:  []Type{BasicType{"int"}},
 }
@@ -528,8 +533,9 @@ var Alignof FuncType = FuncType{
 }
 
 var PredeclaredFuncs = []FuncType{
-	LenFun,
+	AppendFun,
 	CopyFun,
+	LenFun,
 	Float32Float64Conv,
 	Float64Float32Conv,
 	IntFloat64Conv,
@@ -781,8 +787,9 @@ func TypeIdent(t string) *ast.Ident {
 	}
 }
 
-var LenIdent = &ast.Ident{Name: "len"}
+var AppendIdent = &ast.Ident{Name: "append"}
 var CopyIdent = &ast.Ident{Name: "copy"}
+var LenIdent = &ast.Ident{Name: "len"}
 var CloseIdent = &ast.Ident{Name: "close"}
 var SizeofIdent = &ast.Ident{Name: "Sizeof"}
 var TrueIdent = &ast.Ident{Name: "true"}

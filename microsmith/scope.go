@@ -109,7 +109,7 @@ func (s Scope) RandAssignable() (Variable, bool) {
 func (s Scope) RandFuncRet(t Type) (Variable, bool) {
 	return s.RandPred(func(v Variable, t ...Type) bool {
 		f, fnc := v.Type.(FuncType)
-		return (fnc && f.Ret[0].Equal(t[0]))
+		return (fnc && len(f.Ret) > 0 && f.Ret[0].Equal(t[0]))
 	}, t)
 }
 
