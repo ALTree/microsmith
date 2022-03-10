@@ -95,12 +95,12 @@ func (eb *ExprBuilder) CompositeLit(t Type) *ast.CompositeLit {
 		} else { // keyed literal (a single one, since dups are a compile error)
 			if eb.Deepen() {
 				elems = append(elems, &ast.KeyValueExpr{
-					Key:   eb.BasicLit(BasicType{N: "int"}),
+					Key:   eb.BasicLit(BT{N: "int"}),
 					Value: eb.Expr(t.Base()),
 				})
 			} else {
 				elems = append(elems, &ast.KeyValueExpr{
-					Key:   eb.BasicLit(BasicType{N: "int"}),
+					Key:   eb.BasicLit(BT{N: "int"}),
 					Value: eb.VarOrLit(t.Base()),
 				})
 			}
@@ -159,7 +159,7 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 		case 4, 5, 6, 7:
 			return eb.BinaryExpr(t)
 		default:
-			return eb.CallExpr(t, NOTDEFER)
+			return eb.RandCallExpr(t, NOTDEFER)
 		}
 
 	case ArrayType:
@@ -306,18 +306,37 @@ func (eb *ExprBuilder) SubTypeExpr(e ast.Expr, t, target Type) ast.Expr {
 		return eb.SubTypeExpr(eb.StarExpr(e), t.Base(), target)
 	case StructType:
 		return eb.SubTypeExpr(eb.StructFieldExpr(e, t, target), target, target)
+	case FuncType:
+		return eb.SubTypeExpr(eb.CallExpr(e, t.Args), t.Ret[0], target)
 	default:
 		panic("unhandled type " + t.Name())
 	}
+}
+
+// Returns e(...)
+func (eb *ExprBuilder) CallExpr(e ast.Expr, at []Type) *ast.CallExpr {
+	var args []ast.Expr
+	for _, a := range at {
+		t := a
+		if arg, ok := (a).(EllipsisType); ok {
+			t = arg.Base
+		}
+		if eb.pb.rs.Intn(2) == 0 && eb.Deepen() {
+			args = append(args, eb.Expr(t))
+		} else {
+			args = append(args, eb.VarOrLit(t))
+		}
+	}
+	return &ast.CallExpr{Fun: e, Args: args}
 }
 
 // Returns e[...]
 func (eb *ExprBuilder) IndexExpr(e ast.Expr) *ast.IndexExpr {
 	var i ast.Expr
 	if eb.pb.rs.Intn(2) == 0 && eb.Deepen() {
-		i = eb.BinaryExpr(BasicType{"int"})
+		i = eb.BinaryExpr(BT{"int"})
 	} else {
-		i = eb.VarOrLit(BasicType{"int"})
+		i = eb.VarOrLit(BT{"int"})
 	}
 
 	return &ast.IndexExpr{X: e, Index: i}
@@ -340,7 +359,7 @@ func (eb *ExprBuilder) MapIndexExpr(e ast.Expr, t Type) *ast.IndexExpr {
 	return &ast.IndexExpr{X: e, Index: i}
 }
 
-// Returns < e.<...> > where the whole expression has type target.
+// Returns e.<...> where the whole expression has type target.
 func (eb *ExprBuilder) StructFieldExpr(e ast.Expr, t StructType, target Type) ast.Expr {
 	for i, ft := range t.Ftypes {
 		if ft.Contains(target) {
@@ -354,6 +373,7 @@ func (eb *ExprBuilder) StructFieldExpr(e ast.Expr, t StructType, target Type) as
 	panic("unreachable:" + t.Name() + " " + " target: " + target.Name())
 }
 
+// Returns <-e
 func (eb *ExprBuilder) ChanReceiveExpr(e ast.Expr) *ast.UnaryExpr {
 	return &ast.UnaryExpr{Op: token.ARROW, X: e}
 }
@@ -364,18 +384,18 @@ func (eb *ExprBuilder) SliceExpr(v Variable) *ast.SliceExpr {
 	}
 
 	var low, high ast.Expr
-	indV, hasInt := eb.S().RandVar(BasicType{"int"})
+	indV, hasInt := eb.S().RandVar(BT{"int"})
 	if hasInt && eb.Deepen() {
 		if eb.pb.rs.Intn(8) > 0 {
 			low = &ast.BinaryExpr{
 				X:  indV.Name,
 				Op: token.ADD,
-				Y:  eb.Expr(BasicType{"int"}),
+				Y:  eb.Expr(BT{"int"}),
 			}
 		}
 		if eb.pb.rs.Intn(8) > 0 {
 			high = &ast.BinaryExpr{
-				X:  eb.Expr(BasicType{"int"}),
+				X:  eb.Expr(BT{"int"}),
 				Op: token.ADD,
 				Y:  indV.Name,
 			}
@@ -455,7 +475,7 @@ func (eb *ExprBuilder) BinaryExpr(t Type) ast.Expr {
 
 	t2 := t
 	if ue.Op == token.SHR { // ensure rhs > 0 for shifts
-		t2 = BasicType{"uint"}
+		t2 = BT{"uint"}
 	}
 
 	// For some types, we need to ensure at least one leaf of the expr
@@ -476,7 +496,7 @@ func (eb *ExprBuilder) BinaryExpr(t Type) ast.Expr {
 		if vi, ok := eb.S().RandVarSubType(t2); ok {
 			ue.Y = eb.SubTypeExpr(vi.Name, vi.Type, t2)
 		} else { // otherwise, cast from an int
-			vi, ok := eb.S().RandVar(BasicType{"int"})
+			vi, ok := eb.S().RandVar(BT{"int"})
 			if !ok {
 				panic("BinaryExpr: no int in scope")
 			}
@@ -513,9 +533,9 @@ const (
 	NOTDEFER CallExprType = 1
 )
 
-// CallExpr returns a call expression with a function call that has
+// CallExpr returns a call expression involving a random function with
 // return value of type t.
-func (eb *ExprBuilder) CallExpr(t Type, cet CallExprType) *ast.CallExpr {
+func (eb *ExprBuilder) RandCallExpr(t Type, cet CallExprType) *ast.CallExpr {
 	if v, ok := eb.S().RandFuncRet(t); ok && (cet == NOTDEFER || v.Type.(FuncType).Local) {
 		name := v.Name.Name
 		switch {
@@ -525,8 +545,6 @@ func (eb *ExprBuilder) CallExpr(t Type, cet CallExprType) *ast.CallExpr {
 			return eb.MakeLenCall()
 		case strings.HasPrefix(name, "unsafe."):
 			return eb.MakeUnsafeCall(v)
-		case strings.HasPrefix(name, "math."):
-			return eb.MakeMathCall(v)
 		default:
 			return eb.MakeFuncCall(v)
 		}
@@ -586,7 +604,6 @@ func (eb *ExprBuilder) MakeFuncCall(v Variable) *ast.CallExpr {
 			if ep, ok := arg.(EllipsisType); ok {
 				arg = ep.Base
 			}
-
 			if eb.Deepen() && fnc.Local {
 				// Cannot call Expr with casts, because Expr could
 				// return UnaryExpr(Literal) like -11 which cannot
@@ -628,7 +645,7 @@ func (eb *ExprBuilder) MakeAppendCall(t ArrayType) *ast.CallExpr {
 func (eb *ExprBuilder) MakeCopyCall() *ast.CallExpr {
 	var typ1, typ2 Type
 	if eb.pb.rs.Intn(3) == 0 {
-		typ1, typ2 = ArrayOf(BasicType{N: "byte"}), BasicType{N: "string"}
+		typ1, typ2 = ArrayOf(BT{N: "byte"}), BT{N: "string"}
 	} else {
 		typ1 = ArrayOf(eb.pb.RandBaseType())
 		typ2 = typ1
@@ -649,7 +666,7 @@ func (eb *ExprBuilder) MakeLenCall() *ast.CallExpr {
 	if eb.pb.rs.Intn(2) == 0 {
 		typ = ArrayOf(eb.pb.RandBaseType())
 	} else {
-		typ = BasicType{"string"}
+		typ = BT{"string"}
 	}
 	ce := &ast.CallExpr{Fun: LenIdent}
 	if eb.Deepen() {
@@ -669,16 +686,16 @@ func (eb *ExprBuilder) MakeMakeCall(t Type) *ast.CallExpr {
 	case ArrayType:
 		tn := t.Base().Ast()
 		if eb.Deepen() {
-			ce.Args = []ast.Expr{&ast.ArrayType{Elt: tn}, eb.BinaryExpr(BasicType{"int"})}
+			ce.Args = []ast.Expr{&ast.ArrayType{Elt: tn}, eb.BinaryExpr(BT{"int"})}
 		} else {
-			ce.Args = []ast.Expr{&ast.ArrayType{Elt: tn}, eb.VarOrLit(BasicType{"int"})}
+			ce.Args = []ast.Expr{&ast.ArrayType{Elt: tn}, eb.VarOrLit(BT{"int"})}
 		}
 	case MapType:
 		tk, tv := t.KeyT.Ast(), t.ValueT.Ast()
 		if eb.Deepen() {
-			ce.Args = []ast.Expr{&ast.MapType{Key: tk, Value: tv}, eb.BinaryExpr(BasicType{"int"})}
+			ce.Args = []ast.Expr{&ast.MapType{Key: tk, Value: tv}, eb.BinaryExpr(BT{"int"})}
 		} else {
-			ce.Args = []ast.Expr{&ast.MapType{Key: tk, Value: tv}, eb.VarOrLit(BasicType{"int"})}
+			ce.Args = []ast.Expr{&ast.MapType{Key: tk, Value: tv}, eb.VarOrLit(BT{"int"})}
 		}
 	default:
 		panic("MakeMakeCall: invalid type " + t.Name())

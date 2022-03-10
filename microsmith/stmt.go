@@ -544,7 +544,7 @@ func (sb *StmtBuilder) DeferStmt() *ast.DeferStmt {
 	if v, ok := sb.S().RandFunc(); ok && sb.pb.rs.Intn(4) > 0 {
 		return &ast.DeferStmt{Call: sb.E().MakeFuncCall(v)}
 	} else {
-		return &ast.DeferStmt{Call: sb.E().CallExpr(sb.pb.RandBaseType(), DEFER)}
+		return &ast.DeferStmt{Call: sb.E().RandCallExpr(sb.pb.RandBaseType(), DEFER)}
 	}
 }
 
@@ -552,7 +552,7 @@ func (sb *StmtBuilder) GoStmt() *ast.GoStmt {
 	if v, ok := sb.S().RandFunc(); ok && sb.pb.rs.Intn(4) > 0 {
 		return &ast.GoStmt{Call: sb.E().MakeFuncCall(v)}
 	} else {
-		return &ast.GoStmt{Call: sb.E().CallExpr(sb.pb.RandBaseType(), DEFER)}
+		return &ast.GoStmt{Call: sb.E().RandCallExpr(sb.pb.RandBaseType(), DEFER)}
 	}
 }
 
@@ -716,7 +716,7 @@ func (sb *StmtBuilder) ExprStmt() *ast.ExprStmt {
 	//
 	// len() is not allowed (it's not really a function), DEFER here
 	// prevents CallExpr to choose len as the function to call.
-	return &ast.ExprStmt{sb.E().CallExpr(sb.pb.RandBaseType(), DEFER)}
+	return &ast.ExprStmt{sb.E().RandCallExpr(sb.pb.RandBaseType(), DEFER)}
 }
 
 var noName = ast.Ident{Name: "_"}
