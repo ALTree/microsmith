@@ -222,6 +222,7 @@ func (prog *Program) Compile(arch string, bo BuildOptions) (string, error) {
 		// Compile
 		for _, pkg := range prog.pkgs {
 			var cmdArgs []string
+			buildArgs = append(buildArgs, []string{"-p", pkg.name}...)
 			if pkg.name == "main" {
 				cmdArgs = append(buildArgs, "-I=.")
 				cmdArgs = append(cmdArgs, pkg.filename)
