@@ -522,6 +522,11 @@ var MathLdexp FuncType = FuncType{
 	Args: []Type{BasicType{"float64"}, BasicType{"int"}},
 	Ret:  []Type{BasicType{"float64"}},
 }
+var StringsContains FuncType = FuncType{
+	N:    "strings.Contains",
+	Args: []Type{BasicType{"string"}, BasicType{"string"}},
+	Ret:  []Type{BasicType{"bool"}},
+}
 
 var Sizeof FuncType = FuncType{
 	N:    "unsafe.Sizeof",
@@ -554,6 +559,7 @@ var PredeclaredFuncs = []FuncType{
 	MathMax,
 	MathNaN,
 	MathLdexp,
+	StringsContains,
 	Sizeof,
 	Alignof,
 }

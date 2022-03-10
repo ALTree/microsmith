@@ -136,14 +136,17 @@ func (pb *PackageBuilder) File() *ast.File {
 			if p.pkg == "main" {
 				continue
 			}
-			af.Decls = append(af.Decls, MakeImport(fmt.Sprintf(`"%v_%s"`, pb.pb.id, p.pkg)))
+			af.Decls = append(af.Decls, MakeImport(fmt.Sprintf("%v_%s", pb.pb.id, p.pkg)))
 		}
 	}
 
-	af.Decls = append(af.Decls, MakeImport(`"math"`))
-	af.Decls = append(af.Decls, MakeImport(`"unsafe"`))
-	af.Decls = append(af.Decls, MakeUsePakage(`"math"`))
-	af.Decls = append(af.Decls, MakeUsePakage(`"unsafe"`))
+	pkgs := []string{"math", "strings", "unsafe"}
+	for _, p := range pkgs {
+		af.Decls = append(af.Decls, MakeImport(p))
+	}
+	for _, p := range pkgs {
+		af.Decls = append(af.Decls, MakeUsePakage(p))
+	}
 
 	if pb.Conf().TypeParams {
 		for i := 0; i < 1+pb.rs.Intn(6); i++ {
@@ -256,7 +259,7 @@ func MakeImport(p string) *ast.GenDecl {
 		Tok: token.IMPORT,
 		Specs: []ast.Spec{
 			&ast.ImportSpec{
-				Path: &ast.BasicLit{Kind: token.STRING, Value: p},
+				Path: &ast.BasicLit{Kind: token.STRING, Value: "`" + p + "`"},
 			},
 		},
 	}
@@ -265,10 +268,7 @@ func MakeImport(p string) *ast.GenDecl {
 func MakeUsePakage(p string) *ast.GenDecl {
 	se := &ast.SelectorExpr{}
 	switch p {
-	case `"math"`:
-		se.X = &ast.Ident{Name: "math"}
-		se.Sel = &ast.Ident{Name: "Sqrt"}
-	case `"unsafe"`:
+	case "unsafe":
 		// var _ = unsafe.Sizeof is not allowed, we need to call it.
 		return &ast.GenDecl{
 			Tok: token.VAR,
@@ -286,7 +286,12 @@ func MakeUsePakage(p string) *ast.GenDecl {
 			},
 		}
 	default:
-		panic("MakeUsePackage: bad package " + p)
+		fs := map[string]string{
+			"math":    "Sqrt",
+			"strings": "Title",
+		}
+		se.X = &ast.Ident{Name: p}
+		se.Sel = &ast.Ident{Name: fs[p]}
 	}
 
 	return &ast.GenDecl{
