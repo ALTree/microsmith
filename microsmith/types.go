@@ -127,6 +127,15 @@ func IsUint(t Type) bool {
 	}
 }
 
+func IsFloat(t Type) bool {
+	switch t.Name() {
+	case "float32", "float64":
+		return true
+	default:
+		return false
+	}
+}
+
 func (t BasicType) NeedsCast() bool {
 	switch t.N {
 	case "byte", "int8", "int16", "int32", "int64", "uint", "uintptr", "float32", "any":

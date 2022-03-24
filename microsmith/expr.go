@@ -483,7 +483,7 @@ func (eb *ExprBuilder) BinaryExpr(t Type) ast.Expr {
 	// "constant overflows uint" on Exprs that end up being all
 	// literals (and thus computable at compile time), and outside the
 	// type's range.
-	if IsInt(t) || IsUint(t) || t.Name() == "float32" || t.Name() == "float64" {
+	if _, isTP := t.(TypeParam); IsInt(t) || IsUint(t) || IsFloat(t) || isTP {
 
 		// LHS can be whatever
 		if eb.Deepen() {
@@ -555,7 +555,7 @@ func (eb *ExprBuilder) RandCallExpr(t Type, cet CallExprType) *ast.CallExpr {
 		// Random func type, 2 parameters, return type t.
 		ft := &FuncType{
 			"FU",
-			[]Type{eb.pb.RandBaseType(), eb.pb.RandBaseType()},
+			[]Type{eb.pb.RandType(), eb.pb.RandType()},
 			[]Type{t},
 			true,
 		}
