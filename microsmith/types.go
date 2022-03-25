@@ -99,7 +99,7 @@ func (t BasicType) Equal(t2 Type) bool {
 	if t2, ok := t2.(BasicType); !ok {
 		return false
 	} else {
-		return t.Name() == t2.Name()
+		return t.N == t2.N
 	}
 }
 
@@ -112,21 +112,22 @@ func (bt BasicType) Sliceable() bool {
 }
 
 func IsNumeric(t Type) bool {
-	if _, bt := t.(BasicType); !bt {
+	if bt, ok := t.(BasicType); !ok {
 		return false
-	}
-	switch t.Name() {
-	case "int", "int8", "int16", "int32", "int64":
-		return true
-	case "byte", "uint", "uint8", "uint16", "uint32", "uint64":
-		return true
-	case "float32", "float64":
-		return true
-	default:
-		return false
+	} else {
+		switch bt.N {
+		case "int", "int8", "int16", "int32", "int64":
+			return true
+		case "byte", "uint", "uint8", "uint16", "uint32", "uint64":
+			return true
+		case "float32", "float64":
+			return true
+		default:
+			return false
+		}
+
 	}
 }
-
 func IsOrdered(t Type) bool {
 	if bt, ok := t.(BasicType); !ok {
 		return false
@@ -234,10 +235,7 @@ func (at ArrayType) Equal(t Type) bool {
 }
 
 func (at ArrayType) Name() string {
-	var buf bytes.Buffer
-	format.Node(&buf, token.NewFileSet(), at.Ast())
-	return buf.String()
-	//return "[]" + at.Etype.Name()
+	return "[]" + at.Etype.Name()
 }
 
 func (at ArrayType) Sliceable() bool {
