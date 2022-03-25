@@ -40,11 +40,6 @@ func (eb *ExprBuilder) Deepen() bool {
 	return (eb.depth <= 6) && (eb.pb.rs.Float64() < 0.7)
 }
 
-func (eb *ExprBuilder) Const() *ast.BasicLit {
-	// TODO(alb): generalize
-	return &ast.BasicLit{Kind: token.INT, Value: "77"}
-}
-
 func (eb *ExprBuilder) BasicLit(t BasicType) ast.Expr {
 	bl := new(ast.BasicLit)
 	switch t.Name() {
@@ -144,6 +139,14 @@ func (eb *ExprBuilder) CompositeLit(t Type) *ast.CompositeLit {
 	}
 }
 
+func (eb *ExprBuilder) TypeParamLit(t TypeParam) ast.Expr {
+	lit := &ast.BasicLit{Kind: token.INT, Value: "77"}
+	return &ast.CallExpr{
+		Fun:  t.Ast(),
+		Args: []ast.Expr{lit},
+	}
+}
+
 func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 	eb.depth++
 	defer func() { eb.depth-- }()
@@ -225,6 +228,21 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 
 func (eb *ExprBuilder) VarOrLit(t Type) ast.Expr {
 
+	// If t is a type parameter, 50/50 between returning a variable
+	// and building a literal; except for type parameters that don't
+	// allow literals (like interface { int | []int }); for those it's
+	// always a variable.
+	if tp, ok := t.(TypeParam); ok {
+		if tp.HasLiterals() && eb.pb.rs.Intn(2) == 0 {
+			return eb.TypeParamLit(tp)
+		}
+		if v, ok := eb.S().RandVar(t); !ok {
+			panic("VarOrLit couldn't find a type parameter variable")
+		} else {
+			return v.Name
+		}
+	}
+
 	vst, typeCanDerive := eb.S().RandVarSubType(t)
 
 	if !typeCanDerive || !eb.Deepen() {
@@ -254,13 +272,7 @@ func (eb *ExprBuilder) VarOrLit(t Type) ast.Expr {
 		case PointerType, FuncType:
 			return &ast.Ident{Name: "nil"}
 		case TypeParam:
-			// TODO(alb): this works for now because 77 is a valid
-			// literal for every typeparameter's subtype we generate.
-			// Will need better logic if we start using other types.
-			return &ast.CallExpr{
-				Fun:  t.Ast(),
-				Args: []ast.Expr{eb.Const()},
-			}
+			return eb.TypeParamLit(t)
 
 		default:
 			panic("unhandled type " + t.Name())
@@ -459,9 +471,9 @@ func (eb *ExprBuilder) BinaryExpr(t Type) ast.Expr {
 	if t.Name() == "bool" && eb.pb.rs.Intn(2) == 0 {
 		// for booleans, we 50/50 between <bool> BOOL_OP <bool> and
 		// <any comparable> COMPARISON <any comparable>.
-		t = eb.pb.RandBaseType()
+		t = eb.pb.RandComparableType()
 		ops = []token.Token{token.EQL, token.NEQ}
-		if t.Name() != "bool" && t.Name() != "complex128" && t.Name() != "any" { // TODO(alb): t.Ordered()
+		if IsOrdered(t) {
 			ops = append(ops, []token.Token{
 				token.LSS, token.LEQ,
 				token.GTR, token.GEQ}...)
@@ -483,7 +495,7 @@ func (eb *ExprBuilder) BinaryExpr(t Type) ast.Expr {
 	// "constant overflows uint" on Exprs that end up being all
 	// literals (and thus computable at compile time), and outside the
 	// type's range.
-	if _, isTP := t.(TypeParam); IsInt(t) || IsUint(t) || IsFloat(t) || isTP {
+	if _, isTP := t.(TypeParam); IsNumeric(t) || isTP {
 
 		// LHS can be whatever
 		if eb.Deepen() {

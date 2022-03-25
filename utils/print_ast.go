@@ -9,9 +9,8 @@ import (
 var src string = `
 package p
 
-func f() {
-  a = make([]int, 0)
-  b = make(map[int]string, 0)
+func f[G any]() {
+  var f G = G(77)
 }
 `
 

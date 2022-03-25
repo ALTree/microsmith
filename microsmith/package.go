@@ -32,7 +32,7 @@ func NewPackageBuilder(conf ProgramConf, pkg string, progb *ProgramBuilder) *Pac
 	// Initialize Context.Scope with the predeclared functions:
 	scope := Scope{pb: &pb, vars: make([]Variable, 0, 64)}
 	for _, f := range PredeclaredFuncs {
-		scope.vars = append(scope.vars, Variable{f, &ast.Ident{Name: f.Name()}})
+		scope.vars = append(scope.vars, Variable{f, &ast.Ident{Name: f.N}})
 	}
 	pb.ctx.scope = &scope
 
@@ -75,11 +75,6 @@ func (pb *PackageBuilder) FuncDecl() *ast.FuncDecl {
 		},
 	}
 
-	defer func() {
-		// only available inside the function body
-		pb.ctx.typeparams = nil
-	}()
-
 	// if not using typeparams, generate a body and return
 	if !pb.Conf().TypeParams {
 		pb.sb.currfunc = fd
@@ -87,9 +82,10 @@ func (pb *PackageBuilder) FuncDecl() *ast.FuncDecl {
 		return fd
 	}
 
-	// If typeparams requested, use a few of the available one in the
-	// function signature, and add them to scope.
+	// If we're using type parameters, use a few of the available ones
+	// in the function signature, and add them to body's scope.
 	tp, tps := Scope{pb: pb, vars: make([]Variable, 0, 8)}, []*ast.Field{}
+	tpDecl, tpVars := []ast.Stmt{}, []*ast.Ident{}
 	for i := 0; i < 1+pb.rs.Intn(8); i++ {
 		ident := &ast.Ident{Name: fmt.Sprintf("G%v", i)}
 		typ := RandItem(pb.rs, pb.ctx.constraints)
@@ -98,12 +94,45 @@ func (pb *PackageBuilder) FuncDecl() *ast.FuncDecl {
 			&ast.Field{Names: []*ast.Ident{ident}, Type: typ.N},
 		)
 		tp.AddVariable(ident, typ)
+
+		// Collect DeclStmts of variables of the typeparameter's type,
+		// like this:
+		//
+		//   var g0 G0
+		//
+		// Later we'll put these declarations at the beginning of the
+		// function body, so we can use g0 when we need an expression
+		// of type G0 but its type doesn't allow to create literals
+		// (for example interface{ int | []int }).
+		st, nv := pb.sb.DeclStmt(1, TypeParam{ident, typ})
+		tpVars = append(tpVars, nv...)
+		tpDecl = append(tpDecl, st)
 	}
 	pb.ctx.typeparams = &tp
 
 	fd.Type.TypeParams = &ast.FieldList{List: tps}
 	pb.sb.currfunc = fd // this needs to be before the BlockStmt()
-	fd.Body = pb.sb.BlockStmt()
+	body := pb.sb.BlockStmt()
+
+	// put the collected DeclStmts at the top of the body
+	body.List = append(tpDecl, body.List...)
+
+	// then append _ = ... to avoid unused variables errors.
+	if len(tpVars) > 0 {
+		body.List = append(body.List, pb.sb.UseVars(tpVars))
+	}
+
+	// finally, delete them from scope.
+	for _, v := range tpVars {
+		pb.sb.S().DeleteIdentByName(v)
+	}
+
+	fd.Body = body
+
+	// Type parameters are only available inside the function body, so
+	// clear them out when we're done generating the body.
+	pb.ctx.typeparams = nil
+
 	return fd
 }
 
@@ -313,23 +342,23 @@ func MakeInt() *ast.GenDecl {
 }
 
 func (pb *PackageBuilder) MakeRandConstraint(name string) (*ast.GenDecl, Constraint) {
-	types := []Type{
-		BasicType{"int"},
-		BasicType{"byte"},
-		BasicType{"int8"},
-		BasicType{"int16"},
-		BasicType{"int32"},
-		BasicType{"int64"},
-		BasicType{"uint"},
-		BasicType{"uintptr"},
-		BasicType{"float32"},
-		BasicType{"float64"},
-		BasicType{"string"},
+	var types []Type
+	for len(types) < 1+pb.rs.Intn(8) {
+		t := pb.RandType()
+		if t.Name() == "int32" { // conflicts with rune
+			continue
+		}
+		same := false
+		for _, t2 := range types {
+			if t.Equal(t2) {
+				same = true
+				break
+			}
+		}
+		if !same {
+			types = append(types, t)
+		}
 	}
-
-	// shuffle, then select at least one of them
-	pb.rs.Shuffle(len(types), func(i, j int) { types[i], types[j] = types[j], types[i] })
-	types = types[:1+pb.rs.Intn(len(types)-1)]
 
 	src := "package p\n"
 	src += "type " + name + " interface{\n"
@@ -341,7 +370,11 @@ func (pb *PackageBuilder) MakeRandConstraint(name string) (*ast.GenDecl, Constra
 	}
 	src = strings.TrimRight(src, "|")
 	src += "\n}"
-	f, _ := parser.ParseFile(token.NewFileSet(), "", src, 0)
+
+	f, err := parser.ParseFile(token.NewFileSet(), "", src, 0)
+	if err != nil {
+		panic("Parsing constraint failed:\n" + src + "\n\n" + err.Error())
+	}
 	decl := f.Decls[0].(*ast.GenDecl)
 
 	return decl, Constraint{Types: types, N: &ast.Ident{Name: name}}

@@ -3,6 +3,7 @@ package microsmith
 import (
 	"math/rand"
 	"strconv"
+	"strings"
 )
 
 // Context holds all the contextual information needed while
@@ -135,7 +136,8 @@ func (pb PackageBuilder) RandStructType() StructType {
 	for i := 0; i < pb.rs.Intn(6); i++ {
 		t := pb.RandType()
 		st.Ftypes = append(st.Ftypes, t)
-		st.Fnames = append(st.Fnames, Ident(t)+strconv.Itoa(i))
+		// we want structs fields to be exported, capitalize the names
+		st.Fnames = append(st.Fnames, strings.Title(Ident(t))+strconv.Itoa(i))
 	}
 	return st
 }

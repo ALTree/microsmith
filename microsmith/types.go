@@ -1,8 +1,10 @@
 package microsmith
 
 import (
+	"bytes"
 	"fmt"
 	"go/ast"
+	"go/format"
 	"go/token"
 	"strings"
 )
@@ -109,30 +111,32 @@ func (bt BasicType) Sliceable() bool {
 	return bt.N == "string"
 }
 
-func IsInt(t Type) bool {
+func IsNumeric(t Type) bool {
+	if _, bt := t.(BasicType); !bt {
+		return false
+	}
 	switch t.Name() {
 	case "int", "int8", "int16", "int32", "int64":
 		return true
-	default:
-		return false
-	}
-}
-
-func IsUint(t Type) bool {
-	switch t.Name() {
 	case "byte", "uint", "uint8", "uint16", "uint32", "uint64":
 		return true
-	default:
-		return false
-	}
-}
-
-func IsFloat(t Type) bool {
-	switch t.Name() {
 	case "float32", "float64":
 		return true
 	default:
 		return false
+	}
+}
+
+func IsOrdered(t Type) bool {
+	if bt, ok := t.(BasicType); !ok {
+		return false
+	} else {
+		switch bt.Name() {
+		case "bool", "complex128":
+			return false
+		default:
+			return true
+		}
 	}
 }
 
@@ -202,7 +206,7 @@ type ArrayType struct {
 }
 
 func (t ArrayType) Comparable() bool {
-	return true
+	return false
 }
 
 func (t ArrayType) Ast() ast.Expr {
@@ -230,7 +234,10 @@ func (at ArrayType) Equal(t Type) bool {
 }
 
 func (at ArrayType) Name() string {
-	return "[]" + at.Etype.Name()
+	var buf bytes.Buffer
+	format.Node(&buf, token.NewFileSet(), at.Ast())
+	return buf.String()
+	//return "[]" + at.Etype.Name()
 }
 
 func (at ArrayType) Sliceable() bool {
@@ -305,12 +312,9 @@ func (st StructType) Equal(t Type) bool {
 }
 
 func (st StructType) Name() string {
-	s := "struct{"
-	for _, t := range st.Ftypes {
-		s += " " + t.Name() + ","
-	}
-	s += " }"
-	return s
+	var buf bytes.Buffer
+	format.Node(&buf, token.NewFileSet(), st.Ast())
+	return buf.String()
 }
 
 func (st StructType) Sliceable() bool {
@@ -329,7 +333,7 @@ type FuncType struct {
 }
 
 func (t FuncType) Comparable() bool {
-	return t.Local
+	return false
 }
 
 func (t FuncType) Ast() ast.Expr {
@@ -374,7 +378,9 @@ func (f FuncType) Contains(t Type) bool {
 }
 
 func (ft FuncType) Name() string {
-	return ft.N
+	var buf bytes.Buffer
+	format.Node(&buf, token.NewFileSet(), ft.Ast())
+	return buf.String()
 }
 
 func (ft FuncType) Sliceable() bool {
@@ -662,7 +668,7 @@ type MapType struct {
 }
 
 func (t MapType) Comparable() bool {
-	return true
+	return false
 }
 
 func (t MapType) Ast() ast.Expr {
@@ -798,6 +804,15 @@ func (tp TypeParam) Sliceable() bool {
 
 func (tp TypeParam) Contains(t Type) bool {
 	return tp.Equal(t)
+}
+
+func (tp TypeParam) HasLiterals() bool {
+	for _, t := range tp.Constraint.Types {
+		if !IsNumeric(t) {
+			return false
+		}
+	}
+	return true
 }
 
 func MakeTypeParam(v Variable) TypeParam {
