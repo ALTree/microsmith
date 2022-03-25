@@ -229,12 +229,9 @@ func (pb *PackageBuilder) File() *ast.File {
 		Body: &ast.BlockStmt{},
 	}
 
-	// call the the funcs defined here (main package) and in the other
-	// packages
-	if pb.Conf().MultiPkg {
-		for _, p := range pb.pb.pkgs {
-			mainF.Body.List = append(mainF.Body.List, p.MakeFuncCalls()...)
-		}
+	// call all the functions we declared
+	for _, p := range pb.pb.pkgs {
+		mainF.Body.List = append(mainF.Body.List, p.MakeFuncCalls()...)
 	}
 
 	af.Decls = append(af.Decls, mainF)
@@ -243,7 +240,7 @@ func (pb *PackageBuilder) File() *ast.File {
 
 // Returns a slice of ast.ExprStms with calls to every top-level
 // function of the receiver. Takes care of adding explicit type
-// parameters, in necessary.
+// parameters, when the function has them.
 func (p *PackageBuilder) MakeFuncCalls() []ast.Stmt {
 	calls := make([]ast.Stmt, 0, len(p.funcs))
 	for _, f := range p.funcs {
