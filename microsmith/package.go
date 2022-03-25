@@ -204,11 +204,7 @@ func (pb *PackageBuilder) File() *ast.File {
 	// packages
 	if pb.Conf().MultiPkg {
 		for _, p := range pb.pb.pkgs {
-			if p.pkg == "main" {
-				mainF.Body.List = append(mainF.Body.List, p.MakeFuncCalls(false)...)
-			} else {
-				mainF.Body.List = append(mainF.Body.List, p.MakeFuncCalls(true)...)
-			}
+			mainF.Body.List = append(mainF.Body.List, p.MakeFuncCalls()...)
 		}
 	}
 
@@ -219,17 +215,14 @@ func (pb *PackageBuilder) File() *ast.File {
 // Returns a slice of ast.ExprStms with calls to every top-level
 // function of the receiver. Takes care of adding explicit type
 // parameters, in necessary.
-//
-// If sel is true, generates <pkg>.F[ ]( ) instead of F[ ]( ), to make
-// the calls work from a different package.
-func (p *PackageBuilder) MakeFuncCalls(sel bool) []ast.Stmt {
+func (p *PackageBuilder) MakeFuncCalls() []ast.Stmt {
 	calls := make([]ast.Stmt, 0, len(p.funcs))
 	for _, f := range p.funcs {
 		var ce ast.CallExpr
 		ce.Fun = f.Name
 
 		// prepend <pkg> to F()
-		if sel {
+		if p.pkg != "main" {
 			ce.Fun = &ast.SelectorExpr{
 				X:   &ast.Ident{Name: p.pkg},
 				Sel: f.Name,
