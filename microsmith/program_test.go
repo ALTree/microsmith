@@ -157,7 +157,7 @@ func compile(t *testing.T, conf microsmith.ProgramConf) {
 		}
 		out, err := gp.Compile("amd64", bo)
 		if err != nil {
-			t.Fatalf("Program did not compile: %s", out)
+			t.Fatalf("Program did not compile: %s\n%s", err)
 			keepdir = true
 		}
 	}
