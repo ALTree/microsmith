@@ -342,7 +342,7 @@ func (pb *PackageBuilder) MakeRandConstraint(name string) (*ast.GenDecl, Constra
 	var types []Type
 	for len(types) < 1+pb.rs.Intn(8) {
 		t := pb.RandType()
-		if t.Name() == "int32" { // conflicts with rune
+		if t.Contains(BasicType{"int32"}) { // conflicts with rune
 			continue
 		}
 		same := false
