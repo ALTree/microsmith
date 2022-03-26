@@ -1,6 +1,7 @@
 package microsmith_test
 
 import (
+	"go/ast"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -197,4 +198,29 @@ func TestCompileMultiPkgTypeParams(t *testing.T) {
 			MultiPkg:   true,
 			TypeParams: true,
 		})
+}
+
+var sink *ast.File
+
+func benchHelper(b *testing.B, conf microsmith.ProgramConf) {
+	b.ReportAllocs()
+	pb := microsmith.NewProgramBuilder(conf, 1)
+	for i := 0; i < b.N; i++ {
+		db := microsmith.NewPackageBuilder(conf, "main", pb)
+		sink = db.File()
+	}
+}
+
+func BenchmarkNewProgramSinglePkg(b *testing.B) {
+	benchHelper(b, microsmith.ProgramConf{
+		MultiPkg:   false,
+		TypeParams: false,
+	})
+}
+
+func BenchmarkNewProgramSinglePkgTP(b *testing.B) {
+	benchHelper(b, microsmith.ProgramConf{
+		MultiPkg:   false,
+		TypeParams: true,
+	})
 }
