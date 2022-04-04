@@ -49,11 +49,14 @@ used to stress-test Go compilers.
 - [#49282 internal compiler error: Op...LECall and OpDereference have mismatched mem](https://github.com/golang/go/issues/49282)
 - [#49378 internal compiler error: Expand calls interface data problem](https://github.com/golang/go/issues/49378)
 - [#49619 cmd/link: panic: index out of range](https://github.com/golang/go/issues/49619)
+- [#52124 internal compiler error: panic: unexpected type: 10](https://github.com/golang/go/issues/52124)
+
 
 ##### gccgo
 
 - [#44383 internal compiler error: Segmentation fault during GIMPLE pass ealias](https://github.com/golang/go/issues/44383)
 - [#47130 internal compiler error: in write_equal_function](https://github.com/golang/go/issues/47130)
+
 
 ##### tinygo
 
