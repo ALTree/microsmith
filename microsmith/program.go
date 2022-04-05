@@ -197,11 +197,15 @@ func (prog *Program) Compile(arch string, bo BuildOptions) (string, error) {
 		} else {
 			env = append(env, "GOOS=linux")
 		}
+
 		if arch == "386sf" {
 			env = append(env, "GOARCH=386", "GO386=softfloat")
+		} else if arch == "amd64_v3" {
+			env = append(env, "GOARCH=amd64", "GOAMD64=v3")
 		} else {
 			env = append(env, "GOARCH="+arch)
 		}
+
 		if bo.Unified {
 			env = append(env, "GOEXPERIMENT=unified")
 		}

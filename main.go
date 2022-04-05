@@ -210,13 +210,17 @@ func installDeps(arch string, bo microsmith.BuildOptions) {
 	}
 
 	goos := "linux"
-	if arch == "wasm" {
+	switch arch {
+	case "wasm":
 		goos = "js"
-	}
-	if arch == "386sf" {
+	case "386sf":
 		arch = "386"
 		cmd.Env = append(os.Environ(), "GO386=softfloat")
+	case "amd64_v3":
+		arch = "amd64"
+		cmd.Env = append(os.Environ(), "GOAMD64=v3")
 	}
+
 	cmd.Env = append(os.Environ(), "GOOS="+goos, "GOARCH="+arch)
 	if *tpuF {
 		cmd.Env = append(cmd.Env, "GOEXPERIMENT=unified")
