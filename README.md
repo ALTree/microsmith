@@ -61,3 +61,4 @@ used to stress-test Go compilers.
 ##### tinygo
 
 - [#1653 LLVM ERROR: Cannot select: intrinsic %llvm.coro.size](https://github.com/tinygo-org/tinygo/issues/1653)
+- [#2749 panic: integer divide by zero on array of zero-sized elems](https://github.com/tinygo-org/tinygo/issues/2749)
