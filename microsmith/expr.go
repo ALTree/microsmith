@@ -717,11 +717,45 @@ func (eb *ExprBuilder) MakeMakeCall(t Type) *ast.CallExpr {
 }
 
 func (eb *ExprBuilder) MakeUnsafeCall(fun Variable) *ast.CallExpr {
+	fName := fun.Name.Name[len("unsafe."):]
 	ce := &ast.CallExpr{
 		Fun: &ast.SelectorExpr{
 			X:   &ast.Ident{Name: "unsafe"},
-			Sel: &ast.Ident{Name: fun.Name.Name[len("unsafe."):]},
+			Sel: &ast.Ident{Name: fName},
 		},
+	}
+
+	// Offsetof needs a struct selector expr of the form:
+	//
+	//   X.F
+	//
+	// where X is either a struct literal or a variable of struct
+	// type.
+	if fName == "Offsetof" {
+		var sl *ast.SelectorExpr
+
+		// if we can get a variable, use that (as long it has at least
+		// one field). Otherwise, conjure a literal of a random struct
+		// type.
+		v, ok := eb.S().RandStruct()
+		if ok && len(v.Type.(StructType).Fnames) > 0 {
+			sl = &ast.SelectorExpr{
+				X:   v.Name,
+				Sel: &ast.Ident{Name: RandItem(eb.pb.rs, v.Type.(StructType).Fnames)},
+			}
+		} else {
+			var st StructType
+			for len(st.Fnames) == 0 {
+				st = eb.pb.RandStructType()
+			}
+			sl = &ast.SelectorExpr{
+				X:   eb.VarOrLit(st),
+				Sel: &ast.Ident{Name: RandItem(eb.pb.rs, st.Fnames)},
+			}
+		}
+
+		ce.Args = []ast.Expr{sl}
+		return ce
 	}
 
 	typ := eb.pb.RandBaseType()

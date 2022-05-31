@@ -157,6 +157,14 @@ func (s Scope) RandChan() (Variable, bool) {
 	})
 }
 
+// Returns a struct (of any type)
+func (s Scope) RandStruct() (Variable, bool) {
+	return s.RandPred(func(v Variable, _ ...Type) bool {
+		_, isstruct := v.Type.(StructType)
+		return isstruct
+	})
+}
+
 func FindByName(tp []Constraint, name string) Constraint {
 	for i := 0; i < len(tp); i++ {
 		if tp[i].N.Name == name {

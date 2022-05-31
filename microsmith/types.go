@@ -578,6 +578,11 @@ var Alignof FuncType = FuncType{
 	Args: nil, // custom handling
 	Ret:  []Type{BT{"uintptr"}},
 }
+var Offsetof FuncType = FuncType{
+	N:    "unsafe.Offsetof",
+	Args: nil, // custom handling
+	Ret:  []Type{BT{"uintptr"}},
+}
 
 var PredeclaredFuncs = []FuncType{
 	AppendFun,
@@ -604,6 +609,7 @@ var PredeclaredFuncs = []FuncType{
 	StringsTrimFunc,
 	Sizeof,
 	Alignof,
+	Offsetof,
 }
 
 // --------------------------------
