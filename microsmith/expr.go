@@ -619,9 +619,8 @@ func (eb *ExprBuilder) MakeFuncCall(v Variable) *ast.CallExpr {
 				arg = ep.Base
 			}
 			if eb.Deepen() && fnc.Local {
-				// Cannot call Expr with casts, because Expr could
-				// return UnaryExpr(Literal) like -11 which cannot
-				// be cast to e.g. int.
+				// Cannot call Expr with casts, because UnaryExpr
+				// could return e.g. -11 which cannot be cast to uint.
 				args = append(args, eb.Expr(arg))
 			} else {
 				args = append(args, eb.VarOrLit(arg))
@@ -657,19 +656,19 @@ func (eb *ExprBuilder) MakeAppendCall(t ArrayType) *ast.CallExpr {
 }
 
 func (eb *ExprBuilder) MakeCopyCall() *ast.CallExpr {
-	var typ1, typ2 Type
+	var t1, t2 Type
 	if eb.pb.rs.Intn(3) == 0 {
-		typ1, typ2 = ArrayOf(BT{N: "byte"}), BT{N: "string"}
+		t1, t2 = ArrayOf(BT{N: "byte"}), BT{N: "string"}
 	} else {
-		typ1 = ArrayOf(eb.pb.RandBaseType())
-		typ2 = typ1
+		t1 = ArrayOf(eb.pb.RandBaseType())
+		t2 = t1
 	}
 
 	ce := &ast.CallExpr{Fun: CopyIdent}
 	if eb.Deepen() {
-		ce.Args = []ast.Expr{eb.Expr(typ1), eb.Expr(typ2)}
+		ce.Args = []ast.Expr{eb.Expr(t1), eb.Expr(t2)}
 	} else {
-		ce.Args = []ast.Expr{eb.VarOrLit(typ1), eb.VarOrLit(typ2)}
+		ce.Args = []ast.Expr{eb.VarOrLit(t1), eb.VarOrLit(t2)}
 	}
 
 	return ce
