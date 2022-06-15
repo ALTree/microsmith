@@ -557,6 +557,8 @@ func (eb *ExprBuilder) RandCallExpr(t Type, cet CallExprType) *ast.CallExpr {
 			return eb.MakeLenCall()
 		case strings.HasPrefix(name, "unsafe."):
 			return eb.MakeUnsafeCall(v)
+		case strings.HasPrefix(name, "reflect."):
+			return eb.MakeReflectCall(v)
 		default:
 			return eb.MakeFuncCall(v)
 		}
@@ -768,24 +770,26 @@ func (eb *ExprBuilder) MakeUnsafeCall(fun Variable) *ast.CallExpr {
 	return ce
 }
 
-func (eb *ExprBuilder) MakeMathCall(fun Variable) *ast.CallExpr {
+func (eb *ExprBuilder) MakeReflectCall(fun Variable) *ast.CallExpr {
+	fName := fun.Name.Name[len("reflect."):]
 	ce := &ast.CallExpr{
 		Fun: &ast.SelectorExpr{
-			X:   &ast.Ident{Name: "math"},
-			Sel: &ast.Ident{Name: fun.Name.Name[len("math."):]},
+			X:   &ast.Ident{Name: "reflect"},
+			Sel: &ast.Ident{Name: fName},
 		},
 	}
 
-	args := []ast.Expr{}
-	for _, arg := range fun.Type.(FuncType).Args {
+	switch fName {
+	case "DeepEqual":
+		t1, t2 := eb.pb.RandType(), eb.pb.RandType()
 		if eb.Deepen() {
-			args = append(args, eb.Expr(arg))
+			ce.Args = []ast.Expr{eb.Expr(t1), eb.Expr(t2)}
 		} else {
-			args = append(args, eb.VarOrLit(arg))
+			ce.Args = []ast.Expr{eb.VarOrLit(t1), eb.VarOrLit(t2)}
 		}
-
+	default:
+		panic("not implemented")
 	}
-	ce.Args = args
 
 	return ce
 }

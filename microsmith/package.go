@@ -169,7 +169,7 @@ func (pb *PackageBuilder) File() *ast.File {
 		}
 	}
 
-	pkgs := []string{"math", "strings", "unsafe"}
+	pkgs := []string{"math", "strings", "unsafe", "reflect"}
 	for _, p := range pkgs {
 		af.Decls = append(af.Decls, MakeImport(p))
 	}
@@ -308,6 +308,7 @@ func MakeUsePakage(p string) *ast.GenDecl {
 		fs := map[string]string{
 			"math":    "Sqrt",
 			"strings": "Title",
+			"reflect": "DeepEqual",
 		}
 		se.X = &ast.Ident{Name: p}
 		se.Sel = &ast.Ident{Name: fs[p]}

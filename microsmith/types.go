@@ -443,94 +443,94 @@ func (ft FuncType) MakeFieldLists(named bool, s int) (*ast.FieldList, *ast.Field
 
 type BT = BasicType
 
-var AppendFun FuncType = FuncType{
+var AppendFun = FuncType{
 	N:    "append",
 	Args: nil, // custom
 	Ret:  nil, // handling
 }
-var CopyFun FuncType = FuncType{
+var CopyFun = FuncType{
 	N:    "copy",
 	Args: nil, // custom handling
 	Ret:  []Type{BT{"int"}},
 }
-var LenFun FuncType = FuncType{
+var LenFun = FuncType{
 	N:    "len",
 	Args: nil, // custom handling
 	Ret:  []Type{BT{"int"}},
 }
 
-var Float32Float64Conv FuncType = FuncType{
+var Float32Float64Conv = FuncType{
 	N:    "float32",
 	Args: []Type{BT{"float64"}},
 	Ret:  []Type{BT{"float32"}},
 }
-var Float64Float32Conv FuncType = FuncType{
+var Float64Float32Conv = FuncType{
 	N:    "float64",
 	Args: []Type{BT{"float32"}},
 	Ret:  []Type{BT{"float64"}},
 }
-var IntFloat64Conv FuncType = FuncType{
+var IntFloat64Conv = FuncType{
 	N:    "float64",
 	Args: []Type{BT{"int"}},
 	Ret:  []Type{BT{"float64"}},
 }
-var IntUintConv FuncType = FuncType{
+var IntUintConv = FuncType{
 	N:    "int",
 	Args: []Type{BT{"uint"}},
 	Ret:  []Type{BT{"int"}},
 }
-var UintIntConv FuncType = FuncType{
+var UintIntConv = FuncType{
 	N:    "uint",
 	Args: []Type{BT{"int"}},
 	Ret:  []Type{BT{"uint"}},
 }
-var Int16IntConv FuncType = FuncType{
+var Int16IntConv = FuncType{
 	N:    "int16",
 	Args: []Type{BT{"int"}},
 	Ret:  []Type{BT{"int16"}},
 }
-var IntInt16Conv FuncType = FuncType{
+var IntInt16Conv = FuncType{
 	N:    "int",
 	Args: []Type{BT{"int16"}},
 	Ret:  []Type{BT{"int"}},
 }
-var Int8Int32Conv FuncType = FuncType{
+var Int8Int32Conv = FuncType{
 	N:    "int8",
 	Args: []Type{BT{"int32"}},
 	Ret:  []Type{BT{"int8"}},
 }
-var Int32Int8Conv FuncType = FuncType{
+var Int32Int8Conv = FuncType{
 	N:    "int32",
 	Args: []Type{BT{"int8"}},
 	Ret:  []Type{BT{"int32"}},
 }
-var Int8UintConv FuncType = FuncType{
+var Int8UintConv = FuncType{
 	N:    "int8",
 	Args: []Type{BT{"uint"}},
 	Ret:  []Type{BT{"int8"}},
 }
-var IntInt64Conv FuncType = FuncType{
+var IntInt64Conv = FuncType{
 	N:    "int",
 	Args: []Type{BT{"int64"}},
 	Ret:  []Type{BT{"int"}},
 }
-var UintptrIntConv FuncType = FuncType{
+var UintptrIntConv = FuncType{
 	N:    "uintptr",
 	Args: []Type{BT{"int"}},
 	Ret:  []Type{BT{"uintptr"}},
 }
-var Int32UintptrConv FuncType = FuncType{
+var Int32UintptrConv = FuncType{
 	N:    "int32",
 	Args: []Type{BT{"uintptr"}},
 	Ret:  []Type{BT{"int32"}},
 }
 
-var MathSqrt FuncType = FuncType{
+var MathSqrt = FuncType{
 	N:    "math.Sqrt",
 	Args: []Type{BT{"float64"}},
 	Ret:  []Type{BT{"float64"}},
 }
-var MathMax FuncType = FuncType{
+var MathMax = FuncType{
 	N:    "math.Max",
 	Args: []Type{BT{"float64"}, BT{"float64"}},
 	Ret:  []Type{BT{"float64"}},
@@ -540,22 +540,22 @@ var MathNaN FuncType = FuncType{
 	Args: []Type{},
 	Ret:  []Type{BT{"float64"}},
 }
-var MathLdexp FuncType = FuncType{
+var MathLdexp = FuncType{
 	N:    "math.Ldexp",
 	Args: []Type{BT{"float64"}, BT{"int"}},
 	Ret:  []Type{BT{"float64"}},
 }
-var StringsContains FuncType = FuncType{
+var StringsContains = FuncType{
 	N:    "strings.Contains",
 	Args: []Type{BT{"string"}, BT{"string"}},
 	Ret:  []Type{BT{"bool"}},
 }
-var StringsJoin FuncType = FuncType{
+var StringsJoin = FuncType{
 	N:    "strings.Join",
 	Args: []Type{ArrayType{BT{"string"}}, BT{"string"}},
 	Ret:  []Type{BT{"string"}},
 }
-var StringsTrimFunc FuncType = FuncType{
+var StringsTrimFunc = FuncType{
 	N: "strings.TrimFunc",
 	Args: []Type{
 		BT{"string"},
@@ -566,6 +566,12 @@ var StringsTrimFunc FuncType = FuncType{
 		},
 	},
 	Ret: []Type{BT{"string"}},
+}
+
+var ReflectDeepEqual = FuncType{
+	N:    "reflect.DeepEqual",
+	Args: nil, // custom handling
+	Ret:  []Type{BT{"bool"}},
 }
 
 var Sizeof FuncType = FuncType{
@@ -610,6 +616,7 @@ var PredeclaredFuncs = []FuncType{
 	Sizeof,
 	Alignof,
 	Offsetof,
+	ReflectDeepEqual,
 }
 
 // --------------------------------
