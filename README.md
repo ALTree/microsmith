@@ -52,6 +52,7 @@ used to stress-test Go compilers.
 - [#52124 internal compiler error: panic: unexpected type: 10](https://github.com/golang/go/issues/52124)
 - [#52907 internal compiler error: dictionary variable not captured by value](https://github.com/golang/go/issues/52907)
 - [#53018 internal compiler error: panic during lower in linux/loong64](https://github.com/golang/go/issues/53018)
+- [#53390 internal compiler error: assertion failed](https://github.com/golang/go/issues/53390)
 
 
 ##### gccgo
