@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"go/ast"
 	"go/token"
+	"math/rand"
 )
 
 // --------------------------------
@@ -32,12 +33,20 @@ func NewStmtBuilder(pb *PackageBuilder) *StmtBuilder {
 //  Accessors
 // --------------------------------
 
+func (sb StmtBuilder) C() *Context {
+	return sb.pb.ctx
+}
+
 func (sb StmtBuilder) E() *ExprBuilder {
 	return sb.pb.eb
 }
 
 func (sb StmtBuilder) S() *Scope {
 	return sb.pb.ctx.scope
+}
+
+func (sb StmtBuilder) R() *rand.Rand {
+	return sb.pb.rs
 }
 
 // --------------------------------
@@ -47,7 +56,7 @@ func (sb StmtBuilder) S() *Scope {
 // Returns true if the block statement currently being built is
 // allowed to have statements nested inside it.
 func (sb *StmtBuilder) CanNest() bool {
-	return (sb.depth <= 3) && (sb.pb.rs.Float64() < 0.8)
+	return (sb.depth <= 3) && (sb.R().Float64() < 0.8)
 }
 
 func (sb *StmtBuilder) Stmt() ast.Stmt {
@@ -56,7 +65,7 @@ func (sb *StmtBuilder) Stmt() ast.Stmt {
 		return sb.AssignStmt()
 	}
 
-	switch sb.pb.rs.Intn(11) {
+	switch sb.R().Intn(11) {
 	case 0:
 		return sb.AssignStmt()
 	case 1:
@@ -65,8 +74,8 @@ func (sb *StmtBuilder) Stmt() ast.Stmt {
 		// If at least one array or string is in scope, generate a for
 		// range loop with chance 0.5; otherwise generate a plain loop
 		arr, ok := sb.S().RandRangeable()
-		if ok && sb.pb.rs.Intn(2) == 0 {
-			if sb.pb.rs.Intn(4) == 0 { // 1 in 4 loops have a label
+		if ok && sb.R().Intn(2) == 0 {
+			if sb.R().Intn(4) == 0 { // 1 in 4 loops have a label
 				sb.label++
 				label := fmt.Sprintf("lab%v", sb.label)
 				sb.labels = append(sb.labels, label)
@@ -79,7 +88,7 @@ func (sb *StmtBuilder) Stmt() ast.Stmt {
 				return sb.RangeStmt(arr)
 			}
 		} else {
-			if sb.pb.rs.Intn(4) == 0 { // 1 in 4 loops have a label
+			if sb.R().Intn(4) == 0 { // 1 in 4 loops have a label
 				sb.label++
 				label := fmt.Sprintf("lab%v", sb.label)
 				sb.labels = append(sb.labels, label)
@@ -130,7 +139,7 @@ func (sb *StmtBuilder) AssignStmt() *ast.AssignStmt {
 	case StructType:
 		// For structs, 50/50 between assigning to the variable and
 		// setting one of its fields.
-		if sb.pb.rs.Intn(2) == 0 || len(t.Ftypes) == 0 {
+		if sb.R().Intn(2) == 0 || len(t.Ftypes) == 0 {
 			// v = struct{<expr>, <expr>, ...}
 			return &ast.AssignStmt{
 				Lhs: []ast.Expr{v.Name},
@@ -183,7 +192,7 @@ func (sb *StmtBuilder) AssignStmt() *ast.AssignStmt {
 		// For arrays, 50/50 between
 		//   A[<expr>] = <expr>
 		//   A = { <expr>, <expr>, ... }
-		if sb.pb.rs.Intn(2) == 0 {
+		if sb.R().Intn(2) == 0 {
 			return &ast.AssignStmt{
 				Lhs: []ast.Expr{sb.E().IndexExpr(v.Name)},
 				Tok: token.ASSIGN,
@@ -201,7 +210,7 @@ func (sb *StmtBuilder) AssignStmt() *ast.AssignStmt {
 		// For maps, 50/50 between
 		//   M[<expr>] = <expr>
 		//   M = { <expr>: <expr> }
-		if sb.pb.rs.Intn(2) == 0 {
+		if sb.R().Intn(2) == 0 {
 			return &ast.AssignStmt{
 				Lhs: []ast.Expr{sb.E().MapIndexExpr(v.Name, v.Type.(MapType).KeyT)},
 				Tok: token.ASSIGN,
@@ -228,7 +237,7 @@ func (sb *StmtBuilder) AssignStmt() *ast.AssignStmt {
 func (sb *StmtBuilder) BranchStmt() *ast.BranchStmt {
 	var bs ast.BranchStmt
 
-	switch sb.pb.rs.Intn(3) {
+	switch sb.R().Intn(3) {
 	case 0:
 		bs.Tok = token.GOTO
 	case 1:
@@ -238,13 +247,13 @@ func (sb *StmtBuilder) BranchStmt() *ast.BranchStmt {
 	}
 
 	// break/continue/goto to a label with chance 0.25
-	if len(sb.labels) > 0 && sb.pb.rs.Intn(4) == 0 {
-		li := sb.pb.rs.Intn(len(sb.labels))
+	if len(sb.labels) > 0 && sb.R().Intn(4) == 0 {
+		li := sb.R().Intn(len(sb.labels))
 		bs.Label = &ast.Ident{Name: sb.labels[li]}
 		sb.labels = append(sb.labels[:li], sb.labels[li+1:]...)
 	} else {
 		// If we didn't add a label, GOTO is not allowed.
-		if sb.pb.rs.Intn(2) == 0 {
+		if sb.R().Intn(2) == 0 {
 			bs.Tok = token.BREAK
 		} else {
 			bs.Tok = token.CONTINUE
@@ -269,8 +278,8 @@ func (sb *StmtBuilder) BlockStmt() *ast.BlockStmt {
 	// A new block means opening a new scope. Declare a few new vars
 	// of random types.
 	var newVars []*ast.Ident
-	for _, t := range sb.pb.RandTypes(3 + sb.pb.rs.Intn(6)) {
-		newDecl, nv := sb.DeclStmt(1+sb.pb.rs.Intn(3), t)
+	for _, t := range sb.pb.RandTypes(3 + sb.R().Intn(6)) {
+		newDecl, nv := sb.DeclStmt(1+sb.R().Intn(3), t)
 		stmts = append(stmts, newDecl)
 		newVars = append(newVars, nv...)
 	}
@@ -281,7 +290,7 @@ func (sb *StmtBuilder) BlockStmt() *ast.BlockStmt {
 		// so we don't generate almost-empty blocks.
 		nStmts = 8
 	} else {
-		nStmts = 6 + sb.pb.rs.Intn(5)
+		nStmts = 6 + sb.R().Intn(5)
 	}
 
 	// Fill the block's body.
@@ -355,7 +364,7 @@ func (sb *StmtBuilder) DeclStmt(nVars int, t Type) (*ast.DeclStmt, []*ast.Ident)
 
 		// RHS (with chance 0.9)
 
-		if sb.pb.rs.Intn(10) != 0 {
+		if sb.R().Intn(10) != 0 {
 			// Func type specifier again, but this time with parameter
 			// names
 			p, r = t2.MakeFieldLists(true, sb.funcp)
@@ -383,7 +392,7 @@ func (sb *StmtBuilder) DeclStmt(nVars int, t Type) (*ast.DeclStmt, []*ast.Ident)
 				fl.Body = sb.BlockStmt()
 				sb.inloop = oil
 			} else {
-				n := 2 + sb.pb.rs.Intn(3)
+				n := 2 + sb.R().Intn(3)
 				stl := make([]ast.Stmt, 0, n)
 				for i := 0; i < n; i++ {
 					stl = append(stl, sb.AssignStmt())
@@ -463,16 +472,16 @@ func (sb *StmtBuilder) ForStmt() *ast.ForStmt {
 	// - Cond stmt with chance 0.94 (1-1/16)
 	// - Init and Post statements with chance 0.5
 	// - A body with chance 0.97 (1-1/32)
-	if sb.pb.rs.Intn(16) > 0 {
+	if sb.R().Intn(16) > 0 {
 		fs.Cond = sb.E().Expr(BasicType{"bool"})
 	}
-	if sb.pb.rs.Intn(2) > 0 {
+	if sb.R().Intn(2) > 0 {
 		fs.Init = sb.AssignStmt()
 	}
-	if sb.pb.rs.Intn(2) > 0 {
+	if sb.R().Intn(2) > 0 {
 		fs.Post = sb.AssignStmt()
 	}
-	if sb.pb.rs.Intn(32) > 0 {
+	if sb.R().Intn(32) > 0 {
 		sb.inloop = true
 		fs.Body = sb.BlockStmt()
 		sb.inloop = false
@@ -485,7 +494,7 @@ func (sb *StmtBuilder) ForStmt() *ast.ForStmt {
 	for _, l := range sb.labels {
 		fs.Body.List = append(fs.Body.List,
 			&ast.BranchStmt{
-				Tok:   []token.Token{token.GOTO, token.BREAK, token.CONTINUE}[sb.pb.rs.Intn(3)],
+				Tok:   []token.Token{token.GOTO, token.BREAK, token.CONTINUE}[sb.R().Intn(3)],
 				Label: &ast.Ident{Name: l},
 			})
 	}
@@ -531,7 +540,7 @@ func (sb *StmtBuilder) RangeStmt(arr Variable) *ast.RangeStmt {
 	for _, l := range sb.labels {
 		rs.Body.List = append(rs.Body.List,
 			&ast.BranchStmt{
-				Tok:   []token.Token{token.GOTO, token.BREAK, token.CONTINUE}[sb.pb.rs.Intn(3)],
+				Tok:   []token.Token{token.GOTO, token.BREAK, token.CONTINUE}[sb.R().Intn(3)],
 				Label: &ast.Ident{Name: l},
 			})
 	}
@@ -541,18 +550,24 @@ func (sb *StmtBuilder) RangeStmt(arr Variable) *ast.RangeStmt {
 }
 
 func (sb *StmtBuilder) DeferStmt() *ast.DeferStmt {
-	if v, ok := sb.S().RandFunc(); ok && sb.pb.rs.Intn(4) > 0 {
-		return &ast.DeferStmt{Call: sb.E().MakeFuncCall(v)}
+	if v, ok := sb.S().RandFunc(); ok && sb.R().Intn(4) > 0 {
+		return &ast.DeferStmt{Call: sb.E().MakeCall(v)}
 	} else {
-		return &ast.DeferStmt{Call: sb.E().RandCallExpr(sb.pb.RandBaseType(), DEFER)}
+		old := sb.C().inDefer
+		sb.C().inDefer = true
+		defer func() { sb.C().inDefer = old }()
+		return &ast.DeferStmt{Call: sb.E().ConjureAndCallFunc(sb.pb.RandBaseType())}
 	}
 }
 
 func (sb *StmtBuilder) GoStmt() *ast.GoStmt {
-	if v, ok := sb.S().RandFunc(); ok && sb.pb.rs.Intn(4) > 0 {
-		return &ast.GoStmt{Call: sb.E().MakeFuncCall(v)}
+	if v, ok := sb.S().RandFunc(); ok && sb.R().Intn(4) > 0 {
+		return &ast.GoStmt{Call: sb.E().MakeCall(v)}
 	} else {
-		return &ast.GoStmt{Call: sb.E().RandCallExpr(sb.pb.RandBaseType(), DEFER)}
+		old := sb.C().inDefer
+		sb.C().inDefer = true
+		defer func() { sb.C().inDefer = old }()
+		return &ast.GoStmt{Call: sb.E().ConjureAndCallFunc(sb.pb.RandBaseType())}
 	}
 }
 
@@ -567,7 +582,7 @@ func (sb *StmtBuilder) IfStmt() *ast.IfStmt {
 	}
 
 	// optionally attach an else
-	if sb.pb.rs.Intn(2) == 0 {
+	if sb.R().Intn(2) == 0 {
 		is.Else = sb.BlockStmt()
 	}
 
@@ -580,7 +595,7 @@ func (sb *StmtBuilder) SwitchStmt() *ast.SwitchStmt {
 	defer func() { sb.depth-- }()
 
 	t := sb.pb.RandComparableType()
-	if sb.pb.rs.Intn(2) == 0 && sb.S().Has(PointerOf(t)) {
+	if sb.R().Intn(2) == 0 && sb.S().Has(PointerOf(t)) {
 		// sometimes switch on a pointer value
 		t = PointerOf(t)
 	}
@@ -697,8 +712,8 @@ func (sb *StmtBuilder) CommClause(def bool) *ast.CommClause {
 func (sb *StmtBuilder) ExprStmt() *ast.ExprStmt {
 
 	// Close(ch) or <-ch.
-	if ch, ok := sb.S().RandChan(); ok && sb.pb.rs.Intn(2) == 0 {
-		if sb.pb.rs.Intn(2) == 0 {
+	if ch, ok := sb.S().RandChan(); ok && sb.R().Intn(2) == 0 {
+		if sb.R().Intn(2) == 0 {
 			return &ast.ExprStmt{
 				X: sb.E().ChanReceiveExpr(ch.Name),
 			}
@@ -712,11 +727,10 @@ func (sb *StmtBuilder) ExprStmt() *ast.ExprStmt {
 		}
 	}
 
-	// Call a random function.
-	//
-	// len() is not allowed (it's not really a function), DEFER here
-	// prevents CallExpr to choose len as the function to call.
-	return &ast.ExprStmt{sb.E().RandCallExpr(sb.pb.RandBaseType(), DEFER)}
+	// Call a random function. We don't use RandCallExpr() because
+	// that could choose a built-in (like len), which is not allowed
+	// as an ExprStmt. Conjuring a new func and call it will always work.
+	return &ast.ExprStmt{sb.E().ConjureAndCallFunc(sb.pb.RandBaseType())}
 }
 
 var noName = ast.Ident{Name: "_"}

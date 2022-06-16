@@ -24,6 +24,8 @@ type Context struct { // TODO(alb): rename to PackageContext
 	// code in the body. Reset and re-filled in when declaring a new
 	// function.
 	typeparams *Scope
+
+	inLoop, inDefer bool
 }
 
 func NewContext(pc ProgramConf) *Context {

@@ -3,6 +3,7 @@ package microsmith
 import (
 	"go/ast"
 	"go/token"
+	"math/rand"
 	"strconv"
 	"strings"
 )
@@ -26,8 +27,16 @@ func NewExprBuilder(pb *PackageBuilder) *ExprBuilder {
 //  Accessors
 // --------------------------------
 
+func (eb ExprBuilder) C() *Context {
+	return eb.pb.ctx
+}
+
 func (eb ExprBuilder) S() *Scope {
 	return eb.pb.ctx.scope
+}
+
+func (eb ExprBuilder) R() *rand.Rand {
+	return eb.pb.rs
 }
 
 // --------------------------------
@@ -37,7 +46,7 @@ func (eb ExprBuilder) S() *Scope {
 // Returns true if the expression tree currently being built is
 // allowed to become deeper.
 func (eb *ExprBuilder) Deepen() bool {
-	return (eb.depth <= 6) && (eb.pb.rs.Float64() < 0.7)
+	return (eb.depth <= 6) && (eb.R().Float64() < 0.7)
 }
 
 func (eb *ExprBuilder) BasicLit(t BasicType) ast.Expr {
@@ -45,19 +54,19 @@ func (eb *ExprBuilder) BasicLit(t BasicType) ast.Expr {
 	switch t.Name() {
 	case "byte", "uint", "uintptr", "int", "int8", "int16", "int32", "int64", "any":
 		bl.Kind = token.INT
-		bl.Value = strconv.Itoa(eb.pb.rs.Intn(100))
+		bl.Value = strconv.Itoa(eb.R().Intn(100))
 	case "rune":
 		bl.Kind = token.CHAR
 		bl.Value = RandRune()
 	case "float32", "float64":
 		bl.Kind = token.FLOAT
-		bl.Value = strconv.FormatFloat(999*(eb.pb.rs.Float64()), 'f', 1, 64)
+		bl.Value = strconv.FormatFloat(999*(eb.R().Float64()), 'f', 1, 64)
 	case "complex128":
 		// There's no complex basiclit, generate an IMAG
 		bl.Kind = token.IMAG
-		bl.Value = strconv.FormatFloat(99*(eb.pb.rs.Float64()), 'f', 2, 64) + "i"
+		bl.Value = strconv.FormatFloat(99*(eb.R().Float64()), 'f', 2, 64) + "i"
 	case "bool":
-		if eb.pb.rs.Intn(2) == 0 {
+		if eb.R().Intn(2) == 0 {
 			return TrueIdent
 		} else {
 			return FalseIdent
@@ -79,8 +88,8 @@ func (eb *ExprBuilder) CompositeLit(t Type) *ast.CompositeLit {
 	case ArrayType:
 		cl := &ast.CompositeLit{Type: t.Ast()}
 		elems := []ast.Expr{}
-		if eb.pb.rs.Intn(4) > 0 { // plain array literal
-			for i := 0; i < eb.pb.rs.Intn(5); i++ {
+		if eb.R().Intn(4) > 0 { // plain array literal
+			for i := 0; i < eb.R().Intn(5); i++ {
 				if eb.Deepen() {
 					elems = append(elems, eb.Expr(t.Base()))
 				} else {
@@ -154,7 +163,7 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 	switch t := t.(type) {
 
 	case BasicType, TypeParam:
-		switch eb.pb.rs.Intn(12) {
+		switch eb.R().Intn(12) {
 		case 0, 1:
 			return eb.UnaryExpr(t)
 		case 2, 3:
@@ -167,11 +176,11 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 			}
 			fallthrough
 		default:
-			return eb.RandCallExpr(t, NOTDEFER)
+			return eb.RandCallExpr(t)
 		}
 
 	case ArrayType:
-		switch eb.pb.rs.Intn(4) {
+		switch eb.R().Intn(4) {
 		case 0:
 			return eb.MakeAppendCall(t)
 		default:
@@ -187,7 +196,7 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 		vt, typeInScope := eb.S().RandVar(t)
 		vst, baseInScope := eb.S().RandVar(t.Base())
 		if typeInScope && baseInScope {
-			if eb.pb.rs.Intn(2) == 0 {
+			if eb.R().Intn(2) == 0 {
 				return vt.Name
 			} else {
 				return &ast.UnaryExpr{
@@ -238,7 +247,7 @@ func (eb *ExprBuilder) VarOrLit(t Type) ast.Expr {
 	// allow literals (like interface { int | []int }); for those it's
 	// always a variable.
 	if tp, ok := t.(TypeParam); ok {
-		if tp.HasLiterals() && eb.pb.rs.Intn(2) == 0 {
+		if tp.HasLiterals() && eb.R().Intn(2) == 0 {
 			return eb.TypeParamLit(tp)
 		}
 		if v, ok := eb.S().RandVar(t); !ok {
@@ -259,7 +268,7 @@ func (eb *ExprBuilder) VarOrLit(t Type) ast.Expr {
 			}
 			return bl
 		case ArrayType, MapType:
-			if eb.pb.rs.Intn(3) == 0 {
+			if eb.R().Intn(3) == 0 {
 				return eb.MakeMakeCall(t)
 			} else {
 				return eb.CompositeLit(t)
@@ -286,12 +295,12 @@ func (eb *ExprBuilder) VarOrLit(t Type) ast.Expr {
 
 	// Slice, once in a while.
 	if _, ok := vst.Type.(ArrayType); ok {
-		if t.Equal(vst.Type) && eb.pb.rs.Intn(4) == 0 {
+		if t.Equal(vst.Type) && eb.R().Intn(4) == 0 {
 			return eb.SliceExpr(vst)
 		}
 	}
 	if bt, ok := vst.Type.(BasicType); ok && bt.N == "string" {
-		if t.Equal(vst.Type) && eb.pb.rs.Intn(4) == 0 {
+		if t.Equal(vst.Type) && eb.R().Intn(4) == 0 {
 			return eb.SliceExpr(vst)
 		}
 	}
@@ -338,7 +347,7 @@ func (eb *ExprBuilder) CallExpr(e ast.Expr, at []Type) *ast.CallExpr {
 		if arg, ok := (a).(EllipsisType); ok {
 			t = arg.Base
 		}
-		if eb.pb.rs.Intn(2) == 0 && eb.Deepen() {
+		if eb.R().Intn(2) == 0 && eb.Deepen() {
 			args = append(args, eb.Expr(t))
 		} else {
 			args = append(args, eb.VarOrLit(t))
@@ -350,7 +359,7 @@ func (eb *ExprBuilder) CallExpr(e ast.Expr, at []Type) *ast.CallExpr {
 // Returns e[...]
 func (eb *ExprBuilder) IndexExpr(e ast.Expr) *ast.IndexExpr {
 	var i ast.Expr
-	if eb.pb.rs.Intn(2) == 0 && eb.Deepen() {
+	if eb.R().Intn(2) == 0 && eb.Deepen() {
 		i = eb.BinaryExpr(BT{"int"})
 	} else {
 		i = eb.VarOrLit(BT{"int"})
@@ -403,14 +412,14 @@ func (eb *ExprBuilder) SliceExpr(v Variable) *ast.SliceExpr {
 	var low, high ast.Expr
 	indV, hasInt := eb.S().RandVar(BT{"int"})
 	if hasInt && eb.Deepen() {
-		if eb.pb.rs.Intn(8) > 0 {
+		if eb.R().Intn(8) > 0 {
 			low = &ast.BinaryExpr{
 				X:  indV.Name,
 				Op: token.ADD,
 				Y:  eb.Expr(BT{"int"}),
 			}
 		}
-		if eb.pb.rs.Intn(8) > 0 {
+		if eb.R().Intn(8) > 0 {
 			high = &ast.BinaryExpr{
 				X:  eb.Expr(BT{"int"}),
 				Op: token.ADD,
@@ -418,16 +427,16 @@ func (eb *ExprBuilder) SliceExpr(v Variable) *ast.SliceExpr {
 			}
 		}
 	} else {
-		if eb.pb.rs.Intn(8) > 0 {
+		if eb.R().Intn(8) > 0 {
 			low = &ast.BasicLit{
 				Kind:  token.INT,
-				Value: strconv.Itoa(eb.pb.rs.Intn(8)),
+				Value: strconv.Itoa(eb.R().Intn(8)),
 			}
 		}
-		if eb.pb.rs.Intn(8) > 0 {
+		if eb.R().Intn(8) > 0 {
 			high = &ast.BasicLit{
 				Kind:  token.INT,
-				Value: strconv.Itoa(8 + eb.pb.rs.Intn(17)),
+				Value: strconv.Itoa(8 + eb.R().Intn(17)),
 			}
 		}
 	}
@@ -446,7 +455,7 @@ func (eb *ExprBuilder) UnaryExpr(t Type) ast.Expr {
 
 	// if there are pointers to t in scope, generate a t by
 	// dereferencing it with chance 0.5
-	if eb.pb.rs.Intn(2) == 0 && eb.S().Has(PointerOf(t)) {
+	if eb.R().Intn(2) == 0 && eb.S().Has(PointerOf(t)) {
 		ue.Op = token.MUL
 		// See comment in Expr() for PointerType on why we must call
 		// Expr() here.
@@ -473,7 +482,7 @@ func (eb *ExprBuilder) BinaryExpr(t Type) ast.Expr {
 	ue := new(ast.BinaryExpr)
 
 	ops := BinOps(t)
-	if t.Name() == "bool" && eb.pb.rs.Intn(2) == 0 {
+	if t.Name() == "bool" && eb.R().Intn(2) == 0 {
 		// for booleans, we 50/50 between <bool> BOOL_OP <bool> and
 		// <any comparable> COMPARISON <any comparable>.
 		t = eb.pb.RandComparableType()
@@ -558,101 +567,67 @@ func (eb *ExprBuilder) Cast(t BasicType) *ast.CallExpr {
 	}
 }
 
-type CallExprType int
-
-const (
-	DEFER    CallExprType = 0
-	NOTDEFER CallExprType = 1
-)
-
 // CallExpr returns a call expression involving a random function with
 // return value of type t.
-func (eb *ExprBuilder) RandCallExpr(t Type, cet CallExprType) *ast.CallExpr {
-	if v, ok := eb.S().RandFuncRet(t); ok && (cet == NOTDEFER || v.Type.(FuncType).Local) {
-		name := v.Name.Name
-		switch {
-		case name == "copy":
-			return eb.MakeCopyCall()
-		case name == "len":
-			return eb.MakeLenCall()
-		case strings.HasPrefix(name, "unsafe."):
-			return eb.MakeUnsafeCall(v)
-		case strings.HasPrefix(name, "reflect."):
-			return eb.MakeReflectCall(v)
-		default:
-			return eb.MakeFuncCall(v)
-		}
+func (eb *ExprBuilder) RandCallExpr(t Type) *ast.CallExpr {
+	if v, ok := eb.S().RandFuncRet(t); ok && !eb.C().inDefer {
+		return eb.MakeCall(v)
 	} else {
 		// No functions returning t in scope. Conjure a random one,
 		// and call it.
-
-		// Random func type, 2 parameters, return type t.
-		ft := &FuncType{
-			"FU",
-			[]Type{eb.pb.RandType(), eb.pb.RandType()},
-			[]Type{t},
-			true,
-		}
-
-		// Empty body (avoid excessive nesting, we are just building
-		// an expression after all), except for the return statement.
-		var retExpr ast.Expr
-		if eb.Deepen() {
-			retExpr = eb.Expr(t)
-		} else {
-			retExpr = eb.VarOrLit(t)
-		}
-
-		p, r := ft.MakeFieldLists(false, 0)
-		fl := &ast.FuncLit{
-			Type: &ast.FuncType{Params: p, Results: r},
-			Body: &ast.BlockStmt{List: []ast.Stmt{
-				eb.pb.sb.AssignStmt(),                         // one Stmt
-				&ast.ReturnStmt{Results: []ast.Expr{retExpr}}, // the return
-			}},
-		}
-
-		// if we are in a defer, optionally add a recover call before
-		// the return statement.
-		if cet == DEFER && eb.pb.rs.Intn(4) == 0 {
-			fl.Body.List = append(
-				[]ast.Stmt{&ast.ExprStmt{&ast.CallExpr{Fun: &ast.Ident{Name: "recover"}}}},
-				fl.Body.List...,
-			)
-		}
-
-		// and then call it
-		args := make([]ast.Expr, 0, len(ft.Args))
-		for _, arg := range ft.Args {
-			args = append(args, eb.VarOrLit(arg))
-		}
-		return &ast.CallExpr{Fun: fl, Args: args}
+		return eb.ConjureAndCallFunc(t)
 	}
 }
 
-func (eb *ExprBuilder) MakeFuncCall(v Variable) *ast.CallExpr {
-	if fnc, ok := v.Type.(FuncType); ok {
-		args := make([]ast.Expr, 0, len(fnc.Args))
-		for _, arg := range fnc.Args {
-			arg := arg
-			if ep, ok := arg.(EllipsisType); ok {
-				arg = ep.Base
-			}
-			if eb.Deepen() && fnc.Local {
-				// Cannot call Expr with casts, because UnaryExpr
-				// could return e.g. -11 which cannot be cast to uint.
-				args = append(args, eb.Expr(arg))
-			} else {
-				args = append(args, eb.VarOrLit(arg))
-			}
-		}
-		return &ast.CallExpr{
-			Fun:  &ast.Ident{Name: v.Name.Name},
-			Args: args,
-		}
+// MakeCall builds an ast.CallExpr with the function variable v,
+// taking care of setting up its arguments, including for functions
+// like copy() that require custom handling.
+func (eb *ExprBuilder) MakeCall(v Variable) *ast.CallExpr {
+
+	var fnc FuncType
+	var ok bool
+	if fnc, ok = v.Type.(FuncType); !ok {
+		panic("MakeCall: not a function: " + v.Name.Name)
 	}
 
-	panic("unreachable")
+	// some functions require custom handling
+	name := v.Name.Name
+	switch {
+	case name == "copy":
+		return eb.MakeCopyCall()
+	case name == "len":
+		return eb.MakeLenCall()
+	case strings.HasPrefix(name, "unsafe."):
+		return eb.MakeUnsafeCall(v)
+	case strings.HasPrefix(name, "reflect."):
+		return eb.MakeReflectCall(v)
+	default:
+		// go below
+	}
+
+	if fnc.Args == nil {
+		panic("Custom handled func " + v.Name.Name)
+	}
+
+	args := make([]ast.Expr, 0, len(fnc.Args))
+	for _, arg := range fnc.Args {
+		arg := arg
+		if ep, ok := arg.(EllipsisType); ok {
+			arg = ep.Base
+		}
+		if eb.Deepen() && fnc.Local {
+			// Cannot call Expr with casts, because UnaryExpr
+			// could return e.g. -11 which cannot be cast to uint.
+			args = append(args, eb.Expr(arg))
+		} else {
+			args = append(args, eb.VarOrLit(arg))
+		}
+	}
+	return &ast.CallExpr{
+		Fun:  &ast.Ident{Name: v.Name.Name},
+		Args: args,
+	}
+
 }
 
 func (eb *ExprBuilder) MakeAppendCall(t ArrayType) *ast.CallExpr {
@@ -660,7 +635,7 @@ func (eb *ExprBuilder) MakeAppendCall(t ArrayType) *ast.CallExpr {
 
 	t2 := t.Base()
 	ellips := token.Pos(0)
-	if eb.pb.rs.Intn(3) == 0 { // 2nd arg is ...
+	if eb.R().Intn(3) == 0 { // 2nd arg is ...
 		t2 = t
 		ellips = token.Pos(1)
 	}
@@ -677,7 +652,7 @@ func (eb *ExprBuilder) MakeAppendCall(t ArrayType) *ast.CallExpr {
 
 func (eb *ExprBuilder) MakeCopyCall() *ast.CallExpr {
 	var t1, t2 Type
-	if eb.pb.rs.Intn(3) == 0 {
+	if eb.R().Intn(3) == 0 {
 		t1, t2 = ArrayOf(BT{N: "byte"}), BT{N: "string"}
 	} else {
 		t1 = ArrayOf(eb.pb.RandBaseType())
@@ -696,7 +671,7 @@ func (eb *ExprBuilder) MakeCopyCall() *ast.CallExpr {
 
 func (eb *ExprBuilder) MakeLenCall() *ast.CallExpr {
 	var typ Type
-	if eb.pb.rs.Intn(2) == 0 {
+	if eb.R().Intn(2) == 0 {
 		typ = ArrayOf(eb.pb.RandBaseType())
 	} else {
 		typ = BT{"string"}
@@ -811,4 +786,49 @@ func (eb *ExprBuilder) MakeReflectCall(fun Variable) *ast.CallExpr {
 	}
 
 	return ce
+}
+
+func (eb *ExprBuilder) ConjureAndCallFunc(t Type) *ast.CallExpr {
+
+	// Random func type, 2 parameters, return type t.
+	ft := &FuncType{
+		"FU",
+		[]Type{eb.pb.RandType(), eb.pb.RandType()},
+		[]Type{t},
+		true,
+	}
+
+	// Empty body (avoid excessive nesting, we are just building
+	// an expression after all), except for the return statement.
+	var retExpr ast.Expr
+	if eb.Deepen() {
+		retExpr = eb.Expr(t)
+	} else {
+		retExpr = eb.VarOrLit(t)
+	}
+
+	p, r := ft.MakeFieldLists(false, 0)
+	fl := &ast.FuncLit{
+		Type: &ast.FuncType{Params: p, Results: r},
+		Body: &ast.BlockStmt{List: []ast.Stmt{
+			eb.pb.sb.AssignStmt(),                         // one Stmt
+			&ast.ReturnStmt{Results: []ast.Expr{retExpr}}, // the return
+		}},
+	}
+
+	// if we are in a defer, optionally add a recover call before
+	// the return statement.
+	if eb.C().inDefer && eb.R().Intn(4) == 0 {
+		fl.Body.List = append(
+			[]ast.Stmt{&ast.ExprStmt{&ast.CallExpr{Fun: &ast.Ident{Name: "recover"}}}},
+			fl.Body.List...,
+		)
+	}
+
+	// and then call it
+	args := make([]ast.Expr, 0, len(ft.Args))
+	for _, arg := range ft.Args {
+		args = append(args, eb.VarOrLit(arg))
+	}
+	return &ast.CallExpr{Fun: fl, Args: args}
 }
