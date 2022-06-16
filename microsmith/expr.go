@@ -154,13 +154,18 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 	switch t := t.(type) {
 
 	case BasicType, TypeParam:
-		switch eb.pb.rs.Intn(10) {
+		switch eb.pb.rs.Intn(12) {
 		case 0, 1:
 			return eb.UnaryExpr(t)
 		case 2, 3:
 			return eb.UnaryExpr(t)
 		case 4, 5, 6, 7:
 			return eb.BinaryExpr(t)
+		case 8, 9:
+			if bt, ok := t.(BasicType); ok {
+				return eb.Cast(bt)
+			}
+			fallthrough
 		default:
 			return eb.RandCallExpr(t, NOTDEFER)
 		}
@@ -536,6 +541,21 @@ func (eb *ExprBuilder) BinaryExpr(t Type) ast.Expr {
 	}
 
 	return ue
+}
+
+func (eb *ExprBuilder) Cast(t BasicType) *ast.CallExpr {
+	t2 := t
+	if IsNumeric(t) {
+		t2 = eb.pb.RandNumericType()
+		for strings.HasPrefix(t2.N, "float") {
+			t2 = eb.pb.RandNumericType()
+		}
+	}
+
+	return &ast.CallExpr{
+		Fun:  &ast.Ident{Name: t.N},
+		Args: []ast.Expr{eb.VarOrLit(t2)},
+	}
 }
 
 type CallExprType int

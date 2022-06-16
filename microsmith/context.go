@@ -131,6 +131,14 @@ func (pb PackageBuilder) RandBaseType() Type {
 	}
 }
 
+func (pb PackageBuilder) RandNumericType() BasicType {
+	t := RandItem(pb.rs, pb.baseTypes)
+	for !IsNumeric(t) {
+		t = RandItem(pb.rs, pb.baseTypes)
+	}
+	return t.(BasicType)
+}
+
 func (pb PackageBuilder) RandStructType() StructType {
 	st := StructType{"ST", []Type{}, []string{}}
 	for i := 0; i < pb.rs.Intn(6); i++ {

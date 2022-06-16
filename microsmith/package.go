@@ -31,7 +31,10 @@ func NewPackageBuilder(conf ProgramConf, pkg string, progb *ProgramBuilder) *Pac
 
 	// Initialize Context.Scope with the predeclared functions:
 	scope := Scope{pb: &pb, vars: make([]Variable, 0, 64)}
-	for _, f := range PredeclaredFuncs {
+	for _, f := range BuiltinsFuncs {
+		scope.vars = append(scope.vars, Variable{f, &ast.Ident{Name: f.N}})
+	}
+	for _, f := range StdlibFuncs {
 		scope.vars = append(scope.vars, Variable{f, &ast.Ident{Name: f.N}})
 	}
 	pb.ctx.scope = &scope

@@ -125,9 +125,9 @@ func IsNumeric(t Type) bool {
 		default:
 			return false
 		}
-
 	}
 }
+
 func IsOrdered(t Type) bool {
 	if bt, ok := t.(BasicType); !ok {
 		return false
@@ -443,180 +443,167 @@ func (ft FuncType) MakeFieldLists(named bool, s int) (*ast.FieldList, *ast.Field
 
 type BT = BasicType
 
-var AppendFun = FuncType{
-	N:    "append",
-	Args: nil, // custom
-	Ret:  nil, // handling
-}
-var CopyFun = FuncType{
-	N:    "copy",
-	Args: nil, // custom handling
-	Ret:  []Type{BT{"int"}},
-}
-var LenFun = FuncType{
-	N:    "len",
-	Args: nil, // custom handling
-	Ret:  []Type{BT{"int"}},
-}
+// Casts, builtins, and some standard library function that can be
+// assumed to exists, and can be called. Any null Args or Ret is
+// custom-handled when generating the Expressions.
+var BuiltinsFuncs = []FuncType{
 
-var Float32Float64Conv = FuncType{
-	N:    "float32",
-	Args: []Type{BT{"float64"}},
-	Ret:  []Type{BT{"float32"}},
-}
-var Float64Float32Conv = FuncType{
-	N:    "float64",
-	Args: []Type{BT{"float32"}},
-	Ret:  []Type{BT{"float64"}},
-}
-var IntFloat64Conv = FuncType{
-	N:    "float64",
-	Args: []Type{BT{"int"}},
-	Ret:  []Type{BT{"float64"}},
-}
-var IntUintConv = FuncType{
-	N:    "int",
-	Args: []Type{BT{"uint"}},
-	Ret:  []Type{BT{"int"}},
-}
-var UintIntConv = FuncType{
-	N:    "uint",
-	Args: []Type{BT{"int"}},
-	Ret:  []Type{BT{"uint"}},
-}
-var Int16IntConv = FuncType{
-	N:    "int16",
-	Args: []Type{BT{"int"}},
-	Ret:  []Type{BT{"int16"}},
-}
-var IntInt16Conv = FuncType{
-	N:    "int",
-	Args: []Type{BT{"int16"}},
-	Ret:  []Type{BT{"int"}},
-}
-var Int8Int32Conv = FuncType{
-	N:    "int8",
-	Args: []Type{BT{"int32"}},
-	Ret:  []Type{BT{"int8"}},
-}
-var Int32Int8Conv = FuncType{
-	N:    "int32",
-	Args: []Type{BT{"int8"}},
-	Ret:  []Type{BT{"int32"}},
-}
-var Int8UintConv = FuncType{
-	N:    "int8",
-	Args: []Type{BT{"uint"}},
-	Ret:  []Type{BT{"int8"}},
-}
-var IntInt64Conv = FuncType{
-	N:    "int",
-	Args: []Type{BT{"int64"}},
-	Ret:  []Type{BT{"int"}},
-}
-var UintptrIntConv = FuncType{
-	N:    "uintptr",
-	Args: []Type{BT{"int"}},
-	Ret:  []Type{BT{"uintptr"}},
-}
-var Int32UintptrConv = FuncType{
-	N:    "int32",
-	Args: []Type{BT{"uintptr"}},
-	Ret:  []Type{BT{"int32"}},
-}
-
-var MathSqrt = FuncType{
-	N:    "math.Sqrt",
-	Args: []Type{BT{"float64"}},
-	Ret:  []Type{BT{"float64"}},
-}
-var MathMax = FuncType{
-	N:    "math.Max",
-	Args: []Type{BT{"float64"}, BT{"float64"}},
-	Ret:  []Type{BT{"float64"}},
-}
-var MathNaN FuncType = FuncType{
-	N:    "math.NaN",
-	Args: []Type{},
-	Ret:  []Type{BT{"float64"}},
-}
-var MathLdexp = FuncType{
-	N:    "math.Ldexp",
-	Args: []Type{BT{"float64"}, BT{"int"}},
-	Ret:  []Type{BT{"float64"}},
-}
-var StringsContains = FuncType{
-	N:    "strings.Contains",
-	Args: []Type{BT{"string"}, BT{"string"}},
-	Ret:  []Type{BT{"bool"}},
-}
-var StringsJoin = FuncType{
-	N:    "strings.Join",
-	Args: []Type{ArrayType{BT{"string"}}, BT{"string"}},
-	Ret:  []Type{BT{"string"}},
-}
-var StringsTrimFunc = FuncType{
-	N: "strings.TrimFunc",
-	Args: []Type{
-		BT{"string"},
-		FuncType{
-			Args:  []Type{BT{"rune"}},
-			Ret:   []Type{BT{"bool"}},
-			Local: true,
-		},
+	// builtins ----------------
+	{
+		N:    "append",
+		Args: nil,
+		Ret:  nil,
 	},
-	Ret: []Type{BT{"string"}},
+	{
+		N:    "copy",
+		Args: nil,
+		Ret:  []Type{BT{"int"}},
+	},
+	{
+		N:    "len",
+		Args: nil,
+		Ret:  []Type{BT{"int"}},
+	},
+
+	// casts ----------------
+	// {
+	// 	N:    "float32",
+	// 	Args: []Type{BT{"float64"}},
+	// 	Ret:  []Type{BT{"float32"}},
+	// },
+	// {
+	// 	N:    "float64",
+	// 	Args: []Type{BT{"float32"}},
+	// 	Ret:  []Type{BT{"float64"}},
+	// },
+	// {
+	// 	N:    "float64",
+	// 	Args: []Type{BT{"int"}},
+	// 	Ret:  []Type{BT{"float64"}},
+	// },
+	// {
+	// 	N:    "int",
+	// 	Args: []Type{BT{"uint"}},
+	// 	Ret:  []Type{BT{"int"}},
+	// },
+	// {
+	// 	N:    "uint",
+	// 	Args: []Type{BT{"int"}},
+	// 	Ret:  []Type{BT{"uint"}},
+	// },
+	// {
+	// 	N:    "int16",
+	// 	Args: []Type{BT{"int"}},
+	// 	Ret:  []Type{BT{"int16"}},
+	// },
+	// {
+	// 	N:    "int",
+	// 	Args: []Type{BT{"int16"}},
+	// 	Ret:  []Type{BT{"int"}},
+	// },
+	// {
+	// 	N:    "int8",
+	// 	Args: []Type{BT{"int32"}},
+	// 	Ret:  []Type{BT{"int8"}},
+	// },
+	// {
+	// 	N:    "int32",
+	// 	Args: []Type{BT{"int8"}},
+	// 	Ret:  []Type{BT{"int32"}},
+	// },
+	// {
+	// 	N:    "int8",
+	// 	Args: []Type{BT{"uint"}},
+	// 	Ret:  []Type{BT{"int8"}},
+	// },
+	// {
+	// 	N:    "int",
+	// 	Args: []Type{BT{"int64"}},
+	// 	Ret:  []Type{BT{"int"}},
+	// },
+	// {
+	// 	N:    "uintptr",
+	// 	Args: []Type{BT{"int"}},
+	// 	Ret:  []Type{BT{"uintptr"}},
+	// },
+	// {
+	// 	N:    "int32",
+	// 	Args: []Type{BT{"uintptr"}},
+	// 	Ret:  []Type{BT{"int32"}},
+	// },
 }
 
-var ReflectDeepEqual = FuncType{
-	N:    "reflect.DeepEqual",
-	Args: nil, // custom handling
-	Ret:  []Type{BT{"bool"}},
-}
+var StdlibFuncs = []FuncType{
 
-var Sizeof FuncType = FuncType{
-	N:    "unsafe.Sizeof",
-	Args: nil, // custom handling
-	Ret:  []Type{BT{"uintptr"}},
-}
-var Alignof FuncType = FuncType{
-	N:    "unsafe.Alignof",
-	Args: nil, // custom handling
-	Ret:  []Type{BT{"uintptr"}},
-}
-var Offsetof FuncType = FuncType{
-	N:    "unsafe.Offsetof",
-	Args: nil, // custom handling
-	Ret:  []Type{BT{"uintptr"}},
-}
+	// math ----------------
+	{
+		N:    "math.Max",
+		Args: []Type{BT{"float64"}, BT{"float64"}},
+		Ret:  []Type{BT{"float64"}},
+	},
+	{
+		N:    "math.NaN",
+		Args: []Type{},
+		Ret:  []Type{BT{"float64"}},
+	},
+	{
+		N:    "math.Ldexp",
+		Args: []Type{BT{"float64"}, BT{"int"}},
+		Ret:  []Type{BT{"float64"}},
+	},
+	{
+		N:    "math.Sqrt",
+		Args: []Type{BT{"float64"}},
+		Ret:  []Type{BT{"float64"}},
+	},
 
-var PredeclaredFuncs = []FuncType{
-	AppendFun,
-	CopyFun,
-	LenFun,
-	Float32Float64Conv,
-	Float64Float32Conv,
-	IntFloat64Conv,
-	IntUintConv,
-	UintIntConv,
-	Int16IntConv,
-	IntInt16Conv,
-	Int8Int32Conv,
-	Int32Int8Conv,
-	Int8UintConv,
-	IntInt64Conv,
-	UintptrIntConv,
-	MathSqrt,
-	MathMax,
-	MathNaN,
-	MathLdexp,
-	StringsContains,
-	StringsJoin,
-	StringsTrimFunc,
-	Sizeof,
-	Alignof,
-	Offsetof,
-	ReflectDeepEqual,
+	// strings ----------------
+	{
+		N:    "strings.Contains",
+		Args: []Type{BT{"string"}, BT{"string"}},
+		Ret:  []Type{BT{"bool"}},
+	},
+	{
+		N:    "strings.Join",
+		Args: []Type{ArrayType{BT{"string"}}, BT{"string"}},
+		Ret:  []Type{BT{"string"}},
+	},
+	{
+		N: "strings.TrimFunc",
+		Args: []Type{
+			BT{"string"},
+			FuncType{
+				Args:  []Type{BT{"rune"}},
+				Ret:   []Type{BT{"bool"}},
+				Local: true,
+			},
+		},
+		Ret: []Type{BT{"string"}},
+	},
+
+	// reflect ----------------
+	{
+		N:    "reflect.DeepEqual",
+		Args: nil, // custom handling
+		Ret:  []Type{BT{"bool"}},
+	},
+
+	// unsafe ----------------
+	{
+		N:    "unsafe.Sizeof",
+		Args: nil, // custom handling
+		Ret:  []Type{BT{"uintptr"}},
+	},
+	{
+		N:    "unsafe.Alignof",
+		Args: nil, // custom handling
+		Ret:  []Type{BT{"uintptr"}},
+	},
+	{
+		N:    "unsafe.Offsetof",
+		Args: nil, // custom handling
+		Ret:  []Type{BT{"uintptr"}},
+	},
 }
 
 // --------------------------------
