@@ -42,6 +42,7 @@ func NewPackageBuilder(conf ProgramConf, pkg string, progb *ProgramBuilder) *Pac
 	// Create the Stmt and Expr builders
 	pb.sb = NewStmtBuilder(&pb)
 	pb.eb = NewExprBuilder(&pb)
+	pb.sb.E = pb.eb // breaks circular dependency in sb and eb inits
 
 	// Add predeclared base types
 	pb.baseTypes = []Type{
@@ -80,7 +81,6 @@ func (pb *PackageBuilder) FuncDecl() *ast.FuncDecl {
 
 	// if not using typeparams, generate a body and return
 	if !pb.Conf().TypeParams {
-		pb.sb.currfunc = fd
 		fd.Body = pb.sb.BlockStmt()
 		return fd
 	}
@@ -114,7 +114,6 @@ func (pb *PackageBuilder) FuncDecl() *ast.FuncDecl {
 	pb.ctx.typeparams = &tp
 
 	fd.Type.TypeParams = &ast.FieldList{List: tps}
-	pb.sb.currfunc = fd // this needs to be before the BlockStmt()
 	body := pb.sb.BlockStmt()
 
 	// put the collected DeclStmts at the top of the body
@@ -127,7 +126,7 @@ func (pb *PackageBuilder) FuncDecl() *ast.FuncDecl {
 
 	// finally, delete them from scope.
 	for _, v := range tpVars {
-		pb.sb.S().DeleteIdentByName(v)
+		pb.sb.S.DeleteIdentByName(v)
 	}
 
 	fd.Body = body

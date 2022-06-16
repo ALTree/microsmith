@@ -14,39 +14,26 @@ import (
 type StmtBuilder struct {
 	pb *PackageBuilder
 
-	// TODO(alb): move all of these into Context or PackageBuilder)
-	currfunc *ast.FuncDecl // signature of func we're in
-	depth    int           // how deep the stmt hyerarchy is
-	funcp    int           // counter for function param names
-	inloop   bool          // are we inside a loop?
-	labels   []string
-	label    int // counter for labels names
+	C *Context
+	E *ExprBuilder
+	R *rand.Rand
+	S *Scope
+
+	// TODO(alb): move all of these into Context or PackageBuilder
+	depth  int // how deep the stmt hyerarchy is
+	funcp  int // counter for function param names
+	labels []string
+	label  int // counter for labels names
 }
 
 func NewStmtBuilder(pb *PackageBuilder) *StmtBuilder {
-	sb := new(StmtBuilder)
-	sb.pb = pb
-	return sb
-}
-
-// --------------------------------
-//  Accessors
-// --------------------------------
-
-func (sb StmtBuilder) C() *Context {
-	return sb.pb.ctx
-}
-
-func (sb StmtBuilder) E() *ExprBuilder {
-	return sb.pb.eb
-}
-
-func (sb StmtBuilder) S() *Scope {
-	return sb.pb.ctx.scope
-}
-
-func (sb StmtBuilder) R() *rand.Rand {
-	return sb.pb.rs
+	return &StmtBuilder{
+		pb: pb,
+		C:  pb.ctx,
+		E:  nil, // this hasn't been created yet
+		R:  pb.rs,
+		S:  pb.ctx.scope,
+	}
 }
 
 // --------------------------------
@@ -56,16 +43,15 @@ func (sb StmtBuilder) R() *rand.Rand {
 // Returns true if the block statement currently being built is
 // allowed to have statements nested inside it.
 func (sb *StmtBuilder) CanNest() bool {
-	return (sb.depth <= 3) && (sb.R().Float64() < 0.8)
+	return (sb.depth <= 3) && (sb.R.Float64() < 0.8)
 }
 
 func (sb *StmtBuilder) Stmt() ast.Stmt {
-
 	if !sb.CanNest() {
 		return sb.AssignStmt()
 	}
 
-	switch sb.R().Intn(11) {
+	switch sb.R.Intn(11) {
 	case 0:
 		return sb.AssignStmt()
 	case 1:
@@ -73,9 +59,9 @@ func (sb *StmtBuilder) Stmt() ast.Stmt {
 	case 2:
 		// If at least one array or string is in scope, generate a for
 		// range loop with chance 0.5; otherwise generate a plain loop
-		arr, ok := sb.S().RandRangeable()
-		if ok && sb.R().Intn(2) == 0 {
-			if sb.R().Intn(4) == 0 { // 1 in 4 loops have a label
+		arr, ok := sb.S.RandRangeable()
+		if ok && sb.R.Intn(2) == 0 {
+			if sb.R.Intn(4) == 0 { // 1 in 4 loops have a label
 				sb.label++
 				label := fmt.Sprintf("lab%v", sb.label)
 				sb.labels = append(sb.labels, label)
@@ -88,7 +74,7 @@ func (sb *StmtBuilder) Stmt() ast.Stmt {
 				return sb.RangeStmt(arr)
 			}
 		} else {
-			if sb.R().Intn(4) == 0 { // 1 in 4 loops have a label
+			if sb.R.Intn(4) == 0 { // 1 in 4 loops have a label
 				sb.label++
 				label := fmt.Sprintf("lab%v", sb.label)
 				sb.labels = append(sb.labels, label)
@@ -110,7 +96,7 @@ func (sb *StmtBuilder) Stmt() ast.Stmt {
 	case 6:
 		return sb.SelectStmt()
 	case 7:
-		if sb.inloop {
+		if sb.C.inLoop {
 			return sb.BranchStmt()
 		}
 		return sb.AssignStmt()
@@ -121,16 +107,16 @@ func (sb *StmtBuilder) Stmt() ast.Stmt {
 	case 10:
 		return sb.ExprStmt()
 	default:
-		panic("bad Intn value")
+		panic("unreachable")
 	}
 }
 
 // gets a random variable currently in scope (that we can assign to),
 // and builds an AssignStmt with a random Expr of its type on the RHS
 func (sb *StmtBuilder) AssignStmt() *ast.AssignStmt {
-	v, ok := sb.S().RandAssignable()
+	v, ok := sb.S.RandAssignable()
 	if !ok {
-		fmt.Println(sb.S())
+		fmt.Println(sb.S)
 		panic("No assignable variable in scope")
 	}
 
@@ -139,12 +125,12 @@ func (sb *StmtBuilder) AssignStmt() *ast.AssignStmt {
 	case StructType:
 		// For structs, 50/50 between assigning to the variable and
 		// setting one of its fields.
-		if sb.R().Intn(2) == 0 || len(t.Ftypes) == 0 {
+		if sb.R.Intn(2) == 0 || len(t.Ftypes) == 0 {
 			// v = struct{<expr>, <expr>, ...}
 			return &ast.AssignStmt{
 				Lhs: []ast.Expr{v.Name},
 				Tok: token.ASSIGN,
-				Rhs: []ast.Expr{sb.E().CompositeLit(t)},
+				Rhs: []ast.Expr{sb.E.CompositeLit(t)},
 			}
 		} else {
 			// v.field = <expr>
@@ -176,7 +162,7 @@ func (sb *StmtBuilder) AssignStmt() *ast.AssignStmt {
 				return &ast.AssignStmt{
 					Lhs: []ast.Expr{v.Name},
 					Tok: token.ASSIGN,
-					Rhs: []ast.Expr{sb.E().CompositeLit(t)},
+					Rhs: []ast.Expr{sb.E.CompositeLit(t)},
 				}
 			}
 
@@ -184,7 +170,7 @@ func (sb *StmtBuilder) AssignStmt() *ast.AssignStmt {
 			return &ast.AssignStmt{
 				Lhs: []ast.Expr{&ast.SelectorExpr{X: v.Name, Sel: &ast.Ident{Name: t.Fnames[fi]}}},
 				Tok: token.ASSIGN,
-				Rhs: []ast.Expr{sb.E().Expr(t.Ftypes[fi])},
+				Rhs: []ast.Expr{sb.E.Expr(t.Ftypes[fi])},
 			}
 		}
 
@@ -192,17 +178,17 @@ func (sb *StmtBuilder) AssignStmt() *ast.AssignStmt {
 		// For arrays, 50/50 between
 		//   A[<expr>] = <expr>
 		//   A = { <expr>, <expr>, ... }
-		if sb.R().Intn(2) == 0 {
+		if sb.R.Intn(2) == 0 {
 			return &ast.AssignStmt{
-				Lhs: []ast.Expr{sb.E().IndexExpr(v.Name)},
+				Lhs: []ast.Expr{sb.E.IndexExpr(v.Name)},
 				Tok: token.ASSIGN,
-				Rhs: []ast.Expr{sb.E().Expr(t.Base())},
+				Rhs: []ast.Expr{sb.E.Expr(t.Base())},
 			}
 		} else {
 			return &ast.AssignStmt{
 				Lhs: []ast.Expr{v.Name},
 				Tok: token.ASSIGN,
-				Rhs: []ast.Expr{sb.E().Expr(v.Type)},
+				Rhs: []ast.Expr{sb.E.Expr(v.Type)},
 			}
 		}
 
@@ -210,17 +196,17 @@ func (sb *StmtBuilder) AssignStmt() *ast.AssignStmt {
 		// For maps, 50/50 between
 		//   M[<expr>] = <expr>
 		//   M = { <expr>: <expr> }
-		if sb.R().Intn(2) == 0 {
+		if sb.R.Intn(2) == 0 {
 			return &ast.AssignStmt{
-				Lhs: []ast.Expr{sb.E().MapIndexExpr(v.Name, v.Type.(MapType).KeyT)},
+				Lhs: []ast.Expr{sb.E.MapIndexExpr(v.Name, v.Type.(MapType).KeyT)},
 				Tok: token.ASSIGN,
-				Rhs: []ast.Expr{sb.E().Expr(v.Type.(MapType).ValueT)},
+				Rhs: []ast.Expr{sb.E.Expr(v.Type.(MapType).ValueT)},
 			}
 		} else {
 			return &ast.AssignStmt{
 				Lhs: []ast.Expr{v.Name},
 				Tok: token.ASSIGN,
-				Rhs: []ast.Expr{sb.E().Expr(v.Type)},
+				Rhs: []ast.Expr{sb.E.Expr(v.Type)},
 			}
 		}
 
@@ -228,7 +214,7 @@ func (sb *StmtBuilder) AssignStmt() *ast.AssignStmt {
 		return &ast.AssignStmt{
 			Lhs: []ast.Expr{v.Name},
 			Tok: token.ASSIGN,
-			Rhs: []ast.Expr{sb.E().Expr(v.Type)},
+			Rhs: []ast.Expr{sb.E.Expr(v.Type)},
 		}
 	}
 }
@@ -237,23 +223,19 @@ func (sb *StmtBuilder) AssignStmt() *ast.AssignStmt {
 func (sb *StmtBuilder) BranchStmt() *ast.BranchStmt {
 	var bs ast.BranchStmt
 
-	switch sb.R().Intn(3) {
-	case 0:
-		bs.Tok = token.GOTO
-	case 1:
-		bs.Tok = token.CONTINUE
-	case 2:
-		bs.Tok = token.BREAK
-	}
+	bs.Tok = RandItem(
+		sb.R,
+		[]token.Token{token.GOTO, token.CONTINUE, token.BREAK},
+	)
 
 	// break/continue/goto to a label with chance 0.25
-	if len(sb.labels) > 0 && sb.R().Intn(4) == 0 {
-		li := sb.R().Intn(len(sb.labels))
+	if len(sb.labels) > 0 && sb.R.Intn(4) == 0 {
+		li := sb.R.Intn(len(sb.labels))
 		bs.Label = &ast.Ident{Name: sb.labels[li]}
 		sb.labels = append(sb.labels[:li], sb.labels[li+1:]...)
 	} else {
 		// If we didn't add a label, GOTO is not allowed.
-		if sb.R().Intn(2) == 0 {
+		if sb.R.Intn(2) == 0 {
 			bs.Tok = token.BREAK
 		} else {
 			bs.Tok = token.CONTINUE
@@ -278,8 +260,8 @@ func (sb *StmtBuilder) BlockStmt() *ast.BlockStmt {
 	// A new block means opening a new scope. Declare a few new vars
 	// of random types.
 	var newVars []*ast.Ident
-	for _, t := range sb.pb.RandTypes(3 + sb.R().Intn(6)) {
-		newDecl, nv := sb.DeclStmt(1+sb.R().Intn(3), t)
+	for _, t := range sb.pb.RandTypes(3 + sb.R.Intn(6)) {
+		newDecl, nv := sb.DeclStmt(1+sb.R.Intn(3), t)
 		stmts = append(stmts, newDecl)
 		newVars = append(newVars, nv...)
 	}
@@ -290,7 +272,7 @@ func (sb *StmtBuilder) BlockStmt() *ast.BlockStmt {
 		// so we don't generate almost-empty blocks.
 		nStmts = 8
 	} else {
-		nStmts = 6 + sb.R().Intn(5)
+		nStmts = 6 + sb.R.Intn(5)
 	}
 
 	// Fill the block's body.
@@ -303,7 +285,7 @@ func (sb *StmtBuilder) BlockStmt() *ast.BlockStmt {
 	}
 
 	for _, v := range newVars {
-		sb.S().DeleteIdentByName(v)
+		sb.S.DeleteIdentByName(v)
 	}
 
 	bs.List = stmts
@@ -364,7 +346,7 @@ func (sb *StmtBuilder) DeclStmt(nVars int, t Type) (*ast.DeclStmt, []*ast.Ident)
 
 		// RHS (with chance 0.9)
 
-		if sb.R().Intn(10) != 0 {
+		if sb.R.Intn(10) != 0 {
 			// Func type specifier again, but this time with parameter
 			// names
 			p, r = t2.MakeFieldLists(true, sb.funcp)
@@ -376,9 +358,9 @@ func (sb *StmtBuilder) DeclStmt(nVars int, t Type) (*ast.DeclStmt, []*ast.Ident)
 			// add the parameters to the scope
 			for i, param := range fl.Type.Params.List {
 				if ep, ok := t2.Args[i].(EllipsisType); ok {
-					sb.S().AddVariable(param.Names[0], ArrayOf(ep.Base))
+					sb.S.AddVariable(param.Names[0], ArrayOf(ep.Base))
 				} else {
-					sb.S().AddVariable(param.Names[0], t2.Args[i])
+					sb.S.AddVariable(param.Names[0], t2.Args[i])
 				}
 
 				sb.funcp++
@@ -387,12 +369,12 @@ func (sb *StmtBuilder) DeclStmt(nVars int, t Type) (*ast.DeclStmt, []*ast.Ident)
 			// generate a function body
 			sb.depth++
 			if sb.CanNest() {
-				oil := sb.inloop
-				sb.inloop = false
+				old := sb.C.inLoop
+				sb.C.inLoop = false
+				defer func() { sb.C.inLoop = old }()
 				fl.Body = sb.BlockStmt()
-				sb.inloop = oil
 			} else {
-				n := 2 + sb.R().Intn(3)
+				n := 2 + sb.R.Intn(3)
 				stl := make([]ast.Stmt, 0, n)
 				for i := 0; i < n; i++ {
 					stl = append(stl, sb.AssignStmt())
@@ -404,14 +386,14 @@ func (sb *StmtBuilder) DeclStmt(nVars int, t Type) (*ast.DeclStmt, []*ast.Ident)
 			// Finally, append a closing return statement
 			retStmt := &ast.ReturnStmt{Results: []ast.Expr{}}
 			for _, ret := range t2.Ret {
-				retStmt.Results = append(retStmt.Results, sb.E().Expr(ret))
+				retStmt.Results = append(retStmt.Results, sb.E.Expr(ret))
 			}
 			fl.Body.List = append(fl.Body.List, retStmt)
 			rhs = append(rhs, fl)
 
 			// remove the function parameters from scope...
 			for _, param := range fl.Type.Params.List {
-				sb.S().DeleteIdentByName(param.Names[0])
+				sb.S.DeleteIdentByName(param.Names[0])
 				sb.funcp--
 			}
 		}
@@ -427,7 +409,7 @@ func (sb *StmtBuilder) DeclStmt(nVars int, t Type) (*ast.DeclStmt, []*ast.Ident)
 
 	idents := make([]*ast.Ident, 0, nVars)
 	for i := 0; i < nVars; i++ {
-		idents = append(idents, sb.S().NewIdent(t))
+		idents = append(idents, sb.S.NewIdent(t))
 	}
 
 	gd.Specs = []ast.Spec{
@@ -472,19 +454,20 @@ func (sb *StmtBuilder) ForStmt() *ast.ForStmt {
 	// - Cond stmt with chance 0.94 (1-1/16)
 	// - Init and Post statements with chance 0.5
 	// - A body with chance 0.97 (1-1/32)
-	if sb.R().Intn(16) > 0 {
-		fs.Cond = sb.E().Expr(BasicType{"bool"})
+	if sb.R.Intn(16) > 0 {
+		fs.Cond = sb.E.Expr(BasicType{"bool"})
 	}
-	if sb.R().Intn(2) > 0 {
+	if sb.R.Intn(2) > 0 {
 		fs.Init = sb.AssignStmt()
 	}
-	if sb.R().Intn(2) > 0 {
+	if sb.R.Intn(2) > 0 {
 		fs.Post = sb.AssignStmt()
 	}
-	if sb.R().Intn(32) > 0 {
-		sb.inloop = true
+	if sb.R.Intn(32) > 0 {
+		old := sb.C.inLoop
+		sb.C.inLoop = false
+		defer func() { sb.C.inLoop = old }()
 		fs.Body = sb.BlockStmt()
-		sb.inloop = false
 	} else {
 		// empty loop body
 		fs.Body = &ast.BlockStmt{}
@@ -494,7 +477,7 @@ func (sb *StmtBuilder) ForStmt() *ast.ForStmt {
 	for _, l := range sb.labels {
 		fs.Body.List = append(fs.Body.List,
 			&ast.BranchStmt{
-				Tok:   []token.Token{token.GOTO, token.BREAK, token.CONTINUE}[sb.R().Intn(3)],
+				Tok:   []token.Token{token.GOTO, token.BREAK, token.CONTINUE}[sb.R.Intn(3)],
 				Label: &ast.Ident{Name: l},
 			})
 	}
@@ -504,19 +487,19 @@ func (sb *StmtBuilder) ForStmt() *ast.ForStmt {
 }
 
 func (sb *StmtBuilder) RangeStmt(arr Variable) *ast.RangeStmt {
-
 	sb.depth++
-	sb.inloop = true
-	defer func() { sb.depth--; sb.inloop = false }()
+	old := sb.C.inLoop
+	sb.C.inLoop = true
+	defer func() { sb.depth--; sb.C.inLoop = old }()
 
-	i := sb.S().NewIdent(BasicType{"int"})
+	i := sb.S.NewIdent(BasicType{"int"})
 	var v *ast.Ident
 	switch arr.Type.(type) {
 	case ArrayType:
-		v = sb.S().NewIdent(arr.Type.(ArrayType).Base())
+		v = sb.S.NewIdent(arr.Type.(ArrayType).Base())
 	case BasicType:
 		if arr.Type.(BasicType).N == "string" {
-			v = sb.S().NewIdent(BasicType{"rune"})
+			v = sb.S.NewIdent(BasicType{"rune"})
 		} else {
 			panic("cannot range on non-string BasicType")
 		}
@@ -534,13 +517,13 @@ func (sb *StmtBuilder) RangeStmt(arr Variable) *ast.RangeStmt {
 	rs.Body = sb.BlockStmt()
 	rs.Body.List = append(rs.Body.List, sb.UseVars([]*ast.Ident{i, v}))
 
-	sb.S().DeleteIdentByName(i)
-	sb.S().DeleteIdentByName(v)
+	sb.S.DeleteIdentByName(i)
+	sb.S.DeleteIdentByName(v)
 
 	for _, l := range sb.labels {
 		rs.Body.List = append(rs.Body.List,
 			&ast.BranchStmt{
-				Tok:   []token.Token{token.GOTO, token.BREAK, token.CONTINUE}[sb.R().Intn(3)],
+				Tok:   []token.Token{token.GOTO, token.BREAK, token.CONTINUE}[sb.R.Intn(3)],
 				Label: &ast.Ident{Name: l},
 			})
 	}
@@ -550,24 +533,24 @@ func (sb *StmtBuilder) RangeStmt(arr Variable) *ast.RangeStmt {
 }
 
 func (sb *StmtBuilder) DeferStmt() *ast.DeferStmt {
-	if v, ok := sb.S().RandFunc(); ok && sb.R().Intn(4) > 0 {
-		return &ast.DeferStmt{Call: sb.E().MakeCall(v)}
+	if v, ok := sb.S.RandFunc(); ok && sb.R.Intn(4) > 0 {
+		return &ast.DeferStmt{Call: sb.E.MakeCall(v)}
 	} else {
-		old := sb.C().inDefer
-		sb.C().inDefer = true
-		defer func() { sb.C().inDefer = old }()
-		return &ast.DeferStmt{Call: sb.E().ConjureAndCallFunc(sb.pb.RandBaseType())}
+		old := sb.C.inDefer
+		sb.C.inDefer = true
+		defer func() { sb.C.inDefer = old }()
+		return &ast.DeferStmt{Call: sb.E.ConjureAndCallFunc(sb.pb.RandBaseType())}
 	}
 }
 
 func (sb *StmtBuilder) GoStmt() *ast.GoStmt {
-	if v, ok := sb.S().RandFunc(); ok && sb.R().Intn(4) > 0 {
-		return &ast.GoStmt{Call: sb.E().MakeCall(v)}
+	if v, ok := sb.S.RandFunc(); ok && sb.R.Intn(4) > 0 {
+		return &ast.GoStmt{Call: sb.E.MakeCall(v)}
 	} else {
-		old := sb.C().inDefer
-		sb.C().inDefer = true
-		defer func() { sb.C().inDefer = old }()
-		return &ast.GoStmt{Call: sb.E().ConjureAndCallFunc(sb.pb.RandBaseType())}
+		old := sb.C.inDefer
+		sb.C.inDefer = true
+		defer func() { sb.C.inDefer = old }()
+		return &ast.GoStmt{Call: sb.E.ConjureAndCallFunc(sb.pb.RandBaseType())}
 	}
 }
 
@@ -577,12 +560,12 @@ func (sb *StmtBuilder) IfStmt() *ast.IfStmt {
 	defer func() { sb.depth-- }()
 
 	is := &ast.IfStmt{
-		Cond: sb.E().Expr(BasicType{"bool"}),
+		Cond: sb.E.Expr(BasicType{"bool"}),
 		Body: sb.BlockStmt(),
 	}
 
 	// optionally attach an else
-	if sb.R().Intn(2) == 0 {
+	if sb.R.Intn(2) == 0 {
 		is.Else = sb.BlockStmt()
 	}
 
@@ -595,13 +578,13 @@ func (sb *StmtBuilder) SwitchStmt() *ast.SwitchStmt {
 	defer func() { sb.depth-- }()
 
 	t := sb.pb.RandComparableType()
-	if sb.R().Intn(2) == 0 && sb.S().Has(PointerOf(t)) {
+	if sb.R.Intn(2) == 0 && sb.S.Has(PointerOf(t)) {
 		// sometimes switch on a pointer value
 		t = PointerOf(t)
 	}
 
 	ss := &ast.SwitchStmt{
-		Tag: sb.E().Expr(t),
+		Tag: sb.E.Expr(t),
 		Body: &ast.BlockStmt{
 			List: []ast.Stmt{
 				// Only generate one normal and one default case to
@@ -620,7 +603,7 @@ func (sb *StmtBuilder) SwitchStmt() *ast.SwitchStmt {
 func (sb *StmtBuilder) CaseClause(t Type, def bool) *ast.CaseClause {
 	cc := new(ast.CaseClause)
 	if !def {
-		cc.List = []ast.Expr{sb.E().Expr(t)}
+		cc.List = []ast.Expr{sb.E.Expr(t)}
 	}
 	cc.Body = sb.BlockStmt().List
 	return cc
@@ -632,18 +615,16 @@ func (sb *StmtBuilder) IncDecStmt(t Type) *ast.IncDecStmt {
 
 func (sb *StmtBuilder) SendStmt() *ast.SendStmt {
 	st := new(ast.SendStmt)
-
-	ch, ok := sb.S().RandChan()
-	if !ok {
+	if ch, ok := sb.S.RandChan(); !ok {
 		// no channels in scope, but we can send to a brand new one,
 		// i.e. generate
 		//   make(chan int) <- 1
 		t := sb.pb.RandBaseType()
-		st.Chan = sb.E().VarOrLit(ChanType{T: t})
-		st.Value = sb.E().Expr(t)
+		st.Chan = sb.E.VarOrLit(ChanType{T: t})
+		st.Value = sb.E.Expr(t)
 	} else {
 		st.Chan = ch.Name
-		st.Value = sb.E().Expr(ch.Type.(ChanType).Base())
+		st.Value = sb.E.Expr(ch.Type.(ChanType).Base())
 	}
 
 	return st
@@ -663,8 +644,8 @@ func (sb *StmtBuilder) SelectStmt() *ast.SelectStmt {
 }
 
 // CommClause is the Select clause. This function returns:
-//   case <- [channel]     if def is false
-//   default               if def is true
+//   case <-c        if def is false
+//   default         if def is true
 func (sb *StmtBuilder) CommClause(def bool) *ast.CommClause {
 
 	// a couple of Stmt are enough for a select case body
@@ -674,7 +655,7 @@ func (sb *StmtBuilder) CommClause(def bool) *ast.CommClause {
 		return &ast.CommClause{Body: stmtList}
 	}
 
-	ch, chanInScope := sb.S().RandChan()
+	ch, chanInScope := sb.S.RandChan()
 	if !chanInScope {
 		// when no chan is in scope, we select from a newly made channel,
 		// i.e. we build and return
@@ -702,7 +683,7 @@ func (sb *StmtBuilder) CommClause(def bool) *ast.CommClause {
 	// otherwise, we receive from one of the channels in scope
 	return &ast.CommClause{
 		Comm: &ast.ExprStmt{
-			X: sb.E().ChanReceiveExpr(ch.Name),
+			X: sb.E.ChanReceiveExpr(ch.Name),
 		},
 		Body: stmtList,
 	}
@@ -712,10 +693,10 @@ func (sb *StmtBuilder) CommClause(def bool) *ast.CommClause {
 func (sb *StmtBuilder) ExprStmt() *ast.ExprStmt {
 
 	// Close(ch) or <-ch.
-	if ch, ok := sb.S().RandChan(); ok && sb.R().Intn(2) == 0 {
-		if sb.R().Intn(2) == 0 {
+	if ch, ok := sb.S.RandChan(); ok && sb.R.Intn(2) == 0 {
+		if sb.R.Intn(2) == 0 {
 			return &ast.ExprStmt{
-				X: sb.E().ChanReceiveExpr(ch.Name),
+				X: sb.E.ChanReceiveExpr(ch.Name),
 			}
 		} else {
 			return &ast.ExprStmt{
@@ -730,7 +711,7 @@ func (sb *StmtBuilder) ExprStmt() *ast.ExprStmt {
 	// Call a random function. We don't use RandCallExpr() because
 	// that could choose a built-in (like len), which is not allowed
 	// as an ExprStmt. Conjuring a new func and call it will always work.
-	return &ast.ExprStmt{sb.E().ConjureAndCallFunc(sb.pb.RandBaseType())}
+	return &ast.ExprStmt{sb.E.ConjureAndCallFunc(sb.pb.RandBaseType())}
 }
 
 var noName = ast.Ident{Name: "_"}

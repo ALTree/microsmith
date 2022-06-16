@@ -13,30 +13,21 @@ import (
 // --------------------------------
 
 type ExprBuilder struct {
-	pb    *PackageBuilder
+	pb *PackageBuilder
+	C  *Context
+	R  *rand.Rand
+	S  *Scope
+
 	depth int // how deep the expr hierarchy is
 }
 
 func NewExprBuilder(pb *PackageBuilder) *ExprBuilder {
 	return &ExprBuilder{
 		pb: pb,
+		C:  pb.ctx,
+		R:  pb.rs,
+		S:  pb.ctx.scope,
 	}
-}
-
-// --------------------------------
-//  Accessors
-// --------------------------------
-
-func (eb ExprBuilder) C() *Context {
-	return eb.pb.ctx
-}
-
-func (eb ExprBuilder) S() *Scope {
-	return eb.pb.ctx.scope
-}
-
-func (eb ExprBuilder) R() *rand.Rand {
-	return eb.pb.rs
 }
 
 // --------------------------------
@@ -46,7 +37,7 @@ func (eb ExprBuilder) R() *rand.Rand {
 // Returns true if the expression tree currently being built is
 // allowed to become deeper.
 func (eb *ExprBuilder) Deepen() bool {
-	return (eb.depth <= 6) && (eb.R().Float64() < 0.7)
+	return (eb.depth <= 6) && (eb.R.Float64() < 0.7)
 }
 
 func (eb *ExprBuilder) BasicLit(t BasicType) ast.Expr {
@@ -54,19 +45,19 @@ func (eb *ExprBuilder) BasicLit(t BasicType) ast.Expr {
 	switch t.Name() {
 	case "byte", "uint", "uintptr", "int", "int8", "int16", "int32", "int64", "any":
 		bl.Kind = token.INT
-		bl.Value = strconv.Itoa(eb.R().Intn(100))
+		bl.Value = strconv.Itoa(eb.R.Intn(100))
 	case "rune":
 		bl.Kind = token.CHAR
 		bl.Value = RandRune()
 	case "float32", "float64":
 		bl.Kind = token.FLOAT
-		bl.Value = strconv.FormatFloat(999*(eb.R().Float64()), 'f', 1, 64)
+		bl.Value = strconv.FormatFloat(999*(eb.R.Float64()), 'f', 1, 64)
 	case "complex128":
 		// There's no complex basiclit, generate an IMAG
 		bl.Kind = token.IMAG
-		bl.Value = strconv.FormatFloat(99*(eb.R().Float64()), 'f', 2, 64) + "i"
+		bl.Value = strconv.FormatFloat(99*(eb.R.Float64()), 'f', 2, 64) + "i"
 	case "bool":
-		if eb.R().Intn(2) == 0 {
+		if eb.R.Intn(2) == 0 {
 			return TrueIdent
 		} else {
 			return FalseIdent
@@ -88,8 +79,8 @@ func (eb *ExprBuilder) CompositeLit(t Type) *ast.CompositeLit {
 	case ArrayType:
 		cl := &ast.CompositeLit{Type: t.Ast()}
 		elems := []ast.Expr{}
-		if eb.R().Intn(4) > 0 { // plain array literal
-			for i := 0; i < eb.R().Intn(5); i++ {
+		if eb.R.Intn(4) > 0 { // plain array literal
+			for i := 0; i < eb.R.Intn(5); i++ {
 				if eb.Deepen() {
 					elems = append(elems, eb.Expr(t.Base()))
 				} else {
@@ -127,8 +118,8 @@ func (eb *ExprBuilder) CompositeLit(t Type) *ast.CompositeLit {
 				Value: eb.VarOrLit(t.ValueT),
 			}
 		}
-		// Duplicate map keys are a compile error, but avoiding them
-		// is hard, so only have 1 element for now.
+		// Duplicate map keys are a compile error, and avoiding them
+		// is hard, so only put in one element for now.
 		cl.Elts = []ast.Expr{e}
 		return cl
 	case StructType:
@@ -163,7 +154,7 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 	switch t := t.(type) {
 
 	case BasicType, TypeParam:
-		switch eb.R().Intn(12) {
+		switch eb.R.Intn(12) {
 		case 0, 1:
 			return eb.UnaryExpr(t)
 		case 2, 3:
@@ -180,7 +171,7 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 		}
 
 	case ArrayType:
-		switch eb.R().Intn(4) {
+		switch eb.R.Intn(4) {
 		case 0:
 			return eb.MakeAppendCall(t)
 		default:
@@ -193,10 +184,10 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 	case PointerType:
 		// Either return a literal of the requested pointer type, &x
 		// with x of type t.Base(), or nil.
-		vt, typeInScope := eb.S().RandVar(t)
-		vst, baseInScope := eb.S().RandVar(t.Base())
+		vt, typeInScope := eb.S.RandVar(t)
+		vst, baseInScope := eb.S.RandVar(t.Base())
 		if typeInScope && baseInScope {
-			if eb.R().Intn(2) == 0 {
+			if eb.R.Intn(2) == 0 {
 				return vt.Name
 			} else {
 				return &ast.UnaryExpr{
@@ -247,17 +238,17 @@ func (eb *ExprBuilder) VarOrLit(t Type) ast.Expr {
 	// allow literals (like interface { int | []int }); for those it's
 	// always a variable.
 	if tp, ok := t.(TypeParam); ok {
-		if tp.HasLiterals() && eb.R().Intn(2) == 0 {
+		if tp.HasLiterals() && eb.R.Intn(2) == 0 {
 			return eb.TypeParamLit(tp)
 		}
-		if v, ok := eb.S().RandVar(t); !ok {
+		if v, ok := eb.S.RandVar(t); !ok {
 			panic("VarOrLit couldn't find a type parameter variable")
 		} else {
 			return v.Name
 		}
 	}
 
-	vst, typeCanDerive := eb.S().RandVarSubType(t)
+	vst, typeCanDerive := eb.S.RandVarSubType(t)
 
 	if !typeCanDerive || !eb.Deepen() {
 		switch t := t.(type) {
@@ -268,7 +259,7 @@ func (eb *ExprBuilder) VarOrLit(t Type) ast.Expr {
 			}
 			return bl
 		case ArrayType, MapType:
-			if eb.R().Intn(3) == 0 {
+			if eb.R.Intn(3) == 0 {
 				return eb.MakeMakeCall(t)
 			} else {
 				return eb.CompositeLit(t)
@@ -295,12 +286,12 @@ func (eb *ExprBuilder) VarOrLit(t Type) ast.Expr {
 
 	// Slice, once in a while.
 	if _, ok := vst.Type.(ArrayType); ok {
-		if t.Equal(vst.Type) && eb.R().Intn(4) == 0 {
+		if t.Equal(vst.Type) && eb.R.Intn(4) == 0 {
 			return eb.SliceExpr(vst)
 		}
 	}
 	if bt, ok := vst.Type.(BasicType); ok && bt.N == "string" {
-		if t.Equal(vst.Type) && eb.R().Intn(4) == 0 {
+		if t.Equal(vst.Type) && eb.R.Intn(4) == 0 {
 			return eb.SliceExpr(vst)
 		}
 	}
@@ -347,7 +338,7 @@ func (eb *ExprBuilder) CallExpr(e ast.Expr, at []Type) *ast.CallExpr {
 		if arg, ok := (a).(EllipsisType); ok {
 			t = arg.Base
 		}
-		if eb.R().Intn(2) == 0 && eb.Deepen() {
+		if eb.R.Intn(2) == 0 && eb.Deepen() {
 			args = append(args, eb.Expr(t))
 		} else {
 			args = append(args, eb.VarOrLit(t))
@@ -359,7 +350,7 @@ func (eb *ExprBuilder) CallExpr(e ast.Expr, at []Type) *ast.CallExpr {
 // Returns e[...]
 func (eb *ExprBuilder) IndexExpr(e ast.Expr) *ast.IndexExpr {
 	var i ast.Expr
-	if eb.R().Intn(2) == 0 && eb.Deepen() {
+	if eb.R.Intn(2) == 0 && eb.Deepen() {
 		i = eb.BinaryExpr(BT{"int"})
 	} else {
 		i = eb.VarOrLit(BT{"int"})
@@ -410,16 +401,16 @@ func (eb *ExprBuilder) SliceExpr(v Variable) *ast.SliceExpr {
 	}
 
 	var low, high ast.Expr
-	indV, hasInt := eb.S().RandVar(BT{"int"})
+	indV, hasInt := eb.S.RandVar(BT{"int"})
 	if hasInt && eb.Deepen() {
-		if eb.R().Intn(8) > 0 {
+		if eb.R.Intn(8) > 0 {
 			low = &ast.BinaryExpr{
 				X:  indV.Name,
 				Op: token.ADD,
 				Y:  eb.Expr(BT{"int"}),
 			}
 		}
-		if eb.R().Intn(8) > 0 {
+		if eb.R.Intn(8) > 0 {
 			high = &ast.BinaryExpr{
 				X:  eb.Expr(BT{"int"}),
 				Op: token.ADD,
@@ -427,16 +418,16 @@ func (eb *ExprBuilder) SliceExpr(v Variable) *ast.SliceExpr {
 			}
 		}
 	} else {
-		if eb.R().Intn(8) > 0 {
+		if eb.R.Intn(8) > 0 {
 			low = &ast.BasicLit{
 				Kind:  token.INT,
-				Value: strconv.Itoa(eb.R().Intn(8)),
+				Value: strconv.Itoa(eb.R.Intn(8)),
 			}
 		}
-		if eb.R().Intn(8) > 0 {
+		if eb.R.Intn(8) > 0 {
 			high = &ast.BasicLit{
 				Kind:  token.INT,
-				Value: strconv.Itoa(8 + eb.R().Intn(17)),
+				Value: strconv.Itoa(8 + eb.R.Intn(17)),
 			}
 		}
 	}
@@ -455,7 +446,7 @@ func (eb *ExprBuilder) UnaryExpr(t Type) ast.Expr {
 
 	// if there are pointers to t in scope, generate a t by
 	// dereferencing it with chance 0.5
-	if eb.R().Intn(2) == 0 && eb.S().Has(PointerOf(t)) {
+	if eb.R.Intn(2) == 0 && eb.S.Has(PointerOf(t)) {
 		ue.Op = token.MUL
 		// See comment in Expr() for PointerType on why we must call
 		// Expr() here.
@@ -464,7 +455,7 @@ func (eb *ExprBuilder) UnaryExpr(t Type) ast.Expr {
 	}
 
 	if ops := UnaryOps(t); len(ops) > 0 {
-		ue.Op = RandItem(eb.pb.rs, ops)
+		ue.Op = RandItem(eb.R, ops)
 	} else {
 		return eb.VarOrLit(t)
 	}
@@ -482,7 +473,7 @@ func (eb *ExprBuilder) BinaryExpr(t Type) ast.Expr {
 	ue := new(ast.BinaryExpr)
 
 	ops := BinOps(t)
-	if t.Name() == "bool" && eb.R().Intn(2) == 0 {
+	if t.Name() == "bool" && eb.R.Intn(2) == 0 {
 		// for booleans, we 50/50 between <bool> BOOL_OP <bool> and
 		// <any comparable> COMPARISON <any comparable>.
 		t = eb.pb.RandComparableType()
@@ -494,7 +485,7 @@ func (eb *ExprBuilder) BinaryExpr(t Type) ast.Expr {
 		}
 	}
 	if len(ops) > 0 {
-		ue.Op = RandItem(eb.pb.rs, ops)
+		ue.Op = RandItem(eb.R, ops)
 	} else {
 		return eb.VarOrLit(t)
 	}
@@ -519,10 +510,10 @@ func (eb *ExprBuilder) BinaryExpr(t Type) ast.Expr {
 		}
 
 		// make sure the RHS is not a constant expression
-		if vi, ok := eb.S().RandVarSubType(t2); ok {
+		if vi, ok := eb.S.RandVarSubType(t2); ok {
 			ue.Y = eb.SubTypeExpr(vi.Name, vi.Type, t2)
 		} else { // otherwise, cast from an int
-			vi, ok := eb.S().RandVar(BT{"int"})
+			vi, ok := eb.S.RandVar(BT{"int"})
 			if !ok {
 				panic("BinaryExpr: no int in scope")
 			}
@@ -570,7 +561,7 @@ func (eb *ExprBuilder) Cast(t BasicType) *ast.CallExpr {
 // CallExpr returns a call expression involving a random function with
 // return value of type t.
 func (eb *ExprBuilder) RandCallExpr(t Type) *ast.CallExpr {
-	if v, ok := eb.S().RandFuncRet(t); ok && !eb.C().inDefer {
+	if v, ok := eb.S.RandFuncRet(t); ok && !eb.C.inDefer {
 		return eb.MakeCall(v)
 	} else {
 		// No functions returning t in scope. Conjure a random one,
@@ -635,7 +626,7 @@ func (eb *ExprBuilder) MakeAppendCall(t ArrayType) *ast.CallExpr {
 
 	t2 := t.Base()
 	ellips := token.Pos(0)
-	if eb.R().Intn(3) == 0 { // 2nd arg is ...
+	if eb.R.Intn(3) == 0 { // 2nd arg is ...
 		t2 = t
 		ellips = token.Pos(1)
 	}
@@ -652,7 +643,7 @@ func (eb *ExprBuilder) MakeAppendCall(t ArrayType) *ast.CallExpr {
 
 func (eb *ExprBuilder) MakeCopyCall() *ast.CallExpr {
 	var t1, t2 Type
-	if eb.R().Intn(3) == 0 {
+	if eb.R.Intn(3) == 0 {
 		t1, t2 = ArrayOf(BT{N: "byte"}), BT{N: "string"}
 	} else {
 		t1 = ArrayOf(eb.pb.RandBaseType())
@@ -671,7 +662,7 @@ func (eb *ExprBuilder) MakeCopyCall() *ast.CallExpr {
 
 func (eb *ExprBuilder) MakeLenCall() *ast.CallExpr {
 	var typ Type
-	if eb.R().Intn(2) == 0 {
+	if eb.R.Intn(2) == 0 {
 		typ = ArrayOf(eb.pb.RandBaseType())
 	} else {
 		typ = BT{"string"}
@@ -733,11 +724,11 @@ func (eb *ExprBuilder) MakeUnsafeCall(fun Variable) *ast.CallExpr {
 		// if we can get a variable, use that (as long it has at least
 		// one field). Otherwise, conjure a literal of a random struct
 		// type.
-		v, ok := eb.S().RandStruct()
+		v, ok := eb.S.RandStruct()
 		if ok && len(v.Type.(StructType).Fnames) > 0 {
 			sl = &ast.SelectorExpr{
 				X:   v.Name,
-				Sel: &ast.Ident{Name: RandItem(eb.pb.rs, v.Type.(StructType).Fnames)},
+				Sel: &ast.Ident{Name: RandItem(eb.R, v.Type.(StructType).Fnames)},
 			}
 		} else {
 			var st StructType
@@ -746,7 +737,7 @@ func (eb *ExprBuilder) MakeUnsafeCall(fun Variable) *ast.CallExpr {
 			}
 			sl = &ast.SelectorExpr{
 				X:   eb.VarOrLit(st),
-				Sel: &ast.Ident{Name: RandItem(eb.pb.rs, st.Fnames)},
+				Sel: &ast.Ident{Name: RandItem(eb.R, st.Fnames)},
 			}
 		}
 
@@ -818,7 +809,7 @@ func (eb *ExprBuilder) ConjureAndCallFunc(t Type) *ast.CallExpr {
 
 	// if we are in a defer, optionally add a recover call before
 	// the return statement.
-	if eb.C().inDefer && eb.R().Intn(4) == 0 {
+	if eb.C.inDefer && eb.R.Intn(4) == 0 {
 		fl.Body.List = append(
 			[]ast.Stmt{&ast.ExprStmt{&ast.CallExpr{Fun: &ast.Ident{Name: "recover"}}}},
 			fl.Body.List...,

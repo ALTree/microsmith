@@ -25,6 +25,8 @@ type Context struct { // TODO(alb): rename to PackageContext
 	// function.
 	typeparams *Scope
 
+	// Wheter we are building a loop body or the argument of a defer
+	// statement.
 	inLoop, inDefer bool
 }
 
