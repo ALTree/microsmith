@@ -59,7 +59,12 @@ func Ident(t Type) string {
 	case ArrayType:
 		return "a" + Ident(t.Etype)
 	case FuncType:
-		return "fnc"
+		if t.N != "FU" {
+			// buildin and stdlib functions don't need identifiers
+			return ""
+		} else {
+			return "fnc"
+		}
 	case StructType:
 		return "st"
 	case ChanType:

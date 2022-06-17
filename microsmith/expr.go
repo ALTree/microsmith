@@ -581,23 +581,10 @@ func (eb *ExprBuilder) MakeCall(v Variable) *ast.CallExpr {
 		panic("MakeCall: not a function: " + v.Name.Name)
 	}
 
-	// some functions require custom handling
-	name := v.Name.Name
-	switch {
-	case name == "copy":
-		return eb.MakeCopyCall()
-	case name == "len":
-		return eb.MakeLenCall()
-	case strings.HasPrefix(name, "unsafe."):
-		return eb.MakeUnsafeCall(v)
-	case strings.HasPrefix(name, "reflect."):
-		return eb.MakeReflectCall(v)
-	default:
-		// go below
-	}
-
+	// Some functions require custom handling, signalled by a null
+	// Args array.
 	if fnc.Args == nil {
-		panic("Custom handled func " + v.Name.Name)
+		return eb.MakeBuiltinOrStdlibCall(v)
 	}
 
 	args := make([]ast.Expr, 0, len(fnc.Args))
@@ -639,6 +626,22 @@ func (eb *ExprBuilder) MakeAppendCall(t ArrayType) *ast.CallExpr {
 	ce.Ellipsis = ellips
 
 	return ce
+}
+
+func (eb *ExprBuilder) MakeBuiltinOrStdlibCall(v Variable) *ast.CallExpr {
+	name := v.Name.Name
+	switch {
+	case name == "copy":
+		return eb.MakeCopyCall()
+	case name == "len":
+		return eb.MakeLenCall()
+	case strings.HasPrefix(name, "unsafe."):
+		return eb.MakeUnsafeCall(v)
+	case strings.HasPrefix(name, "reflect."):
+		return eb.MakeReflectCall(v)
+	default:
+		panic("MakeBuiltinOrStdlibCall: unhandled func " + name)
+	}
 }
 
 func (eb *ExprBuilder) MakeCopyCall() *ast.CallExpr {

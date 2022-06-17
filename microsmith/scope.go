@@ -3,7 +3,6 @@ package microsmith
 import (
 	"fmt"
 	"go/ast"
-	"reflect"
 )
 
 type Variable struct {
@@ -50,9 +49,7 @@ func (s Scope) Has(t Type) bool {
 func (s *Scope) NewIdent(t Type) *ast.Ident {
 	tc := 0
 	for _, v := range s.vars {
-		if _, basic := t.(BasicType); basic && v.Type.Equal(t) {
-			tc++
-		} else if reflect.TypeOf(t) == reflect.TypeOf(v.Type) {
+		if Ident(t) == Ident(v.Type) {
 			tc++
 		}
 	}
