@@ -43,6 +43,15 @@ func (s Scope) Has(t Type) bool {
 	return false
 }
 
+func (s Scope) FindVarByName(name string) (Variable, bool) {
+	for _, v := range s.vars {
+		if v.Name.Name == name {
+			return v, true
+		}
+	}
+	return Variable{}, false
+}
+
 // NewIdent adds a new variable of Type t to the scope, automatically
 // assigning it a name that is not already taken. It returns a pointer
 // to the new variable's ast.Ident.
@@ -114,7 +123,7 @@ func (s Scope) RandFuncRet(t Type) (Variable, bool) {
 func (s Scope) RandFunc() (Variable, bool) {
 	return s.RandPred(func(v Variable, _ ...Type) bool {
 		f, fnc := v.Type.(FuncType)
-		return (fnc && f.Local)
+		return (fnc && f.Local) // TODO(alb): why is f.Local needed here?
 	})
 }
 

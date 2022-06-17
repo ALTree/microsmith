@@ -332,6 +332,23 @@ func (eb *ExprBuilder) SubTypeExpr(e ast.Expr, t, target Type) ast.Expr {
 
 // Returns e(...)
 func (eb *ExprBuilder) CallExpr(e ast.Expr, at []Type) *ast.CallExpr {
+	// Sometimes, e is not a normal function, but one needing special
+	// handling of its arguments (builtins like len, or things like
+	// unsafe.SizeOf). If that's the case, we delegate building of the
+	// CallExpr to MakeBuildintOrStdlibCall().
+	if ident, ok := e.(*ast.Ident); ok && !(strings.HasPrefix(ident.Name, "fnc") || strings.HasPrefix(ident.Name, "p")) {
+		// Must be a builtin or stdlib func. Find corresponding
+		// Variable in Scope, and build a call.
+		if v, ok := eb.S.FindVarByName(ident.Name); ok {
+			_, ok := v.Type.(FuncType)
+			if ok {
+				return eb.MakeBuiltinOrStdlibCall(v)
+			}
+		} else {
+			panic("unreachable")
+		}
+	}
+
 	var args []ast.Expr
 	for _, a := range at {
 		t := a
@@ -509,10 +526,17 @@ func (eb *ExprBuilder) BinaryExpr(t Type) ast.Expr {
 			ue.X = eb.VarOrLit(t)
 		}
 
-		// make sure the RHS is not a constant expression
-		if vi, ok := eb.S.RandVarSubType(t2); ok {
+		// Make sure the RHS is not a constant expression. Spec says:
+		//
+		//   The expression len(s) is constant if s is a string
+		//   constant.
+		//
+		// So we can't use it.
+		if vi, ok := eb.S.RandVarSubType(t2); ok && vi.Name.Name != "len" {
+			// If we can use some existing variable, do that.
 			ue.Y = eb.SubTypeExpr(vi.Name, vi.Type, t2)
-		} else { // otherwise, cast from an int
+		} else {
+			// Otherwise, cast from an int.
 			vi, ok := eb.S.RandVar(BT{"int"})
 			if !ok {
 				panic("BinaryExpr: no int in scope")
@@ -639,8 +663,8 @@ func (eb *ExprBuilder) MakeBuiltinOrStdlibCall(v Variable) *ast.CallExpr {
 		return eb.MakeUnsafeCall(v)
 	case strings.HasPrefix(name, "reflect."):
 		return eb.MakeReflectCall(v)
-	default:
-		panic("MakeBuiltinOrStdlibCall: unhandled func " + name)
+	default: // no special handling
+		return eb.MakeCall(v)
 	}
 }
 

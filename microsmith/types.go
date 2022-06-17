@@ -377,7 +377,7 @@ func (f FuncType) Contains(t Type) bool {
 	if f.Equal(t) {
 		return true
 	}
-	return f.Local && len(f.Ret) > 0 && t.Equal(f.Ret[0])
+	return len(f.Ret) > 0 && t.Equal(f.Ret[0])
 }
 
 func (ft FuncType) Name() string {
