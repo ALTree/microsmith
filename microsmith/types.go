@@ -589,24 +589,24 @@ var StdlibFuncs = []FuncType{
 	// reflect ----------------
 	{
 		N:    "reflect.DeepEqual",
-		Args: nil, // custom handling
+		Args: nil,
 		Ret:  []Type{BT{"bool"}},
 	},
 
 	// unsafe ----------------
 	{
 		N:    "unsafe.Sizeof",
-		Args: nil, // custom handling
+		Args: nil,
 		Ret:  []Type{BT{"uintptr"}},
 	},
 	{
 		N:    "unsafe.Alignof",
-		Args: nil, // custom handling
+		Args: nil,
 		Ret:  []Type{BT{"uintptr"}},
 	},
 	{
 		N:    "unsafe.Offsetof",
-		Args: nil, // custom handling
+		Args: nil,
 		Ret:  []Type{BT{"uintptr"}},
 	},
 }

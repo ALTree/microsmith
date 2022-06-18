@@ -342,7 +342,7 @@ func (eb *ExprBuilder) CallExpr(e ast.Expr, at []Type) *ast.CallExpr {
 		if v, ok := eb.S.FindVarByName(ident.Name); ok {
 			_, ok := v.Type.(FuncType)
 			if ok {
-				return eb.MakeBuiltinOrStdlibCall(v)
+				return eb.CallFunction(v)
 			}
 		} else {
 			panic("unreachable")
@@ -582,53 +582,125 @@ func (eb *ExprBuilder) Cast(t BasicType) *ast.CallExpr {
 	}
 }
 
-// CallExpr returns a call expression involving a random function with
-// return value of type t.
+// CallExpr returns a call expression with return value of type t. The
+// function can be a builtin or stdlib function, a locally defined
+// function variable, or a function literal that is immediately
+// called.
 func (eb *ExprBuilder) RandCallExpr(t Type) *ast.CallExpr {
-	if v, ok := eb.S.RandFuncRet(t); ok && !eb.C.inDefer {
-		return eb.MakeCall(v)
+	if v, ok := eb.S.RandFuncRet(t); ok && !eb.C.inDefer && eb.R.Intn(4) > 0 {
+		return eb.CallFunction(v)
 	} else {
-		// No functions returning t in scope. Conjure a random one,
-		// and call it.
 		return eb.ConjureAndCallFunc(t)
 	}
 }
 
-// MakeCall builds an ast.CallExpr with the function variable v,
+// MakeCall builds an ast.CallExpr calling the function in variable v,
 // taking care of setting up its arguments, including for functions
-// like copy() that require custom handling.
-func (eb *ExprBuilder) MakeCall(v Variable) *ast.CallExpr {
-
-	var fnc FuncType
-	var ok bool
-	if fnc, ok = v.Type.(FuncType); !ok {
-		panic("MakeCall: not a function: " + v.Name.Name)
+// like copy() or unsafe.Alignof that require custom handling.
+func (eb *ExprBuilder) CallFunction(v Variable) *ast.CallExpr {
+	f, ok := v.Type.(FuncType)
+	if !ok {
+		panic("CallFunction: not a function: " + v.Name.Name)
 	}
 
-	// Some functions require custom handling, signalled by a null
-	// Args array.
-	if fnc.Args == nil {
-		return eb.MakeBuiltinOrStdlibCall(v)
-	}
-
-	args := make([]ast.Expr, 0, len(fnc.Args))
-	for _, arg := range fnc.Args {
-		arg := arg
-		if ep, ok := arg.(EllipsisType); ok {
-			arg = ep.Base
+	name := v.Name.Name
+	ce := &ast.CallExpr{}
+	if i := strings.Index(name, "."); i >= 0 {
+		ce.Fun = &ast.SelectorExpr{
+			X:   &ast.Ident{Name: name[:i]},
+			Sel: &ast.Ident{Name: name[i+1:]},
 		}
-		if eb.Deepen() && fnc.Local {
-			// Cannot call Expr with casts, because UnaryExpr
-			// could return e.g. -11 which cannot be cast to uint.
-			args = append(args, eb.Expr(arg))
+	} else {
+		ce.Fun = v.Name
+	}
+
+	switch name {
+	case "copy":
+		var t1, t2 Type
+		if eb.R.Intn(3) == 0 {
+			t1, t2 = ArrayOf(BT{N: "byte"}), BT{N: "string"}
 		} else {
-			args = append(args, eb.VarOrLit(arg))
+			t1 = ArrayOf(eb.pb.RandBaseType())
+			t2 = t1
 		}
+		if eb.Deepen() {
+			ce.Args = []ast.Expr{eb.Expr(t1), eb.Expr(t2)}
+		} else {
+			ce.Args = []ast.Expr{eb.VarOrLit(t1), eb.VarOrLit(t2)}
+		}
+	case "len":
+		var t Type
+		if eb.R.Intn(2) == 0 {
+			t = ArrayOf(eb.pb.RandBaseType())
+		} else {
+			t = BT{"string"}
+		}
+		if eb.Deepen() {
+			ce.Args = []ast.Expr{eb.Expr(t)}
+		} else {
+			ce.Args = []ast.Expr{eb.VarOrLit(t)}
+		}
+
+	case "unsafe.Offsetof":
+		var sl *ast.SelectorExpr
+
+		// if we can get a variable, use that (as long it has at least
+		// one field). Otherwise, conjure a literal of a random struct
+		// type.
+		v, ok := eb.S.RandStruct()
+		if ok && len(v.Type.(StructType).Fnames) > 0 {
+			sl = &ast.SelectorExpr{
+				X:   v.Name,
+				Sel: &ast.Ident{Name: RandItem(eb.R, v.Type.(StructType).Fnames)},
+			}
+		} else {
+			var st StructType
+			for len(st.Fnames) == 0 {
+				st = eb.pb.RandStructType()
+			}
+			sl = &ast.SelectorExpr{
+				X:   eb.VarOrLit(st),
+				Sel: &ast.Ident{Name: RandItem(eb.R, st.Fnames)},
+			}
+		}
+		ce.Args = []ast.Expr{sl}
+	case "unsafe.Sizeof", "unsafe.Alignof":
+		t := eb.pb.RandBaseType()
+		if eb.Deepen() {
+			ce.Args = []ast.Expr{eb.Expr(t)}
+		} else {
+			ce.Args = []ast.Expr{eb.VarOrLit(t)}
+		}
+	case "reflect.DeepEqual":
+		t1, t2 := eb.pb.RandType(), eb.pb.RandType()
+		if eb.Deepen() {
+			ce.Args = []ast.Expr{eb.Expr(t1), eb.Expr(t2)}
+		} else {
+			ce.Args = []ast.Expr{eb.VarOrLit(t1), eb.VarOrLit(t2)}
+		}
+	default:
+		if f.Args == nil {
+			panic("CallFunction: missing special handling for " + name)
+		}
+
+		args := make([]ast.Expr, 0, len(f.Args))
+		for _, arg := range f.Args {
+			arg := arg
+			if ep, ok := arg.(EllipsisType); ok {
+				arg = ep.Base
+			}
+			if eb.Deepen() && f.Local {
+				// Cannot call Expr with casts, because UnaryExpr
+				// could return e.g. -11 which cannot be cast to uint.
+				args = append(args, eb.Expr(arg))
+			} else {
+				args = append(args, eb.VarOrLit(arg))
+			}
+		}
+		ce.Args = args
 	}
-	return &ast.CallExpr{
-		Fun:  &ast.Ident{Name: v.Name.Name},
-		Args: args,
-	}
+
+	return ce
 
 }
 
@@ -648,58 +720,6 @@ func (eb *ExprBuilder) MakeAppendCall(t ArrayType) *ast.CallExpr {
 		ce.Args = []ast.Expr{eb.VarOrLit(t), eb.VarOrLit(t2)}
 	}
 	ce.Ellipsis = ellips
-
-	return ce
-}
-
-func (eb *ExprBuilder) MakeBuiltinOrStdlibCall(v Variable) *ast.CallExpr {
-	name := v.Name.Name
-	switch {
-	case name == "copy":
-		return eb.MakeCopyCall()
-	case name == "len":
-		return eb.MakeLenCall()
-	case strings.HasPrefix(name, "unsafe."):
-		return eb.MakeUnsafeCall(v)
-	case strings.HasPrefix(name, "reflect."):
-		return eb.MakeReflectCall(v)
-	default: // no special handling
-		return eb.MakeCall(v)
-	}
-}
-
-func (eb *ExprBuilder) MakeCopyCall() *ast.CallExpr {
-	var t1, t2 Type
-	if eb.R.Intn(3) == 0 {
-		t1, t2 = ArrayOf(BT{N: "byte"}), BT{N: "string"}
-	} else {
-		t1 = ArrayOf(eb.pb.RandBaseType())
-		t2 = t1
-	}
-
-	ce := &ast.CallExpr{Fun: CopyIdent}
-	if eb.Deepen() {
-		ce.Args = []ast.Expr{eb.Expr(t1), eb.Expr(t2)}
-	} else {
-		ce.Args = []ast.Expr{eb.VarOrLit(t1), eb.VarOrLit(t2)}
-	}
-
-	return ce
-}
-
-func (eb *ExprBuilder) MakeLenCall() *ast.CallExpr {
-	var typ Type
-	if eb.R.Intn(2) == 0 {
-		typ = ArrayOf(eb.pb.RandBaseType())
-	} else {
-		typ = BT{"string"}
-	}
-	ce := &ast.CallExpr{Fun: LenIdent}
-	if eb.Deepen() {
-		ce.Args = []ast.Expr{eb.Expr(typ)}
-	} else {
-		ce.Args = []ast.Expr{eb.VarOrLit(typ)}
-	}
 
 	return ce
 }
@@ -725,82 +745,6 @@ func (eb *ExprBuilder) MakeMakeCall(t Type) *ast.CallExpr {
 		}
 	default:
 		panic("MakeMakeCall: invalid type " + t.Name())
-	}
-
-	return ce
-}
-
-func (eb *ExprBuilder) MakeUnsafeCall(fun Variable) *ast.CallExpr {
-	fName := fun.Name.Name[len("unsafe."):]
-	ce := &ast.CallExpr{
-		Fun: &ast.SelectorExpr{
-			X:   &ast.Ident{Name: "unsafe"},
-			Sel: &ast.Ident{Name: fName},
-		},
-	}
-
-	// Offsetof needs a struct selector expr of the form:
-	//
-	//   X.F
-	//
-	// where X is either a struct literal or a variable of struct
-	// type.
-	if fName == "Offsetof" {
-		var sl *ast.SelectorExpr
-
-		// if we can get a variable, use that (as long it has at least
-		// one field). Otherwise, conjure a literal of a random struct
-		// type.
-		v, ok := eb.S.RandStruct()
-		if ok && len(v.Type.(StructType).Fnames) > 0 {
-			sl = &ast.SelectorExpr{
-				X:   v.Name,
-				Sel: &ast.Ident{Name: RandItem(eb.R, v.Type.(StructType).Fnames)},
-			}
-		} else {
-			var st StructType
-			for len(st.Fnames) == 0 {
-				st = eb.pb.RandStructType()
-			}
-			sl = &ast.SelectorExpr{
-				X:   eb.VarOrLit(st),
-				Sel: &ast.Ident{Name: RandItem(eb.R, st.Fnames)},
-			}
-		}
-
-		ce.Args = []ast.Expr{sl}
-		return ce
-	}
-
-	typ := eb.pb.RandBaseType()
-	if eb.Deepen() {
-		ce.Args = []ast.Expr{eb.Expr(typ)}
-	} else {
-		ce.Args = []ast.Expr{eb.VarOrLit(typ)}
-	}
-
-	return ce
-}
-
-func (eb *ExprBuilder) MakeReflectCall(fun Variable) *ast.CallExpr {
-	fName := fun.Name.Name[len("reflect."):]
-	ce := &ast.CallExpr{
-		Fun: &ast.SelectorExpr{
-			X:   &ast.Ident{Name: "reflect"},
-			Sel: &ast.Ident{Name: fName},
-		},
-	}
-
-	switch fName {
-	case "DeepEqual":
-		t1, t2 := eb.pb.RandType(), eb.pb.RandType()
-		if eb.Deepen() {
-			ce.Args = []ast.Expr{eb.Expr(t1), eb.Expr(t2)}
-		} else {
-			ce.Args = []ast.Expr{eb.VarOrLit(t1), eb.VarOrLit(t2)}
-		}
-	default:
-		panic("not implemented")
 	}
 
 	return ce

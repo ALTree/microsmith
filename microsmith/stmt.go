@@ -534,7 +534,7 @@ func (sb *StmtBuilder) RangeStmt(arr Variable) *ast.RangeStmt {
 
 func (sb *StmtBuilder) DeferStmt() *ast.DeferStmt {
 	if v, ok := sb.S.RandFunc(); ok && sb.R.Intn(4) > 0 {
-		return &ast.DeferStmt{Call: sb.E.MakeCall(v)}
+		return &ast.DeferStmt{Call: sb.E.CallFunction(v)}
 	} else {
 		old := sb.C.inDefer
 		sb.C.inDefer = true
@@ -545,7 +545,7 @@ func (sb *StmtBuilder) DeferStmt() *ast.DeferStmt {
 
 func (sb *StmtBuilder) GoStmt() *ast.GoStmt {
 	if v, ok := sb.S.RandFunc(); ok && sb.R.Intn(4) > 0 {
-		return &ast.GoStmt{Call: sb.E.MakeCall(v)}
+		return &ast.GoStmt{Call: sb.E.CallFunction(v)}
 	} else {
 		old := sb.C.inDefer
 		sb.C.inDefer = true
