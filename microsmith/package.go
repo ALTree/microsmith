@@ -167,7 +167,7 @@ func (pb *PackageBuilder) File() *ast.File {
 			if p.pkg == "main" {
 				continue
 			}
-			af.Decls = append(af.Decls, MakeImport(fmt.Sprintf("%v_%s", pb.pb.id, p.pkg)))
+			af.Decls = append(af.Decls, MakeImport(p.pkg))
 		}
 	}
 

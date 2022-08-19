@@ -81,7 +81,7 @@ func NewProgram(conf ProgramConf) *Program {
 	}
 
 	if conf.MultiPkg {
-		pg.pkgs = append(pg.pkgs, pb.NewPackage("a"))
+		pg.pkgs = append(pg.pkgs, pb.NewPackage(fmt.Sprintf("a_%d", id)))
 	}
 
 	// main has to be last because it calls functions from the other
@@ -95,7 +95,13 @@ func NewProgram(conf ProgramConf) *Program {
 func (prog *Program) WriteToDisk(path string) error {
 	prog.workdir = path
 	for i, pkg := range prog.pkgs {
-		fileName := fmt.Sprintf("%v_%v.go", prog.id, pkg.name)
+		var fileName string
+		if pkg.name == "main" {
+			fileName = fmt.Sprintf("main_%v.go", prog.id)
+		} else {
+			fileName = fmt.Sprintf("%v.go", pkg.name)
+		}
+
 		fh, err := os.Create(path + "/" + fileName)
 		defer fh.Close()
 		if err != nil {
@@ -160,7 +166,7 @@ func (prog *Program) Compile(arch string, bo BuildOptions) (string, error) {
 	}
 
 	baseName := fmt.Sprintf("%v", prog.id)
-	arcName := baseName + "_main.o"
+	arcName := "main_" + baseName + ".o"
 
 	switch {
 
@@ -169,7 +175,7 @@ func (prog *Program) Compile(arch string, bo BuildOptions) (string, error) {
 		if bo.Noopt {
 			oFlag = "-Og"
 		}
-		cmd := exec.Command(bo.Toolchain, oFlag, "-o", arcName, baseName+"_main.go")
+		cmd := exec.Command(bo.Toolchain, oFlag, "-o", arcName, "main_"+baseName+".go")
 		cmd.Dir = prog.workdir
 		out, err := cmd.CombinedOutput()
 		if err != nil {
@@ -181,7 +187,7 @@ func (prog *Program) Compile(arch string, bo BuildOptions) (string, error) {
 		if bo.Noopt {
 			oFlag = "0"
 		}
-		cmd := exec.Command(bo.Toolchain, "build", "-opt", oFlag, "-o", arcName, baseName+"_main.go")
+		cmd := exec.Command(bo.Toolchain, "build", "-opt", oFlag, "-o", arcName, "main_"+baseName+".go")
 		cmd.Dir = prog.workdir
 		out, err := cmd.CombinedOutput()
 		if err != nil {
@@ -264,9 +270,14 @@ func (prog *Program) Compile(arch string, bo BuildOptions) (string, error) {
 
 // DeleteBinaries deletes any binary file written on disk.
 func (prog *Program) DeleteBinaries() {
-	basePath := prog.workdir + fmt.Sprintf("/%v", prog.id)
+	basePath := prog.workdir + "/"
 	for _, pkg := range prog.pkgs {
-		err := os.Remove(basePath + "_" + pkg.name + ".o")
+		var err error
+		if pkg.name == "main" {
+			err = os.Remove(basePath + fmt.Sprintf("main_%d.o", prog.id))
+		} else {
+			err = os.Remove(basePath + pkg.name + ".o")
+		}
 		if err != nil {
 			log.Printf("could not remove %s: %s", basePath+"_"+pkg.name+".o", err)
 		}
@@ -274,7 +285,7 @@ func (prog *Program) DeleteBinaries() {
 	}
 
 	// ignore error since some toolchains don't write a binary
-	_ = os.Remove(basePath)
+	_ = os.Remove(basePath + fmt.Sprintf("%v", prog.id))
 }
 
 // DeleteSource deletes all gp files.
