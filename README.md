@@ -54,6 +54,7 @@ used to stress-test Go compilers.
 - [#53018 internal compiler error: panic during lower in linux/loong64](https://github.com/golang/go/issues/53018)
 - [#53390 internal compiler error: assertion failed](https://github.com/golang/go/issues/53390)
 - [#53439 internal compiler error: found illegal assignment](https://github.com/golang/go/issues/53439)
+- [#54542 internal compiler error on mismatch between -p value and pkg name](https://github.com/golang/go/issues/54542)
 
 
 ##### gccgo
