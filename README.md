@@ -68,4 +68,4 @@ used to stress-test Go compilers.
 - [#1653 LLVM ERROR: Cannot select: intrinsic %llvm.coro.size](https://github.com/tinygo-org/tinygo/issues/1653)
 - [#2749 panic: integer divide by zero on array of zero-sized elems](https://github.com/tinygo-org/tinygo/issues/2749)
 - [#2777 panic: compiler SIGSEGVs in transform.OptimizeAllocs call tree](https://github.com/tinygo-org/tinygo/issues/2777)
-
+- [#3083 panic: unknown type: chan int](https://github.com/tinygo-org/tinygo/issues/3083)
