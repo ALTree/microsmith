@@ -211,14 +211,14 @@ func benchHelper(b *testing.B, conf microsmith.ProgramConf) {
 	}
 }
 
-func BenchmarkNewProgramSinglePkg(b *testing.B) {
+func BenchmarkSinglePkg(b *testing.B) {
 	benchHelper(b, microsmith.ProgramConf{
 		MultiPkg:   false,
 		TypeParams: false,
 	})
 }
 
-func BenchmarkNewProgramSinglePkgTP(b *testing.B) {
+func BenchmarkSinglePkgTP(b *testing.B) {
 	benchHelper(b, microsmith.ProgramConf{
 		MultiPkg:   false,
 		TypeParams: true,

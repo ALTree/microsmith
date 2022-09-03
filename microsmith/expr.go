@@ -102,8 +102,6 @@ func (eb *ExprBuilder) CompositeLit(t Type) *ast.CompositeLit {
 		}
 		cl.Elts = elems
 		return cl
-	case ChanType:
-		panic("No CompositeLit of type chan")
 	case MapType:
 		cl := &ast.CompositeLit{Type: t.Ast()}
 		var e *ast.KeyValueExpr
@@ -118,8 +116,7 @@ func (eb *ExprBuilder) CompositeLit(t Type) *ast.CompositeLit {
 				Value: eb.VarOrLit(t.ValueT),
 			}
 		}
-		// Duplicate map keys are a compile error, and avoiding them
-		// is hard, so only put in one element for now.
+		// duplicate map keys are a compile error
 		cl.Elts = []ast.Expr{e}
 		return cl
 	case StructType:
@@ -151,7 +148,6 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 	eb.depth++
 	defer func() { eb.depth-- }()
 
-	// we can find or conjure functions with any return type
 	if n := eb.R.Intn(10); n == 0 {
 		return eb.RandCallExpr(t)
 	}
@@ -333,10 +329,9 @@ func (eb *ExprBuilder) SubTypeExpr(e ast.Expr, t, target Type) ast.Expr {
 
 // Returns e(...)
 func (eb *ExprBuilder) CallExpr(e ast.Expr, at []Type) *ast.CallExpr {
-	// Sometimes, e is not a normal function, but one needing special
-	// handling of its arguments (builtins like len, or things like
-	// unsafe.SizeOf). If that's the case, we delegate building of the
-	// CallExpr to MakeBuildintOrStdlibCall().
+	// Sometimes e is not a normal function, but one needing special
+	// handling of its arguments (builtins like len, or func from the
+	// unsafe package). If that's the case, delegate to CallFunction.
 	if ident, ok := e.(*ast.Ident); ok && !(strings.HasPrefix(ident.Name, "fnc") || strings.HasPrefix(ident.Name, "p")) {
 		// Must be a builtin or stdlib func. Find corresponding
 		// Variable in Scope, and build a call.
@@ -616,6 +611,7 @@ func (eb *ExprBuilder) CallFunction(v Variable, ct ...Type) *ast.CallExpr {
 	}
 
 	switch name {
+
 	case "copy":
 		var t1, t2 Type
 		if eb.R.Intn(3) == 0 {
@@ -629,6 +625,7 @@ func (eb *ExprBuilder) CallFunction(v Variable, ct ...Type) *ast.CallExpr {
 		} else {
 			ce.Args = []ast.Expr{eb.VarOrLit(t1), eb.VarOrLit(t2)}
 		}
+
 	case "len":
 		var t Type
 		if eb.R.Intn(2) == 0 {
@@ -665,6 +662,7 @@ func (eb *ExprBuilder) CallFunction(v Variable, ct ...Type) *ast.CallExpr {
 			}
 		}
 		ce.Args = []ast.Expr{sl}
+
 	case "unsafe.Sizeof", "unsafe.Alignof":
 		t := eb.pb.RandBaseType()
 		if eb.Deepen() {
@@ -677,7 +675,7 @@ func (eb *ExprBuilder) CallFunction(v Variable, ct ...Type) *ast.CallExpr {
 		if len(ct) == 0 {
 			panic("unsafe.SliceData needs additional type arg")
 		}
-		t := ArrayOf(ct[0].(PointerType).BaseType)
+		t := ArrayOf(ct[0].(PointerType).Base())
 		if eb.Deepen() {
 			ce.Args = []ast.Expr{eb.Expr(t)}
 		} else {
@@ -691,8 +689,9 @@ func (eb *ExprBuilder) CallFunction(v Variable, ct ...Type) *ast.CallExpr {
 		} else {
 			ce.Args = []ast.Expr{eb.VarOrLit(t1), eb.VarOrLit(t2)}
 		}
+
 	default:
-		if f.Args == nil {
+		if f.Args == nil || f.Ret == nil {
 			panic("CallFunction: missing special handling for " + name)
 		}
 

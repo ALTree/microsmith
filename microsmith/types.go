@@ -72,7 +72,7 @@ func Ident(t Type) string {
 	case MapType:
 		return "m"
 	case PointerType:
-		return "p" + Ident(t.BaseType)
+		return "p" + Ident(t.Btype)
 	case TypeParam:
 		return strings.ToLower(t.N.Name) + "_"
 	default:
@@ -160,7 +160,7 @@ func (t BasicType) NeedsCast() bool {
 // --------------------------------
 
 type PointerType struct {
-	BaseType Type
+	Btype Type
 }
 
 func (t PointerType) Comparable() bool {
@@ -172,7 +172,7 @@ func (t PointerType) Ast() ast.Expr {
 }
 
 func (t PointerType) Base() Type {
-	return t.BaseType
+	return t.Btype
 }
 
 func (t PointerType) Contains(t2 Type) bool {
@@ -192,7 +192,7 @@ func (pt PointerType) Equal(t Type) bool {
 }
 
 func (pt PointerType) Name() string {
-	return "*" + pt.BaseType.Name()
+	return "*" + pt.Btype.Name()
 }
 
 func (pt PointerType) Sliceable() bool {
@@ -444,8 +444,6 @@ func (ft FuncType) MakeFieldLists(named bool, s int) (*ast.FieldList, *ast.Field
 	return params, results
 }
 
-// TODO(alb): call panic
-
 type BT = BasicType
 
 // Casts, builtins, and some standard library function that can be
@@ -472,69 +470,9 @@ var BuiltinsFuncs = []FuncType{
 
 	// casts ----------------
 	// {
-	// 	N:    "float32",
-	// 	Args: []Type{BT{"float64"}},
-	// 	Ret:  []Type{BT{"float32"}},
-	// },
-	// {
-	// 	N:    "float64",
-	// 	Args: []Type{BT{"float32"}},
-	// 	Ret:  []Type{BT{"float64"}},
-	// },
-	// {
 	// 	N:    "float64",
 	// 	Args: []Type{BT{"int"}},
 	// 	Ret:  []Type{BT{"float64"}},
-	// },
-	// {
-	// 	N:    "int",
-	// 	Args: []Type{BT{"uint"}},
-	// 	Ret:  []Type{BT{"int"}},
-	// },
-	// {
-	// 	N:    "uint",
-	// 	Args: []Type{BT{"int"}},
-	// 	Ret:  []Type{BT{"uint"}},
-	// },
-	// {
-	// 	N:    "int16",
-	// 	Args: []Type{BT{"int"}},
-	// 	Ret:  []Type{BT{"int16"}},
-	// },
-	// {
-	// 	N:    "int",
-	// 	Args: []Type{BT{"int16"}},
-	// 	Ret:  []Type{BT{"int"}},
-	// },
-	// {
-	// 	N:    "int8",
-	// 	Args: []Type{BT{"int32"}},
-	// 	Ret:  []Type{BT{"int8"}},
-	// },
-	// {
-	// 	N:    "int32",
-	// 	Args: []Type{BT{"int8"}},
-	// 	Ret:  []Type{BT{"int32"}},
-	// },
-	// {
-	// 	N:    "int8",
-	// 	Args: []Type{BT{"uint"}},
-	// 	Ret:  []Type{BT{"int8"}},
-	// },
-	// {
-	// 	N:    "int",
-	// 	Args: []Type{BT{"int64"}},
-	// 	Ret:  []Type{BT{"int"}},
-	// },
-	// {
-	// 	N:    "uintptr",
-	// 	Args: []Type{BT{"int"}},
-	// 	Ret:  []Type{BT{"uintptr"}},
-	// },
-	// {
-	// 	N:    "int32",
-	// 	Args: []Type{BT{"uintptr"}},
-	// 	Ret:  []Type{BT{"int32"}},
 	// },
 }
 
