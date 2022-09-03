@@ -72,7 +72,7 @@ func Ident(t Type) string {
 	case MapType:
 		return "m"
 	case PointerType:
-		return "p" + Ident(t.Btype)
+		return "p" + Ident(t.BaseType)
 	case TypeParam:
 		return strings.ToLower(t.N.Name) + "_"
 	default:
@@ -160,7 +160,7 @@ func (t BasicType) NeedsCast() bool {
 // --------------------------------
 
 type PointerType struct {
-	Btype Type
+	BaseType Type
 }
 
 func (t PointerType) Comparable() bool {
@@ -172,7 +172,7 @@ func (t PointerType) Ast() ast.Expr {
 }
 
 func (t PointerType) Base() Type {
-	return t.Btype
+	return t.BaseType
 }
 
 func (t PointerType) Contains(t2 Type) bool {
@@ -192,7 +192,7 @@ func (pt PointerType) Equal(t Type) bool {
 }
 
 func (pt PointerType) Name() string {
-	return "*" + pt.Btype.Name()
+	return "*" + pt.BaseType.Name()
 }
 
 func (pt PointerType) Sliceable() bool {

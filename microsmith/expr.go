@@ -677,7 +677,7 @@ func (eb *ExprBuilder) CallFunction(v Variable, ct ...Type) *ast.CallExpr {
 		if len(ct) == 0 {
 			panic("unsafe.SliceData needs additional type arg")
 		}
-		t := ArrayOf(ct[0].(PointerType).Btype)
+		t := ArrayOf(ct[0].(PointerType).BaseType)
 		if eb.Deepen() {
 			ce.Args = []ast.Expr{eb.Expr(t)}
 		} else {
