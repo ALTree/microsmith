@@ -151,32 +151,33 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 	eb.depth++
 	defer func() { eb.depth-- }()
 
+	// we can find or conjure functions with any return type
+	if n := eb.R.Intn(10); n == 0 {
+		return eb.RandCallExpr(t)
+	}
+
 	switch t := t.(type) {
 
 	case BasicType, TypeParam:
-		switch eb.R.Intn(12) {
-		case 0, 1:
-			return eb.UnaryExpr(t)
-		case 2, 3:
-			return eb.UnaryExpr(t)
-		case 4, 5, 6, 7:
-			return eb.BinaryExpr(t)
-		case 8, 9:
+		switch eb.R.Intn(5) {
+		case 0:
 			if bt, ok := t.(BasicType); ok {
 				return eb.Cast(bt)
 			}
 			fallthrough
+		case 1:
+			return eb.UnaryExpr(t)
+		case 2:
+			return eb.UnaryExpr(t)
 		default:
-			return eb.RandCallExpr(t)
+			return eb.BinaryExpr(t)
 		}
 
 	case ArrayType:
-		switch eb.R.Intn(4) {
-		case 0:
+		if eb.R.Intn(2) == 0 {
 			return eb.MakeAppendCall(t)
-		default:
-			return eb.VarOrLit(t)
 		}
+		return eb.VarOrLit(t)
 
 	case ChanType, FuncType, MapType, StructType:
 		return eb.VarOrLit(t)
@@ -588,7 +589,7 @@ func (eb *ExprBuilder) Cast(t BasicType) *ast.CallExpr {
 // called.
 func (eb *ExprBuilder) RandCallExpr(t Type) *ast.CallExpr {
 	if v, ok := eb.S.RandFuncRet(t); ok && !eb.C.inDefer && eb.R.Intn(4) > 0 {
-		return eb.CallFunction(v)
+		return eb.CallFunction(v, t)
 	} else {
 		return eb.ConjureAndCallFunc(t)
 	}
@@ -597,7 +598,7 @@ func (eb *ExprBuilder) RandCallExpr(t Type) *ast.CallExpr {
 // MakeCall builds an ast.CallExpr calling the function in variable v,
 // taking care of setting up its arguments, including for functions
 // like copy() or unsafe.Alignof that require custom handling.
-func (eb *ExprBuilder) CallFunction(v Variable) *ast.CallExpr {
+func (eb *ExprBuilder) CallFunction(v Variable, ct ...Type) *ast.CallExpr {
 	f, ok := v.Type.(FuncType)
 	if !ok {
 		panic("CallFunction: not a function: " + v.Name.Name)
@@ -671,6 +672,18 @@ func (eb *ExprBuilder) CallFunction(v Variable) *ast.CallExpr {
 		} else {
 			ce.Args = []ast.Expr{eb.VarOrLit(t)}
 		}
+
+	case "unsafe.SliceData":
+		if len(ct) == 0 {
+			panic("unsafe.SliceData needs additional type arg")
+		}
+		t := ArrayOf(ct[0].(PointerType).Btype)
+		if eb.Deepen() {
+			ce.Args = []ast.Expr{eb.Expr(t)}
+		} else {
+			ce.Args = []ast.Expr{eb.VarOrLit(t)}
+		}
+
 	case "reflect.DeepEqual":
 		t1, t2 := eb.pb.RandType(), eb.pb.RandType()
 		if eb.Deepen() {

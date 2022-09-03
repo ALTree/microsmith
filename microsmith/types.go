@@ -609,6 +609,21 @@ var StdlibFuncs = []FuncType{
 		Args: nil,
 		Ret:  []Type{BT{"uintptr"}},
 	},
+	{
+		N:    "unsafe.SliceData",
+		Args: nil,
+		Ret:  nil,
+	},
+	{
+		N:    "unsafe.String",
+		Args: []Type{PointerType{BT{"byte"}}, BT{"int"}},
+		Ret:  []Type{BT{"string"}},
+	},
+	{
+		N:    "unsafe.StringData",
+		Args: []Type{BT{"string"}},
+		Ret:  []Type{PointerType{BT{"byte"}}},
+	},
 }
 
 // --------------------------------
