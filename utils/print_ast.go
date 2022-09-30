@@ -9,8 +9,8 @@ import (
 var src string = `
 package p
 
-func f[G any]() {
-  var f G = G(77)
+func f() int {
+  return 1
 }
 `
 

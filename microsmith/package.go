@@ -73,15 +73,27 @@ func (pb *PackageBuilder) FuncDecl() *ast.FuncDecl {
 	fd := &ast.FuncDecl{
 		Name: pb.FuncIdent(len(pb.funcs)),
 		Type: &ast.FuncType{
-			Func:    0,
-			Params:  new(ast.FieldList),
-			Results: nil,
+			Func:       0,
+			TypeParams: nil,
+			Params:     nil,
+			Results:    &ast.FieldList{},
 		},
 	}
 
-	// if not using typeparams, generate a body and return
+	// choose function return types, at random
+	returnTypes := []Type{}
+	for i := 0; i < pb.rs.Intn(6); i++ {
+		typ := RandItem(pb.rs, pb.baseTypes)
+		fd.Type.Results.List = append(
+			fd.Type.Results.List,
+			&ast.Field{Type: &ast.Ident{Name: typ.Name()}},
+		)
+		returnTypes = append(returnTypes, typ)
+	}
+
+	// if we're not using type parameters, generate a body and return
 	if !pb.Conf().TypeParams {
-		fd.Body = pb.sb.BlockStmt()
+		fd.Body = pb.sb.FuncBody(returnTypes)
 		return fd
 	}
 
@@ -114,6 +126,10 @@ func (pb *PackageBuilder) FuncDecl() *ast.FuncDecl {
 	pb.ctx.typeparams = &tp
 
 	fd.Type.TypeParams = &ast.FieldList{List: tps}
+
+	// Generate the function body. We can't use FuncBody here because
+	// later we will need to append more statements to the body, but
+	// the ReturnStmt needs to be last. We'll add it manually later.
 	body := pb.sb.BlockStmt()
 
 	// put the collected DeclStmts at the top of the body
@@ -124,7 +140,11 @@ func (pb *PackageBuilder) FuncDecl() *ast.FuncDecl {
 		body.List = append(body.List, pb.sb.UseVars(tpVars))
 	}
 
-	// finally, delete them from scope.
+	// append the return statement (needs to be before removing tpVars
+	// from scope because we may need to return one)
+	body.List = append(body.List, pb.sb.ReturnStmt(returnTypes))
+
+	// finally, delete the typeparam vars from the scope.
 	for _, v := range tpVars {
 		pb.sb.S.DeleteIdentByName(v)
 	}
@@ -273,7 +293,9 @@ func (p *PackageBuilder) MakeFuncCalls() []ast.Stmt {
 }
 
 // Builds this:
-//   import "<p>"
+//
+//	import "<p>"
+//
 // p must be include a " char in the fist and last position.
 func MakeImport(p string) *ast.GenDecl {
 	return &ast.GenDecl{

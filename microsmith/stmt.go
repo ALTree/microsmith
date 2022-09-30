@@ -292,6 +292,16 @@ func (sb *StmtBuilder) BlockStmt() *ast.BlockStmt {
 	return bs
 }
 
+// FuncBody returns a BlockStmt, like BlockStmt, except it appends a
+// ReturnStmt of the given types at the end.
+func (sb *StmtBuilder) FuncBody(t []Type) *ast.BlockStmt {
+	b := sb.BlockStmt()
+	if len(t) > 0 {
+		b.List = append(b.List, sb.ReturnStmt(t))
+	}
+	return b
+}
+
 // DeclStmt returns a DeclStmt where nVars new variables of type kind
 // are declared, and a list of the newly created *ast.Ident that
 // entered the scope.
@@ -572,8 +582,23 @@ func (sb *StmtBuilder) IfStmt() *ast.IfStmt {
 	return is
 }
 
-func (sb *StmtBuilder) SwitchStmt() *ast.SwitchStmt {
+// ReturnStmt builds a return statement with expression of the given
+// types.
+func (sb *StmtBuilder) ReturnStmt(types []Type) *ast.ReturnStmt {
+	sb.depth++
+	defer func() { sb.depth-- }()
 
+	ret := &ast.ReturnStmt{Results: make([]ast.Expr, len(types))}
+
+	for i, t := range types {
+		ret.Results[i] = sb.E.Expr(t)
+	}
+
+	return ret
+
+}
+
+func (sb *StmtBuilder) SwitchStmt() *ast.SwitchStmt {
 	sb.depth++
 	defer func() { sb.depth-- }()
 
@@ -644,8 +669,9 @@ func (sb *StmtBuilder) SelectStmt() *ast.SelectStmt {
 }
 
 // CommClause is the Select clause. This function returns:
-//   case <-c        if def is false
-//   default         if def is true
+//
+//	case <-c        if def is false
+//	default         if def is true
 func (sb *StmtBuilder) CommClause(def bool) *ast.CommClause {
 
 	// a couple of Stmt are enough for a select case body
@@ -717,7 +743,9 @@ func (sb *StmtBuilder) ExprStmt() *ast.ExprStmt {
 var noName = ast.Ident{Name: "_"}
 
 // build and return a statement of form
-//   _, _, ... _ = var1, var2, ..., varN
+//
+//	_, _, ... _ = var1, var2, ..., varN
+//
 // for each i in idents
 func (sb *StmtBuilder) UseVars(idents []*ast.Ident) ast.Stmt {
 	useStmt := &ast.AssignStmt{
