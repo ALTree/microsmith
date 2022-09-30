@@ -63,7 +63,6 @@ type Package struct {
 type BuildOptions struct {
 	Toolchain             string
 	Noopt, Race, Ssacheck bool
-	Unified               bool
 }
 
 var CheckSeed int
@@ -210,10 +209,6 @@ func (prog *Program) Compile(arch string, bo BuildOptions) (string, error) {
 			env = append(env, "GOARCH=amd64", "GOAMD64=v3")
 		} else {
 			env = append(env, "GOARCH="+arch)
-		}
-
-		if bo.Unified {
-			env = append(env, "GOEXPERIMENT=unified")
 		}
 
 		// Setup compile args

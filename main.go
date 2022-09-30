@@ -30,7 +30,6 @@ var (
 	binF      = flag.String("bin", "", "Go toolchain to fuzz")
 	workdirF  = flag.String("work", "work", "Workdir for the fuzzing process")
 	tpF       = flag.Bool("tp", false, "Use typeparams in generated programs")
-	tpuF      = flag.Bool("tpu", false, "Use typeparams, compile with GOEXPERIMENT=unified")
 )
 
 var archs []string
@@ -55,10 +54,6 @@ func main() {
 		os.Exit(2)
 	}
 
-	if *tpuF {
-		*tpF = true
-	}
-
 	tc := guessToolchain(*binF)
 	if tc == "gc" && *archF == "" {
 		fmt.Println("-arch must be set when fuzzing gc")
@@ -79,7 +74,6 @@ func main() {
 		Noopt:     *nooptF,
 		Race:      *raceF,
 		Ssacheck:  *ssacheckF,
-		Unified:   *tpuF,
 	}
 
 	archs = strings.Split(*archF, ",")
@@ -221,10 +215,7 @@ func installDeps(arch string, bo microsmith.BuildOptions) {
 		cmd.Env = append(os.Environ(), "GOAMD64=v3")
 	}
 
-	cmd.Env = append(os.Environ(), "GOOS="+goos, "GOARCH="+arch)
-	if *tpuF {
-		cmd.Env = append(cmd.Env, "GOEXPERIMENT=unified")
-	}
+	cmd.Env = append(cmd.Env, "GOOS="+goos, "GOARCH="+arch)
 
 	out, err := cmd.CombinedOutput()
 	if err != nil {

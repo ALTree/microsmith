@@ -79,11 +79,11 @@ func compile(t *testing.T, conf microsmith.ProgramConf) {
 		}
 		bo := microsmith.BuildOptions{
 			GetToolchain(),
-			false, false, false, false,
+			false, false, false,
 		}
 		out, err := gp.Compile("amd64", bo)
 		if err != nil {
-			t.Fatalf("Program did not compile: %s\n%s", out, err)
+			t.Fatalf("Program did not compile:\n%s\n%s", out, err)
 			keepdir = true
 		}
 	}
