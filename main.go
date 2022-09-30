@@ -203,19 +203,21 @@ func installDeps(arch string, bo microsmith.BuildOptions) {
 		cmd = exec.Command(bo.Toolchain, "install", "std")
 	}
 
+	env := os.Environ()
 	goos := "linux"
 	switch arch {
 	case "wasm":
 		goos = "js"
 	case "386sf":
 		arch = "386"
-		cmd.Env = append(os.Environ(), "GO386=softfloat")
+		env = append(env, "GO386=softfloat")
 	case "amd64_v3":
 		arch = "amd64"
-		cmd.Env = append(os.Environ(), "GOAMD64=v3")
+		env = append(env, "GOAMD64=v3")
 	}
 
-	cmd.Env = append(cmd.Env, "GOOS="+goos, "GOARCH="+arch)
+	env = append(env, "GOOS="+goos, "GOARCH="+arch)
+	cmd.Env = env
 
 	out, err := cmd.CombinedOutput()
 	if err != nil {
