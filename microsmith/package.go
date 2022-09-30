@@ -127,9 +127,9 @@ func (pb *PackageBuilder) FuncDecl() *ast.FuncDecl {
 
 	fd.Type.TypeParams = &ast.FieldList{List: tps}
 
-	// Generate the function body. We can't use FuncBody here because
-	// later we will need to append more statements to the body, but
-	// the ReturnStmt needs to be last. We'll add it manually later.
+	// Generate the function body. We can't use FuncBody() here
+	// because later we'll need to append more statements to the body,
+	// but the ReturnStmt needs to be last. We'll add it manually.
 	body := pb.sb.BlockStmt()
 
 	// put the collected DeclStmts at the top of the body
@@ -191,7 +191,7 @@ func (pb *PackageBuilder) File() *ast.File {
 		}
 	}
 
-	pkgs := []string{"math", "strings", "unsafe", "reflect"}
+	pkgs := []string{"math", "reflect", "strings", "unsafe"}
 	for _, p := range pkgs {
 		af.Decls = append(af.Decls, MakeImport(p))
 	}
@@ -213,15 +213,9 @@ func (pb *PackageBuilder) File() *ast.File {
 	af.Decls = append(af.Decls, MakeInt())
 	pb.Scope().AddVariable(&ast.Ident{Name: "i"}, BasicType{"int"})
 
-	// Now half a dozen top-level variables
+	// half a dozen top-level variables
 	for i := 1; i <= 6; i++ {
-		t := RandItem(pb.rs, pb.baseTypes)
-		if pb.rs.Intn(3) == 0 {
-			t = PointerOf(t)
-		}
-		if pb.rs.Intn(5) == 0 {
-			t = ArrayOf(t)
-		}
+		t := pb.RandType()
 		af.Decls = append(af.Decls, pb.MakeVar(t, i))
 		pb.Scope().AddVariable(&ast.Ident{Name: fmt.Sprintf("V%v", i)}, t)
 	}
@@ -277,7 +271,7 @@ func (p *PackageBuilder) MakeFuncCalls() []ast.Stmt {
 			}
 		}
 
-		// instantiate type parameters at random
+		// instantiate type parameters
 		if p.Conf().TypeParams {
 			var indices []ast.Expr
 			for _, typ := range f.Type.TypeParams.List {
@@ -294,9 +288,9 @@ func (p *PackageBuilder) MakeFuncCalls() []ast.Stmt {
 
 // Builds this:
 //
-//	import "<p>"
+//	import "p"
 //
-// p must be include a " char in the fist and last position.
+// p must already include the surrounding "s.
 func MakeImport(p string) *ast.GenDecl {
 	return &ast.GenDecl{
 		Tok: token.IMPORT,
