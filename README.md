@@ -61,6 +61,8 @@ used to stress-test Go compilers.
 
 - [#44383 internal compiler error: Segmentation fault during GIMPLE pass ealias](https://github.com/golang/go/issues/44383)
 - [#47130 internal compiler error: in write_equal_function](https://github.com/golang/go/issues/47130)
+- [#56109 gccgo rejects valid program](https://github.com/golang/go/issues/56109)
+- [#56113 internal compiler error: in gen_reg_rtx, at emit-rtl](https://github.com/golang/go/issues/56113)
 
 
 ##### tinygo
