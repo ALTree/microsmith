@@ -216,7 +216,7 @@ func installDeps(arch string, bo microsmith.BuildOptions) {
 		env = append(env, "GOAMD64=v3")
 	}
 
-	env = append(env, "GOOS="+goos, "GOARCH="+arch)
+	env = append(env, "GOOS="+goos, "GOARCH="+arch, "GODEBUG=installgoroot=all")
 	cmd.Env = env
 
 	out, err := cmd.CombinedOutput()
