@@ -20,16 +20,16 @@ var CrashCount int64
 var KnownCount int64
 
 var (
-	archF     = flag.String("arch", "", "GOARCHs to fuzz (comma separated list)")
-	debugF    = flag.Bool("debug", false, "Run microsmith in debug mode")
-	multiPkgF = flag.Bool("multipkg", true, "Generate multi-package programs")
-	nooptF    = flag.Bool("noopt", false, "Compile with optimizations disabled")
-	pF        = flag.Int("p", 1, "Number of fuzzing workers")
-	raceF     = flag.Bool("race", false, "Compile with -race")
-	ssacheckF = flag.Bool("ssacheck", false, "Compile with -d=ssa/check/on")
-	binF      = flag.String("bin", "", "Go toolchain to fuzz")
-	workdirF  = flag.String("work", "work", "Workdir for the fuzzing process")
-	tpF       = flag.Bool("tp", true, "Use typeparams in generated programs")
+	archF      = flag.String("arch", "", "GOARCHs to fuzz (comma separated list)")
+	debugF     = flag.Bool("debug", false, "Run microsmith in debug mode")
+	singlePkgF = flag.Bool("singlepkg", false, "Generate single-package programs")
+	nooptF     = flag.Bool("noopt", false, "Compile with optimizations disabled")
+	pF         = flag.Int("p", 1, "Number of fuzzing workers")
+	raceF      = flag.Bool("race", false, "Compile with -race")
+	ssacheckF  = flag.Bool("ssacheck", false, "Compile with -d=ssa/check/on")
+	binF       = flag.String("bin", "", "Go toolchain to fuzz")
+	workdirF   = flag.String("work", "work", "Workdir for the fuzzing process")
+	notpF      = flag.Bool("notp", false, "Don't use type-parameters")
 )
 
 var archs []string
@@ -125,8 +125,8 @@ var crashWhitelist = []*regexp.Regexp{
 
 func Fuzz(bo microsmith.BuildOptions) {
 	conf := microsmith.ProgramConf{
-		MultiPkg:   *multiPkgF,
-		TypeParams: *tpF,
+		MultiPkg:   !*singlePkgF,
+		TypeParams: !*notpF,
 	}
 
 	for {
@@ -183,8 +183,8 @@ func Fuzz(bo microsmith.BuildOptions) {
 
 func debugRun() {
 	conf := microsmith.ProgramConf{
-		MultiPkg:   *multiPkgF,
-		TypeParams: *tpF,
+		MultiPkg:   !*singlePkgF,
+		TypeParams: !*notpF,
 	}
 	gp := microsmith.NewProgram(conf)
 	err := gp.Check()
