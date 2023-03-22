@@ -56,6 +56,7 @@ used to stress-test Go compilers.
 - [#53439 internal compiler error: found illegal assignment](https://github.com/golang/go/issues/53439)
 - [#54542 internal compiler error on mismatch between -p value and pkg name](https://github.com/golang/go/issues/54542)
 - [#58161 internal compiler error: two final stores](https://github.com/golang/go/issues/58161)
+- [#59174 internal compiler error: not lowered: v108, Zero SSA PTR SSA](https://github.com/golang/go/issues/59174)
 
 
 ##### gccgo
