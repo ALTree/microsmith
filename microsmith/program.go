@@ -121,7 +121,7 @@ func (prog *Program) Check() error {
 		if _, err := os.Stat("work"); os.IsNotExist(err) {
 			err := os.MkdirAll("work", os.ModePerm)
 			if err != nil {
-				return (err)
+				return err
 			}
 		}
 		defer func() { os.RemoveAll("work") }()
@@ -133,7 +133,7 @@ func (prog *Program) Check() error {
 		}
 		msg, err := prog.Compile("amd64", BuildOptions{Toolchain: tc})
 		if err != nil {
-			return errors.New(msg)
+			return errors.Join(err, errors.New(msg))
 		}
 		return nil
 	}
