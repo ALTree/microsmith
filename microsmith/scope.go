@@ -115,10 +115,13 @@ func (s Scope) RandAssignable() (Variable, bool) {
 func (s Scope) RandFuncRet(t Type) (Variable, bool) {
 	return s.RandPred(func(v Variable, t ...Type) bool {
 		f, fnc := v.Type.(FuncType)
-		if f.N == "unsafe.SliceData" {
+		switch f.N {
+		case "unsafe.SliceData":
 			// custom handling for func with generic return type
 			_, isPointer := t[0].(PointerType)
 			return isPointer
+		case "min", "max":
+			return IsNumeric(t[0]) || t[0].Equal(BT{"string"})
 		}
 		return (fnc && len(f.Ret) > 0 && f.Ret[0].Equal(t[0]))
 	}, t)

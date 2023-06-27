@@ -522,13 +522,10 @@ func (eb *ExprBuilder) BinaryExpr(t Type) ast.Expr {
 			ue.X = eb.VarOrLit(t)
 		}
 
-		// Make sure the RHS is not a constant expression. Spec says:
-		//
-		//   The expression len(s) is constant if s is a string
-		//   constant.
-		//
-		// So we can't use it.
-		if vi, ok := eb.S.RandVarSubType(t2); ok && vi.Name.Name != "len" {
+		// Make sure the RHS is not a constant expression. The result
+		// of len, min, and max are const when their args are consts,
+		// so we need to avoid them.
+		if vi, ok := eb.S.RandVarSubType(t2); ok && (vi.Name.Name != "len" && vi.Name.Name != "min" && vi.Name.Name != "max") {
 			// If we can use some existing variable, do that.
 			ue.Y = eb.SubTypeExpr(vi.Name, vi.Type, t2)
 		} else {
@@ -637,6 +634,20 @@ func (eb *ExprBuilder) CallFunction(v Variable, ct ...Type) *ast.CallExpr {
 			ce.Args = []ast.Expr{eb.Expr(t)}
 		} else {
 			ce.Args = []ast.Expr{eb.VarOrLit(t)}
+		}
+
+	case "min", "max":
+		if len(ct) == 0 {
+			panic("min/max need additional type arg")
+		}
+		t := ct[0]
+
+		for i := 0; i < 1+eb.R.Intn(4); i++ {
+			if eb.Deepen() {
+				ce.Args = append(ce.Args, eb.Expr(t))
+			} else {
+				ce.Args = append(ce.Args, eb.VarOrLit(t))
+			}
 		}
 
 	case "unsafe.Offsetof":

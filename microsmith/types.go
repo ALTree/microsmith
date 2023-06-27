@@ -467,13 +467,16 @@ var BuiltinsFuncs = []FuncType{
 		Args: nil,
 		Ret:  []Type{BT{"int"}},
 	},
-
-	// casts ----------------
-	// {
-	// 	N:    "float64",
-	// 	Args: []Type{BT{"int"}},
-	// 	Ret:  []Type{BT{"float64"}},
-	// },
+	{
+		N:    "min",
+		Args: nil,
+		Ret:  nil,
+	},
+	{
+		N:    "max",
+		Args: nil,
+		Ret:  nil,
+	},
 }
 
 var StdlibFuncs = []FuncType{
