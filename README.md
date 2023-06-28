@@ -59,6 +59,7 @@ used to stress-test Go compilers.
 - [#59174 internal compiler error: not lowered: v108, Zero SSA PTR SSA](https://github.com/golang/go/issues/59174)
 - [#60990 internal compiler error: mismatched mem](https://github.com/golang/go/issues/60990)
 - [#60991 internal compiler error: assertion failed](https://github.com/golang/go/issues/60991)
+- [#61041 internal compiler error: not lowered: v654, Int64Hi INT32 INT](https://github.com/golang/go/issues/61041)
 
 
 ##### gccgo
