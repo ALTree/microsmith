@@ -51,7 +51,7 @@ func (sb *StmtBuilder) Stmt() ast.Stmt {
 		return sb.AssignStmt()
 	}
 
-	switch sb.R.Intn(11) {
+	switch sb.R.Intn(12) {
 	case 0:
 		return sb.AssignStmt()
 	case 1:
@@ -106,6 +106,8 @@ func (sb *StmtBuilder) Stmt() ast.Stmt {
 		return sb.GoStmt()
 	case 10:
 		return sb.ExprStmt()
+	case 11:
+		return sb.ClearStmt()
 	default:
 		panic("unreachable")
 	}
@@ -736,8 +738,30 @@ func (sb *StmtBuilder) ExprStmt() *ast.ExprStmt {
 
 	// Call a random function. We don't use RandCallExpr() because
 	// that could choose a built-in (like len), which is not allowed
-	// as an ExprStmt. Conjuring a new func and call it will always work.
+	// as an ExprStmt. Conjuring a new function and calling it will
+	// always work.
 	return &ast.ExprStmt{sb.E.ConjureAndCallFunc(sb.pb.RandBaseType())}
+}
+
+func (sb *StmtBuilder) ClearStmt() *ast.ExprStmt {
+
+	var arg ast.Expr
+	if rn, ok := sb.S.RandClearable(); ok && sb.R.Intn(3) < 2 {
+		arg = rn.Name
+	} else {
+		if sb.R.Intn(2) == 0 {
+			arg = sb.E.MakeMakeCall(ArrayOf(sb.pb.RandType()))
+		} else {
+			arg = sb.E.MakeMakeCall(MapOf(sb.pb.RandComparableType(), sb.pb.RandType()))
+		}
+	}
+
+	return &ast.ExprStmt{
+		X: &ast.CallExpr{
+			Fun:  ClearIdent,
+			Args: []ast.Expr{arg},
+		},
+	}
 }
 
 var noName = ast.Ident{Name: "_"}

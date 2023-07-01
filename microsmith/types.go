@@ -812,6 +812,7 @@ var CopyIdent = &ast.Ident{Name: "copy"}
 var LenIdent = &ast.Ident{Name: "len"}
 var MakeIdent = &ast.Ident{Name: "make"}
 var CloseIdent = &ast.Ident{Name: "close"}
+var ClearIdent = &ast.Ident{Name: "clear"}
 var SizeofIdent = &ast.Ident{Name: "Sizeof"}
 var TrueIdent = &ast.Ident{Name: "true"}
 var FalseIdent = &ast.Ident{Name: "false"}

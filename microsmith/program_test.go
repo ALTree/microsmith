@@ -4,6 +4,7 @@ import (
 	"go/ast"
 	"io/ioutil"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/ALTree/microsmith/microsmith"
@@ -82,8 +83,8 @@ func compile(t *testing.T, conf microsmith.ProgramConf) {
 			false, false, false,
 		}
 		out, err := gp.Compile("amd64", bo)
-		if err != nil {
-			t.Fatalf("Program did not compile:\n%s\n%s", out, err)
+		if err != nil && !strings.Contains(out, "internal compiler error") {
+			t.Fatalf("Generated program failed compilation:\n%s\n%s", out, err)
 			keepdir = true
 		}
 	}

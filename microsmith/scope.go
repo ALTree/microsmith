@@ -163,6 +163,18 @@ func (s Scope) RandRangeable() (Variable, bool) {
 	})
 }
 
+// Returns a random variable that can be cleared
+func (s Scope) RandClearable() (Variable, bool) {
+	return s.RandPred(func(v Variable, _ ...Type) bool {
+		switch v.Type.(type) {
+		case ArrayType, MapType:
+			return true
+		default:
+			return false
+		}
+	})
+}
+
 // Returns a chan (of any subtype)
 func (s Scope) RandChan() (Variable, bool) {
 	return s.RandPred(func(v Variable, _ ...Type) bool {

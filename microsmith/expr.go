@@ -155,18 +155,18 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 	switch t := t.(type) {
 
 	case BasicType, TypeParam:
-		switch eb.R.Intn(5) {
+		switch eb.R.Intn(7) {
 		case 0:
 			if bt, ok := t.(BasicType); ok {
 				return eb.Cast(bt)
 			}
 			fallthrough
-		case 1:
+		case 1, 2, 3:
 			return eb.UnaryExpr(t)
-		case 2:
-			return eb.UnaryExpr(t)
-		default:
+		case 4, 5, 6:
 			return eb.BinaryExpr(t)
+		default:
+			panic("unreachable")
 		}
 
 	case ArrayType:
