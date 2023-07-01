@@ -675,7 +675,14 @@ func (eb *ExprBuilder) CallFunction(v Variable, ct ...Type) *ast.CallExpr {
 		ce.Args = []ast.Expr{sl}
 
 	case "unsafe.Sizeof", "unsafe.Alignof":
-		t := eb.pb.RandBaseType()
+		t := eb.pb.RandType()
+		_, isPtr := t.(PointerType)
+		_, isFnc := t.(FuncType)
+		for isPtr || isFnc {
+			t = eb.pb.RandType()
+			_, isPtr = t.(PointerType)
+			_, isFnc = t.(FuncType)
+		}
 		if eb.Deepen() {
 			ce.Args = []ast.Expr{eb.Expr(t)}
 		} else {
