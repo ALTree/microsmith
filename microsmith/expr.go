@@ -645,7 +645,7 @@ func (eb *ExprBuilder) CallFunction(v Variable, ct ...Type) *ast.CallExpr {
 		}
 		t := ct[0]
 
-		for i := 0; i < 1+eb.R.Intn(4); i++ {
+		for i := 0; i < 1+eb.R.Intn(5); i++ {
 			if eb.Deepen() {
 				ce.Args = append(ce.Args, eb.Expr(t))
 			} else {
@@ -656,7 +656,7 @@ func (eb *ExprBuilder) CallFunction(v Variable, ct ...Type) *ast.CallExpr {
 	case "unsafe.Offsetof":
 		var sl *ast.SelectorExpr
 
-		// if we can get a variable, use that (as long it has at least
+		// If we can get a variable, use that (as long it has at least
 		// one field). Otherwise, conjure a literal of a random struct
 		// type.
 		v, ok := eb.S.RandStruct()

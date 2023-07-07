@@ -225,10 +225,7 @@ func (sb *StmtBuilder) AssignStmt() *ast.AssignStmt {
 func (sb *StmtBuilder) BranchStmt() *ast.BranchStmt {
 	var bs ast.BranchStmt
 
-	bs.Tok = RandItem(
-		sb.R,
-		[]token.Token{token.GOTO, token.CONTINUE, token.BREAK},
-	)
+	bs.Tok = RandItem(sb.R, []token.Token{token.GOTO, token.CONTINUE, token.BREAK})
 
 	// break/continue/goto to a label with chance 0.25
 	if len(sb.labels) > 0 && sb.R.Intn(4) == 0 {
@@ -245,7 +242,6 @@ func (sb *StmtBuilder) BranchStmt() *ast.BranchStmt {
 	}
 
 	return &bs
-
 }
 
 // BlockStmt returns a new Block Statement. The returned Stmt is
@@ -467,7 +463,7 @@ func (sb *StmtBuilder) ForStmt() *ast.ForStmt {
 	// - Init and Post statements with chance 0.5
 	// - A body with chance 0.97 (1-1/32)
 	if sb.R.Intn(16) > 0 {
-		fs.Cond = sb.E.Expr(BasicType{"bool"})
+		fs.Cond = sb.E.Expr(BT{"bool"})
 	}
 	if sb.R.Intn(2) > 0 {
 		fs.Init = sb.AssignStmt()
@@ -489,7 +485,7 @@ func (sb *StmtBuilder) ForStmt() *ast.ForStmt {
 	for _, l := range sb.labels {
 		fs.Body.List = append(fs.Body.List,
 			&ast.BranchStmt{
-				Tok:   []token.Token{token.GOTO, token.BREAK, token.CONTINUE}[sb.R.Intn(3)],
+				Tok:   RandItem(sb.R, []token.Token{token.GOTO, token.BREAK, token.CONTINUE}),
 				Label: &ast.Ident{Name: l},
 			})
 	}
@@ -504,14 +500,14 @@ func (sb *StmtBuilder) RangeStmt(arr Variable) *ast.RangeStmt {
 	sb.C.inLoop = true
 	defer func() { sb.depth--; sb.C.inLoop = old }()
 
-	i := sb.S.NewIdent(BasicType{"int"})
+	i := sb.S.NewIdent(BT{"int"})
 	var v *ast.Ident
 	switch arr.Type.(type) {
 	case ArrayType:
 		v = sb.S.NewIdent(arr.Type.(ArrayType).Base())
 	case BasicType:
 		if arr.Type.(BasicType).N == "string" {
-			v = sb.S.NewIdent(BasicType{"rune"})
+			v = sb.S.NewIdent(BT{"rune"})
 		} else {
 			panic("cannot range on non-string BasicType")
 		}
@@ -535,7 +531,7 @@ func (sb *StmtBuilder) RangeStmt(arr Variable) *ast.RangeStmt {
 	for _, l := range sb.labels {
 		rs.Body.List = append(rs.Body.List,
 			&ast.BranchStmt{
-				Tok:   []token.Token{token.GOTO, token.BREAK, token.CONTINUE}[sb.R.Intn(3)],
+				Tok:   RandItem(sb.R, []token.Token{token.GOTO, token.BREAK, token.CONTINUE}),
 				Label: &ast.Ident{Name: l},
 			})
 	}
@@ -572,7 +568,7 @@ func (sb *StmtBuilder) IfStmt() *ast.IfStmt {
 	defer func() { sb.depth-- }()
 
 	is := &ast.IfStmt{
-		Cond: sb.E.Expr(BasicType{"bool"}),
+		Cond: sb.E.Expr(BT{"bool"}),
 		Body: sb.BlockStmt(),
 	}
 

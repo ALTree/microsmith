@@ -46,23 +46,23 @@ func NewPackageBuilder(conf ProgramConf, pkg string, progb *ProgramBuilder) *Pac
 
 	// Add predeclared base types
 	pb.baseTypes = []Type{
-		BasicType{"int"},
-		BasicType{"bool"},
-		BasicType{"byte"},
-		BasicType{"int8"},
-		BasicType{"int16"},
-		BasicType{"int32"},
-		BasicType{"int64"},
-		BasicType{"uint"},
-		BasicType{"uintptr"},
-		BasicType{"float32"},
-		BasicType{"float64"},
-		BasicType{"complex128"},
-		BasicType{"rune"},
-		BasicType{"string"},
+		BT{"int"},
+		BT{"bool"},
+		BT{"byte"},
+		BT{"int8"},
+		BT{"int16"},
+		BT{"int32"},
+		BT{"int64"},
+		BT{"uint"},
+		BT{"uintptr"},
+		BT{"float32"},
+		BT{"float64"},
+		BT{"complex128"},
+		BT{"rune"},
+		BT{"string"},
 	}
 	if conf.TypeParams {
-		pb.baseTypes = append(pb.baseTypes, BasicType{"any"})
+		pb.baseTypes = append(pb.baseTypes, BT{"any"})
 	}
 
 	return &pb
@@ -211,7 +211,7 @@ func (pb *PackageBuilder) File() *ast.File {
 	//   var i int
 	// So we always have an int variable in scope.
 	af.Decls = append(af.Decls, MakeInt())
-	pb.Scope().AddVariable(&ast.Ident{Name: "i"}, BasicType{"int"})
+	pb.Scope().AddVariable(&ast.Ident{Name: "i"}, BT{"int"})
 
 	// half a dozen top-level variables
 	for i := 1; i <= 6; i++ {
