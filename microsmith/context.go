@@ -49,7 +49,7 @@ type ProgramConf struct {
 
 func RandItem[T any](r *rand.Rand, a []T) T {
 	if r == nil {
-		panic("RandItem called with nil rand.Rand")
+		panic("RandItem: nil rand.Rand")
 	}
 	return a[r.Intn(len(a))]
 }

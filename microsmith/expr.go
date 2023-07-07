@@ -51,11 +51,11 @@ func (eb *ExprBuilder) BasicLit(t BasicType) ast.Expr {
 		bl.Value = RandRune()
 	case "float32", "float64":
 		bl.Kind = token.FLOAT
-		bl.Value = strconv.FormatFloat(999*(eb.R.Float64()), 'f', 1, 64)
+		bl.Value = strconv.FormatFloat(1e4*(eb.R.Float64()), 'f', 1, 64)
 	case "complex128":
 		// There's no complex basiclit, generate an IMAG
 		bl.Kind = token.IMAG
-		bl.Value = strconv.FormatFloat(99*(eb.R.Float64()), 'f', 2, 64) + "i"
+		bl.Value = strconv.FormatFloat(1e4*(eb.R.Float64()), 'f', 2, 64) + "i"
 	case "bool":
 		if eb.R.Intn(2) == 0 {
 			return TrueIdent
@@ -414,8 +414,11 @@ func (eb *ExprBuilder) SliceExpr(v Variable) *ast.SliceExpr {
 	}
 
 	var low, high ast.Expr
-	indV, hasInt := eb.S.RandVar(BT{"int"})
-	if hasInt && eb.Deepen() {
+	indV, ok := eb.S.RandVar(BT{"int"})
+	if !ok { // there's always an int in scope
+		panic("unreachable")
+	}
+	if eb.Deepen() {
 		if eb.R.Intn(8) > 0 {
 			low = &ast.BinaryExpr{
 				X:  indV.Name,
@@ -614,7 +617,7 @@ func (eb *ExprBuilder) CallFunction(v Variable, ct ...Type) *ast.CallExpr {
 		if eb.R.Intn(3) == 0 {
 			t1, t2 = ArrayOf(BT{N: "byte"}), BT{N: "string"}
 		} else {
-			t1 = ArrayOf(eb.pb.RandBaseType())
+			t1 = ArrayOf(eb.pb.RandType())
 			t2 = t1
 		}
 		if eb.Deepen() {
@@ -625,8 +628,8 @@ func (eb *ExprBuilder) CallFunction(v Variable, ct ...Type) *ast.CallExpr {
 
 	case "len":
 		var t Type
-		if eb.R.Intn(2) == 0 {
-			t = ArrayOf(eb.pb.RandBaseType())
+		if eb.R.Intn(3) < 2 {
+			t = ArrayOf(eb.pb.RandType())
 		} else {
 			t = BT{"string"}
 		}
@@ -782,16 +785,11 @@ func (eb *ExprBuilder) MakeMakeCall(t Type) *ast.CallExpr {
 
 func (eb *ExprBuilder) ConjureAndCallFunc(t Type) *ast.CallExpr {
 
-	// Random func type, 2 parameters, return type t.
-	ft := &FuncType{
-		"FU",
-		[]Type{eb.pb.RandType(), eb.pb.RandType()},
-		[]Type{t},
-		true,
+	ft := &FuncType{"FU", []Type{}, []Type{t}, true}
+	for i := 0; i < eb.R.Intn(5); i++ {
+		ft.Args = append(ft.Args, eb.pb.RandType())
 	}
 
-	// Empty body (avoid excessive nesting, we are just building
-	// an expression after all), except for the return statement.
 	var retExpr ast.Expr
 	if eb.Deepen() {
 		retExpr = eb.Expr(t)
@@ -803,12 +801,12 @@ func (eb *ExprBuilder) ConjureAndCallFunc(t Type) *ast.CallExpr {
 	fl := &ast.FuncLit{
 		Type: &ast.FuncType{Params: p, Results: r},
 		Body: &ast.BlockStmt{List: []ast.Stmt{
-			eb.pb.sb.AssignStmt(),                         // one Stmt
+			eb.pb.sb.AssignStmt(),                         // one statement
 			&ast.ReturnStmt{Results: []ast.Expr{retExpr}}, // the return
 		}},
 	}
 
-	// if we are in a defer, optionally add a recover call before
+	// If we are in a defer, optionally add a recover call before
 	// the return statement.
 	if eb.C.inDefer && eb.R.Intn(4) == 0 {
 		fl.Body.List = append(
@@ -817,7 +815,7 @@ func (eb *ExprBuilder) ConjureAndCallFunc(t Type) *ast.CallExpr {
 		)
 	}
 
-	// and then call it
+	// Finally, call it.
 	args := make([]ast.Expr, 0, len(ft.Args))
 	for _, arg := range ft.Args {
 		args = append(args, eb.VarOrLit(arg))
