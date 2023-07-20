@@ -37,6 +37,10 @@ func Ident(t Type) string {
 			return "i64_"
 		case "int":
 			return "i"
+		case "uint32":
+			return "u32_"
+		case "uint64":
+			return "u64_"
 		case "uint":
 			return "u"
 		case "uintptr":
@@ -148,7 +152,7 @@ func IsOrdered(t Type) bool {
 
 func (t BasicType) NeedsCast() bool {
 	switch t.N {
-	case "byte", "int8", "int16", "int32", "int64", "uint", "uintptr", "float32", "any":
+	case "byte", "int8", "int16", "int32", "int64", "uint", "uint32", "uint64", "uintptr", "float32", "any":
 		return true
 	default:
 		return false
@@ -446,9 +450,10 @@ func (ft FuncType) MakeFieldLists(named bool, s int) (*ast.FieldList, *ast.Field
 
 type BT = BasicType
 
-// Casts, builtins, and some standard library function that can be
-// assumed to exists, and can be called. Any null Args or Ret is
-// custom-handled when generating the Expressions.
+// builtins and a few standard library functions to generate calls to.
+// Any null Args or Ret is custom-handled when building the function
+// call.
+
 var BuiltinsFuncs = []FuncType{
 
 	// builtins ----------------
@@ -481,7 +486,11 @@ var BuiltinsFuncs = []FuncType{
 
 var StdlibFuncs = []FuncType{
 
-	// math ----------------
+	// atomic
+	//
+	// builds below, see MakeAtomicFuncs
+
+	// math
 	{
 		N:    "math.Max",
 		Args: []Type{BT{"float64"}, BT{"float64"}},
@@ -503,7 +512,7 @@ var StdlibFuncs = []FuncType{
 		Ret:  []Type{BT{"float64"}},
 	},
 
-	// strings ----------------
+	// strings
 	{
 		N:    "strings.Contains",
 		Args: []Type{BT{"string"}, BT{"string"}},
@@ -527,14 +536,14 @@ var StdlibFuncs = []FuncType{
 		Ret: []Type{BT{"string"}},
 	},
 
-	// reflect ----------------
+	// reflect
 	{
 		N:    "reflect.DeepEqual",
 		Args: nil,
 		Ret:  []Type{BT{"bool"}},
 	},
 
-	// unsafe ----------------
+	// unsafe
 	{
 		N:    "unsafe.Sizeof",
 		Args: nil,
@@ -565,6 +574,36 @@ var StdlibFuncs = []FuncType{
 		Args: []Type{BT{"string"}},
 		Ret:  []Type{PointerType{BT{"byte"}}},
 	},
+}
+
+func MakeAtomicFuncs() []Variable {
+
+	types := []string{"uint32", "uint64", "uintptr"}
+	vs := []Variable{}
+
+	for _, t := range types {
+		for _, fun := range []string{"atomic.Add", "atomic.Swap"} {
+			f := FuncType{
+				N:    fun + strings.Title(t),
+				Args: []Type{PointerOf(BT{t}), BT{t}},
+				Ret:  []Type{BT{t}},
+			}
+
+			vs = append(vs, Variable{f, &ast.Ident{Name: f.N}})
+		}
+	}
+
+	for _, t := range types {
+		f := FuncType{
+			N:    "atomic.Load" + strings.Title(t),
+			Args: []Type{PointerOf(BT{t})},
+			Ret:  []Type{BT{t}},
+		}
+
+		vs = append(vs, Variable{f, &ast.Ident{Name: f.N}})
+	}
+
+	return vs
 }
 
 // --------------------------------
@@ -825,7 +864,7 @@ func UnaryOps(t Type) []token.Token {
 	switch t2 := t.(type) {
 	case BasicType:
 		switch t.Name() {
-		case "byte", "uint", "uintptr":
+		case "byte", "uint32", "uint64", "uint", "uintptr":
 			return []token.Token{token.ADD}
 		case "int", "rune", "int8", "int16", "int32", "int64":
 			return []token.Token{token.ADD, token.SUB, token.XOR}
@@ -850,7 +889,7 @@ func BinOps(t Type) []token.Token {
 
 	case BasicType:
 		switch t.Name() {
-		case "byte", "uint", "int8", "int16", "int32", "int64":
+		case "byte", "uint32", "uint64", "uint", "int8", "int16", "int32", "int64":
 			return []token.Token{
 				token.ADD, token.AND, token.AND_NOT, token.MUL,
 				token.OR, token.QUO, token.REM, token.SHL, token.SHR,

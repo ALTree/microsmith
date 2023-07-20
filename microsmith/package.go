@@ -29,7 +29,8 @@ func NewPackageBuilder(conf ProgramConf, pkg string, progb *ProgramBuilder) *Pac
 		pb:  progb,
 	}
 
-	// Initialize Context.Scope with the predeclared functions:
+	// Initialize Context.Scope with predeclared and a few stdlib
+	// functions
 	scope := Scope{pb: &pb, vars: make([]Variable, 0, 64)}
 	for _, f := range BuiltinsFuncs {
 		scope.vars = append(scope.vars, Variable{f, &ast.Ident{Name: f.N}})
@@ -37,6 +38,8 @@ func NewPackageBuilder(conf ProgramConf, pkg string, progb *ProgramBuilder) *Pac
 	for _, f := range StdlibFuncs {
 		scope.vars = append(scope.vars, Variable{f, &ast.Ident{Name: f.N}})
 	}
+	scope.vars = append(scope.vars, MakeAtomicFuncs()...)
+
 	pb.ctx.scope = &scope
 
 	// Create the Stmt and Expr builders
@@ -46,13 +49,15 @@ func NewPackageBuilder(conf ProgramConf, pkg string, progb *ProgramBuilder) *Pac
 
 	// Add predeclared base types
 	pb.baseTypes = []Type{
-		BT{"int"},
 		BT{"bool"},
 		BT{"byte"},
+		BT{"int"},
 		BT{"int8"},
 		BT{"int16"},
 		BT{"int32"},
 		BT{"int64"},
+		BT{"uint32"},
+		BT{"uint64"},
 		BT{"uint"},
 		BT{"uintptr"},
 		BT{"float32"},
@@ -191,7 +196,7 @@ func (pb *PackageBuilder) File() *ast.File {
 		}
 	}
 
-	pkgs := []string{"math", "reflect", "strings", "unsafe"}
+	pkgs := []string{"sync/atomic", "math", "reflect", "strings", "unsafe"}
 	for _, p := range pkgs {
 		af.Decls = append(af.Decls, MakeImport(p))
 	}
@@ -322,6 +327,9 @@ func MakeUsePakage(p string) *ast.GenDecl {
 				},
 			},
 		}
+	case "sync/atomic":
+		se.X = &ast.Ident{Name: "atomic"}
+		se.Sel = &ast.Ident{Name: "LoadInt32"}
 	default:
 		fs := map[string]string{
 			"math":    "Sqrt",

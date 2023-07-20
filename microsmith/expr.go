@@ -43,7 +43,7 @@ func (eb *ExprBuilder) Deepen() bool {
 func (eb *ExprBuilder) BasicLit(t BasicType) ast.Expr {
 	bl := new(ast.BasicLit)
 	switch t.Name() {
-	case "byte", "uint", "uintptr", "int", "int8", "int16", "int32", "int64", "any":
+	case "byte", "uint32", "uint64", "uint", "uintptr", "int", "int8", "int16", "int32", "int64", "any":
 		bl.Kind = token.INT
 		bl.Value = strconv.Itoa(eb.R.Intn(100))
 	case "rune":
