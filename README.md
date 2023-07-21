@@ -61,6 +61,7 @@ used to stress-test Go compilers.
 - [#60991 internal compiler error: assertion failed](https://github.com/golang/go/issues/60991)
 - [#61041 internal compiler error: not lowered: v654, Int64Hi INT32 INT](https://github.com/golang/go/issues/61041)
 - [#61127 internal compiler error: panic on clear of empty struct slice](https://github.com/golang/go/issues/61127)
+- [#61486 internal compiler error: panic: builtins.go: assertion failed](https://github.com/golang/go/issues/61486)
 
 
 ##### gccgo
