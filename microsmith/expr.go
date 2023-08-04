@@ -170,6 +170,19 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 		}
 
 	case ArrayType:
+		if t.Etype.Name() == "byte" && eb.R.Intn(3) == 0 {
+			var arg ast.Expr
+			if eb.Deepen() {
+				arg = eb.Expr(BT{"string"})
+			} else {
+				arg = eb.VarOrLit(BT{"string"})
+			}
+			return &ast.CallExpr{
+				Fun:  &ast.Ident{Name: t.Name()},
+				Args: []ast.Expr{arg},
+			}
+		}
+
 		if eb.R.Intn(2) == 0 {
 			return eb.MakeAppendCall(t)
 		}
@@ -564,6 +577,22 @@ func (eb *ExprBuilder) BinaryExpr(t Type) ast.Expr {
 }
 
 func (eb *ExprBuilder) Cast(t BasicType) *ast.CallExpr {
+
+	// handle string([]byte) cast
+	if t.Equal(BT{"string"}) {
+		var arg ast.Expr
+		if eb.Deepen() {
+			arg = eb.Expr(ArrayOf(BT{"byte"}))
+		} else {
+			arg = eb.VarOrLit(ArrayOf(BT{"byte"}))
+		}
+		return &ast.CallExpr{
+			Fun:  &ast.Ident{Name: t.N},
+			Args: []ast.Expr{arg},
+		}
+	}
+
+	// numeric casts
 	t2 := t
 	if IsNumeric(t) {
 		t2 = eb.pb.RandNumericType()
