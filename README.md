@@ -63,6 +63,7 @@ used to stress-test Go compilers.
 - [#61127 internal compiler error: panic on clear of empty struct slice](https://github.com/golang/go/issues/61127)
 - [#61486 internal compiler error: panic: builtins.go: assertion failed](https://github.com/golang/go/issues/61486)
 - [#61778 internal compiler error:  value .autotmp_1 incorrectly live at entry](https://github.com/golang/go/issues/61778)
+- [#61819 16 bit-width, short branch too far on loong64](https://github.com/golang/go/issues/61819)
 
 
 ##### gccgo
