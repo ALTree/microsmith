@@ -191,6 +191,9 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 	case ChanType, FuncType, MapType, StructType:
 		return eb.VarOrLit(t)
 
+	case InterfaceType:
+		return &ast.Ident{Name: "nil"}
+
 	case PointerType:
 		// Either return a literal of the requested pointer type, &x
 		// with x of type t.Base(), or nil.
@@ -284,7 +287,7 @@ func (eb *ExprBuilder) VarOrLit(t Type) ast.Expr {
 					&ast.ChanType{Dir: 3, Value: t.Base().Ast()},
 				},
 			}
-		case PointerType, FuncType:
+		case PointerType, FuncType, InterfaceType:
 			return &ast.Ident{Name: "nil"}
 		case TypeParam:
 			return eb.TypeParamLit(t)
@@ -335,6 +338,8 @@ func (eb *ExprBuilder) SubTypeExpr(e ast.Expr, t, target Type) ast.Expr {
 		return eb.SubTypeExpr(eb.StructFieldExpr(e, t, target), target, target)
 	case FuncType:
 		return eb.SubTypeExpr(eb.CallExpr(e, t.Args), t.Ret[0], target)
+	case InterfaceType:
+		return eb.SubTypeExpr(eb.MethodExpr(e, t, target), target, target)
 	default:
 		panic("unhandled type " + t.Name())
 	}
@@ -371,6 +376,22 @@ func (eb *ExprBuilder) CallExpr(e ast.Expr, at []Type) *ast.CallExpr {
 		}
 	}
 	return &ast.CallExpr{Fun: e, Args: args}
+}
+
+// Returns v.M(...)
+func (eb *ExprBuilder) MethodExpr(e ast.Expr, t InterfaceType, target Type) ast.Expr {
+	for _, m := range t.Methods {
+		if m.Func.Contains(target) {
+			sl := &ast.SelectorExpr{X: e, Sel: m.Name}
+			if m.Func.Equal(target) {
+				return sl
+			} else {
+				return eb.CallExpr(sl, m.Func.Args)
+			}
+		}
+	}
+
+	panic("unreachable:" + t.Name() + " " + " target: " + target.Name())
 }
 
 // Returns e[...]
@@ -710,10 +731,12 @@ func (eb *ExprBuilder) CallFunction(v Variable, ct ...Type) *ast.CallExpr {
 		t := eb.pb.RandType()
 		_, isPtr := t.(PointerType)
 		_, isFnc := t.(FuncType)
-		for isPtr || isFnc {
+		_, isInt := t.(InterfaceType)
+		for isPtr || isFnc || isInt {
 			t = eb.pb.RandType()
 			_, isPtr = t.(PointerType)
 			_, isFnc = t.(FuncType)
+			_, isInt = t.(InterfaceType)
 		}
 		if eb.Deepen() {
 			ce.Args = []ast.Expr{eb.Expr(t)}

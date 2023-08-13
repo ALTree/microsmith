@@ -369,9 +369,13 @@ func (pb *PackageBuilder) MakeRandConstraint(name string) (*ast.GenDecl, Constra
 	var types []Type
 	for len(types) < 1+pb.rs.Intn(8) {
 		t := pb.RandType()
-		if strings.Contains(t.Name(), "int32") { // conflicts with rune
+		name := t.Name()
+		if strings.Contains(name, "int32") { // conflicts with rune
 			// t.Contains() doesn't work with map[int32] because
 			// Contains only looks at map values, not keys.
+			continue
+		}
+		if strings.Contains(name, "interface") {
 			continue
 		}
 		same := false

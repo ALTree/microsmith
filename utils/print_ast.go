@@ -9,8 +9,12 @@ import (
 var src string = `
 package p
 
-func f() int {
-  return 1
+func f() {
+  var i interface {
+    M1(string) int
+    M2(int) string
+  }
+  i.M1("hello")
 }
 `
 

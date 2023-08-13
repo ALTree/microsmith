@@ -79,6 +79,8 @@ func Ident(t Type) string {
 		return "p" + Ident(t.Btype)
 	case TypeParam:
 		return strings.ToLower(t.N.Name) + "_"
+	case InterfaceType:
+		return "in"
 	default:
 		panic("Ident: unknown type " + t.Name())
 	}
@@ -260,7 +262,6 @@ func ArrayOf(t Type) ArrayType {
 // --------------------------------
 
 type StructType struct {
-	N      string
 	Ftypes []Type   // fields types
 	Fnames []string // field names
 }
@@ -658,7 +659,7 @@ func ChanOf(t Type) ChanType {
 }
 
 // --------------------------------
-//   map
+//   Map
 // --------------------------------
 
 type MapType struct {
@@ -705,7 +706,75 @@ func MapOf(kt, vt Type) MapType {
 }
 
 // --------------------------------
-//   Contraint
+//   InterfaceType
+// --------------------------------
+type InterfaceType struct {
+	Methods []Method
+}
+
+type Method struct {
+	Name *ast.Ident
+	Func FuncType
+}
+
+func (m Method) Equal(m2 Method) bool {
+	return m.Name.Name == m2.Name.Name &&
+		m.Func.Equal(m2.Func)
+}
+
+func (t InterfaceType) Comparable() bool { return true }
+
+func (t InterfaceType) Ast() ast.Expr {
+	e := &ast.InterfaceType{Methods: &ast.FieldList{}}
+	for _, m := range t.Methods {
+		fld := &ast.Field{
+			Names: []*ast.Ident{m.Name},
+			Type:  m.Func.Ast(),
+		}
+		e.Methods.List = append(e.Methods.List, fld)
+	}
+	return e
+}
+
+func (t InterfaceType) Equal(t2 Type) bool {
+	if t2, ok := t2.(InterfaceType); !ok {
+		return false
+	} else {
+		if len(t.Methods) != len(t2.Methods) {
+			return false
+		}
+		for i, m := range t.Methods {
+			if !m.Equal(t2.Methods[i]) {
+				return false
+			}
+		}
+		return true
+	}
+}
+
+func (t InterfaceType) Name() string {
+	var buf bytes.Buffer
+	format.Node(&buf, token.NewFileSet(), t.Ast())
+	return buf.String()
+}
+
+func (t InterfaceType) Sliceable() bool { return false }
+
+func (t InterfaceType) Contains(t2 Type) bool {
+	if t.Equal(t2) {
+		return true
+	}
+
+	for _, m := range t.Methods {
+		if m.Func.Contains(t2) {
+			return true
+		}
+	}
+	return false
+}
+
+// --------------------------------
+//   Constraint
 // --------------------------------
 
 // type I0 {        <---- N
@@ -856,9 +925,9 @@ var SizeofIdent = &ast.Ident{Name: "Sizeof"}
 var TrueIdent = &ast.Ident{Name: "true"}
 var FalseIdent = &ast.Ident{Name: "false"}
 
-// ------------------------------------ //
-//   Ops                                //
-// ------------------------------------ //
+// ------------------------------------
+//   Ops
+// ------------------------------------
 
 func UnaryOps(t Type) []token.Token {
 	switch t2 := t.(type) {

@@ -1,6 +1,7 @@
 package microsmith
 
 import (
+	"go/ast"
 	"math/rand"
 	"strconv"
 	"strings"
@@ -94,6 +95,8 @@ func (pb PackageBuilder) RandType() Type {
 		return pb.RandStructType()
 	case 9:
 		return pb.RandFuncType()
+	case 10:
+		return pb.RandInterfaceType()
 	default:
 		return pb.RandBaseType()
 	}
@@ -144,7 +147,7 @@ func (pb PackageBuilder) RandNumericType() BasicType {
 }
 
 func (pb PackageBuilder) RandStructType() StructType {
-	st := StructType{"ST", []Type{}, []string{}}
+	st := StructType{[]Type{}, []string{}}
 	for i := 0; i < pb.rs.Intn(6); i++ {
 		t := pb.RandType()
 		st.Ftypes = append(st.Ftypes, t)
@@ -171,4 +174,13 @@ func (pb PackageBuilder) RandFuncType() FuncType {
 	ret := []Type{pb.RandType()}
 
 	return FuncType{"FU", args, ret, true}
+}
+
+func (pb PackageBuilder) RandInterfaceType() InterfaceType {
+	var in InterfaceType
+	for i := 0; i < pb.rs.Intn(4); i++ {
+		t := pb.RandFuncType()
+		in.Methods = append(in.Methods, Method{&ast.Ident{Name: "M" + strconv.Itoa(i)}, t})
+	}
+	return in
 }
