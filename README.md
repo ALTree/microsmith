@@ -67,6 +67,7 @@ used to stress-test Go compilers.
 - [#61895 internal compiler error: unexpected frame offset for open-coded defer](https://github.com/golang/go/issues/61895)
 - [#61908 internal compiler error: missed typecheck](https://github.com/golang/go/issues/61908)
 - [#61992 internal compiler error: startMem[b1] has different values](https://github.com/golang/go/issues/61992)
+- [#62515 internal compiler error: unused auto: .autotmp_4](https://github.com/golang/go/issues/62515)
 
 
 ##### gccgo
