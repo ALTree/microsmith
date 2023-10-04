@@ -30,6 +30,7 @@ var (
 	binF       = flag.String("bin", "", "Go toolchain to fuzz")
 	workdirF   = flag.String("work", "work", "Workdir for the fuzzing process")
 	notpF      = flag.Bool("notp", false, "Don't use type-parameters")
+	expF       = flag.String("exp", "", "GOEXPERIMENT")
 )
 
 var archs []string
@@ -70,10 +71,11 @@ func main() {
 	}
 
 	fz := microsmith.BuildOptions{
-		Toolchain: *binF,
-		Noopt:     *nooptF,
-		Race:      *raceF,
-		Ssacheck:  *ssacheckF,
+		Toolchain:  *binF,
+		Noopt:      *nooptF,
+		Race:       *raceF,
+		Ssacheck:   *ssacheckF,
+		Experiment: *expF,
 	}
 
 	archs = strings.Split(*archF, ",")
@@ -127,6 +129,7 @@ func Fuzz(bo microsmith.BuildOptions) {
 	conf := microsmith.ProgramConf{
 		MultiPkg:   !*singlePkgF,
 		TypeParams: !*notpF,
+		ExpRange:   *expF == "range",
 	}
 
 	for {
@@ -185,6 +188,7 @@ func debugRun() {
 	conf := microsmith.ProgramConf{
 		MultiPkg:   !*singlePkgF,
 		TypeParams: !*notpF,
+		ExpRange:   *expF == "range",
 	}
 	gp := microsmith.NewProgram(conf)
 	err := gp.Check()
@@ -217,6 +221,11 @@ func installDeps(arch string, bo microsmith.BuildOptions) {
 	}
 
 	env = append(env, "GOOS="+goos, "GOARCH="+arch, "GODEBUG=installgoroot=all")
+
+	if exp := bo.Experiment; exp != "" {
+		env = append(env, "GOEXPERIMENT="+exp)
+	}
+
 	cmd.Env = env
 
 	out, err := cmd.CombinedOutput()

@@ -42,6 +42,7 @@ func NewContext(pc ProgramConf) *Context {
 type ProgramConf struct {
 	MultiPkg   bool // for -multipkg
 	TypeParams bool // for -tp
+	ExpRange   bool // for new range types
 }
 
 // --------------------------------

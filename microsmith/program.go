@@ -63,6 +63,7 @@ type Package struct {
 type BuildOptions struct {
 	Toolchain             string
 	Noopt, Race, Ssacheck bool
+	Experiment            string
 }
 
 var CheckSeed int
@@ -209,6 +210,10 @@ func (prog *Program) Compile(arch string, bo BuildOptions) (string, error) {
 			env = append(env, "GOARCH=amd64", "GOAMD64=v3")
 		} else {
 			env = append(env, "GOARCH="+arch)
+		}
+
+		if exp := bo.Experiment; exp != "" {
+			env = append(env, "GOEXPERIMENT="+exp)
 		}
 
 		// Setup compile args

@@ -493,16 +493,26 @@ func (sb *StmtBuilder) RangeStmt() *ast.RangeStmt {
 	var e ast.Expr
 
 	// randomly choose a type for the expression we range on
-	switch sb.R.Intn(3) {
+	l := 2
+	if sb.C.programConf.ExpRange {
+		l = 3
+	}
+
+	f := sb.E.Expr
+	if !sb.E.Deepen() {
+		f = sb.E.VarOrLit
+	}
+
+	switch sb.R.Intn(l) {
 	case 0:
 		t := ArrayOf(sb.pb.RandType())
-		e = sb.E.Expr(t)
+		e = f(t)
 		v = sb.S.NewIdent(t.Base())
 	case 1:
-		e = sb.E.Expr(BT{"string"})
+		e = f(BT{"string"})
 		v = sb.S.NewIdent(BT{"rune"})
 	case 2:
-		e = sb.E.Expr(BT{"int"})
+		e = f(BT{"int"})
 	default:
 		panic("unreachable")
 	}

@@ -79,8 +79,11 @@ func compile(t *testing.T, conf microsmith.ProgramConf) {
 			t.Fatalf("Could not write to file: %s", err)
 		}
 		bo := microsmith.BuildOptions{
-			GetToolchain(),
-			false, false, false,
+			Toolchain:  GetToolchain(),
+			Noopt:      false,
+			Race:       false,
+			Ssacheck:   false,
+			Experiment: "",
 		}
 		out, err := gp.Compile("amd64", bo)
 		if err != nil && !strings.Contains(out, "internal compiler error") {
