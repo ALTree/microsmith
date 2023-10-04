@@ -4,6 +4,7 @@ import (
 	"go/ast"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"strings"
 	"testing"
 
@@ -71,6 +72,19 @@ func compile(t *testing.T, conf microsmith.ProgramConf) {
 		}
 	}
 
+	// build toolchain
+	cmd := exec.Command(GetToolchain(), "install", "std")
+	env := append(os.Environ(), "GODEBUG=installgoroot=all")
+	if conf.ExpRange {
+		env = append(env, "GOEXPERIMENT=range")
+	}
+	cmd.Env = env
+
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("Installing dependencies failed with error:\n----\n%s\n%s\n----\n", out, err)
+	}
+
 	keepdir := false
 	for i := 0; i < lim; i++ {
 		gp := microsmith.NewProgram(conf)
@@ -102,6 +116,15 @@ func TestCompile(t *testing.T) {
 		microsmith.ProgramConf{
 			MultiPkg:   false,
 			TypeParams: false,
+		})
+}
+
+func TestCompileRangeExp(t *testing.T) {
+	compile(t,
+		microsmith.ProgramConf{
+			MultiPkg:   false,
+			TypeParams: false,
+			ExpRange:   true,
 		})
 }
 
