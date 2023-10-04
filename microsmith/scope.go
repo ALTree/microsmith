@@ -149,20 +149,6 @@ func (s Scope) RandVarSubType(t Type) (Variable, bool) {
 	}, t)
 }
 
-// Returns a random variable that can be ranged on
-func (s Scope) RandRangeable() (Variable, bool) {
-	return s.RandPred(func(v Variable, _ ...Type) bool {
-		switch v.Type.(type) {
-		case ArrayType:
-			return true
-		case BasicType:
-			return v.Type.(BasicType).N == "string"
-		default:
-			return false
-		}
-	})
-}
-
 // Returns a random variable that can be cleared
 func (s Scope) RandClearable() (Variable, bool) {
 	return s.RandPred(func(v Variable, _ ...Type) bool {

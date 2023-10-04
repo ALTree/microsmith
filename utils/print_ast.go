@@ -10,11 +10,9 @@ var src string = `
 package p
 
 func f() {
-  var i interface {
-    M1(string) int
-    M2(int) string
+  for i := range 10 {
+    println(i)
   }
-  i.M1("hello")
 }
 `
 

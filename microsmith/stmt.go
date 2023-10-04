@@ -57,36 +57,20 @@ func (sb *StmtBuilder) Stmt() ast.Stmt {
 	case 1:
 		return sb.BlockStmt()
 	case 2:
-		// If at least one array or string is in scope, generate a for
-		// range loop with chance 0.5; otherwise generate a plain loop
-		arr, ok := sb.S.RandRangeable()
-		if ok && sb.R.Intn(2) == 0 {
-			if sb.R.Intn(4) == 0 { // 1 in 4 loops have a label
-				sb.label++
-				label := fmt.Sprintf("lab%v", sb.label)
-				sb.labels = append(sb.labels, label)
-				fs := &ast.LabeledStmt{
-					Label: &ast.Ident{Name: label},
-					Stmt:  sb.RangeStmt(arr),
-				}
-				return fs
-			} else {
-				return sb.RangeStmt(arr)
-			}
-		} else {
-			if sb.R.Intn(4) == 0 { // 1 in 4 loops have a label
-				sb.label++
-				label := fmt.Sprintf("lab%v", sb.label)
-				sb.labels = append(sb.labels, label)
-				fs := &ast.LabeledStmt{
-					Label: &ast.Ident{Name: label},
-					Stmt:  sb.ForStmt(),
-				}
-				return fs
-			} else {
-				return sb.ForStmt()
-			}
+		if sb.R.Intn(2) == 0 { // for range
+			return sb.RangeStmt()
 		}
+		if sb.R.Intn(4) == 0 { // labelled plain for
+			sb.label++
+			label := fmt.Sprintf("lab%v", sb.label)
+			sb.labels = append(sb.labels, label)
+			fs := &ast.LabeledStmt{
+				Label: &ast.Ident{Name: label},
+				Stmt:  sb.ForStmt(),
+			}
+			return fs
+		}
+		return sb.ForStmt() // plain for
 	case 3:
 		return sb.IfStmt()
 	case 4:
@@ -494,48 +478,46 @@ func (sb *StmtBuilder) ForStmt() *ast.ForStmt {
 	return &fs
 }
 
-func (sb *StmtBuilder) RangeStmt(arr Variable) *ast.RangeStmt {
+func (sb *StmtBuilder) RangeStmt() *ast.RangeStmt {
 	sb.depth++
 	old := sb.C.inLoop
 	sb.C.inLoop = true
 	defer func() { sb.depth--; sb.C.inLoop = old }()
 
-	i := sb.S.NewIdent(BT{"int"})
+	// it's either
+	//   i := range [int]
+	// or
+	//   i, v := range [string or slice]
+
 	var v *ast.Ident
-	switch arr.Type.(type) {
-	case ArrayType:
-		v = sb.S.NewIdent(arr.Type.(ArrayType).Base())
-	case BasicType:
-		if arr.Type.(BasicType).N == "string" {
-			v = sb.S.NewIdent(BT{"rune"})
-		} else {
-			panic("cannot range on non-string BasicType")
-		}
+	var e ast.Expr
+
+	// randomly choose a type for the expression we range on
+	switch sb.R.Intn(3) {
+	case 0:
+		t := ArrayOf(sb.pb.RandType())
+		e = sb.E.Expr(t)
+		v = sb.S.NewIdent(t.Base())
+	case 1:
+		e = sb.E.Expr(BT{"string"})
+		v = sb.S.NewIdent(BT{"rune"})
+	case 2:
+		e = sb.E.Expr(BT{"int"})
 	default:
-		panic("Bad range type")
+		panic("unreachable")
 	}
 
-	rs := &ast.RangeStmt{
-		Key:   i,
-		Value: v,
-		Tok:   token.DEFINE,
-		X:     arr.Name,
-	}
+	i := sb.S.NewIdent(BT{"int"})
+	rs := &ast.RangeStmt{Key: i, Tok: token.DEFINE, X: e, Body: sb.BlockStmt()}
 
-	rs.Body = sb.BlockStmt()
-	rs.Body.List = append(rs.Body.List, sb.UseVars([]*ast.Ident{i, v}))
-
+	rs.Body.List = append(rs.Body.List, sb.UseVars([]*ast.Ident{i}))
 	sb.S.DeleteIdentByName(i)
-	sb.S.DeleteIdentByName(v)
 
-	for _, l := range sb.labels {
-		rs.Body.List = append(rs.Body.List,
-			&ast.BranchStmt{
-				Tok:   RandItem(sb.R, []token.Token{token.GOTO, token.BREAK, token.CONTINUE}),
-				Label: &ast.Ident{Name: l},
-			})
+	if v != nil {
+		rs.Value = v
+		rs.Body.List = append(rs.Body.List, sb.UseVars([]*ast.Ident{v}))
+		sb.S.DeleteIdentByName(v)
 	}
-	sb.labels = []string{}
 
 	return rs
 }
