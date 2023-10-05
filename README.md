@@ -69,6 +69,7 @@ used to stress-test Go compilers.
 - [#61992 internal compiler error: startMem[b1] has different values](https://github.com/golang/go/issues/61992)
 - [#62515 internal compiler error: unused auto: .autotmp_4](https://github.com/golang/go/issues/62515)
 - [#62698 internal compiler error: Invalid PPC64 rotate mask](https://github.com/golang/go/issues/62698)
+- [#63378 internal compiler error on range over negative integer](https://github.com/golang/go/issues/63378)
 
 
 ##### gccgo
