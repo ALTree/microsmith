@@ -539,7 +539,7 @@ func (sb *StmtBuilder) DeferStmt() *ast.DeferStmt {
 		old := sb.C.inDefer
 		sb.C.inDefer = true
 		defer func() { sb.C.inDefer = old }()
-		return &ast.DeferStmt{Call: sb.E.ConjureAndCallFunc(sb.pb.RandBaseType())}
+		return &ast.DeferStmt{Call: sb.E.ConjureAndCallFunc(sb.pb.RandType())}
 	}
 }
 
@@ -550,7 +550,7 @@ func (sb *StmtBuilder) GoStmt() *ast.GoStmt {
 		old := sb.C.inDefer
 		sb.C.inDefer = true
 		defer func() { sb.C.inDefer = old }()
-		return &ast.GoStmt{Call: sb.E.ConjureAndCallFunc(sb.pb.RandBaseType())}
+		return &ast.GoStmt{Call: sb.E.ConjureAndCallFunc(sb.pb.RandType())}
 	}
 }
 
@@ -634,7 +634,7 @@ func (sb *StmtBuilder) SendStmt() *ast.SendStmt {
 		// no channels in scope, but we can send to a brand new one,
 		// i.e. generate
 		//   make(chan int) <- 1
-		t := sb.pb.RandBaseType()
+		t := sb.pb.RandType()
 		st.Chan = sb.E.VarOrLit(ChanType{T: t})
 		st.Value = sb.E.Expr(t)
 	} else {
@@ -676,7 +676,7 @@ func (sb *StmtBuilder) CommClause(def bool) *ast.CommClause {
 		// when no chan is in scope, we select from a newly made channel,
 		// i.e. we build and return
 		//    select <-make(chan <random type>)
-		t := sb.pb.RandBaseType()
+		t := sb.pb.RandType()
 		return &ast.CommClause{
 			Comm: &ast.ExprStmt{
 				X: &ast.UnaryExpr{
@@ -709,7 +709,7 @@ func (sb *StmtBuilder) CommClause(def bool) *ast.CommClause {
 func (sb *StmtBuilder) ExprStmt() *ast.ExprStmt {
 
 	// Close(ch) or <-ch.
-	if ch, ok := sb.S.RandChan(); ok && sb.R.Intn(2) == 0 {
+	if ch, ok := sb.S.RandChan(); ok && sb.R.Intn(4) == 0 {
 		if sb.R.Intn(2) == 0 {
 			return &ast.ExprStmt{
 				X: sb.E.ChanReceiveExpr(ch.Name),
@@ -728,7 +728,7 @@ func (sb *StmtBuilder) ExprStmt() *ast.ExprStmt {
 	// that could choose a built-in (like len), which is not allowed
 	// as an ExprStmt. Conjuring a new function and calling it will
 	// always work.
-	return &ast.ExprStmt{sb.E.ConjureAndCallFunc(sb.pb.RandBaseType())}
+	return &ast.ExprStmt{sb.E.ConjureAndCallFunc(sb.pb.RandType())}
 }
 
 func (sb *StmtBuilder) ClearStmt() *ast.ExprStmt {
