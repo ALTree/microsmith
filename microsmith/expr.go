@@ -87,7 +87,7 @@ func (eb *ExprBuilder) CompositeLit(t Type) *ast.CompositeLit {
 					elems = append(elems, eb.VarOrLit(t.Base()))
 				}
 			}
-		} else { // keyed literal (a single one, since dups are a compile error)
+		} else { // keyed literals
 			if eb.Deepen() {
 				elems = append(elems, &ast.KeyValueExpr{
 					Key:   eb.BasicLit(BT{N: "int"}),
@@ -104,20 +104,24 @@ func (eb *ExprBuilder) CompositeLit(t Type) *ast.CompositeLit {
 		return cl
 	case MapType:
 		cl := &ast.CompositeLit{Type: t.Ast()}
-		var e *ast.KeyValueExpr
 		if eb.Deepen() {
-			e = &ast.KeyValueExpr{
-				Key:   eb.Expr(t.KeyT),
-				Value: eb.Expr(t.ValueT),
+			// since Expr as allowed as key, we can generate
+			// non-constant expr which guarantees no "duplicate key"
+			// compilation error.
+			for i := 0; i < eb.R.Intn(4); i++ {
+				ek, ok := eb.NonConstantExpr(t.KeyT)
+				cl.Elts = append(cl.Elts, &ast.KeyValueExpr{Key: ek, Value: eb.Expr(t.ValueT)})
+				if !ok {
+					break
+				}
 			}
 		} else {
-			e = &ast.KeyValueExpr{
+			// No way to guarantee uniqueness, only generate one pair.
+			cl.Elts = append(cl.Elts, &ast.KeyValueExpr{
 				Key:   eb.VarOrLit(t.KeyT),
 				Value: eb.VarOrLit(t.ValueT),
-			}
+			})
 		}
-		// duplicate map keys are a compile error
-		cl.Elts = []ast.Expr{e}
 		return cl
 	case StructType:
 		cl := &ast.CompositeLit{Type: t.Ast()}
@@ -148,7 +152,7 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 	eb.depth++
 	defer func() { eb.depth-- }()
 
-	if n := eb.R.Intn(10); n == 0 {
+	if eb.R.Intn(8) == 0 {
 		return eb.RandCallExpr(t)
 	}
 
@@ -241,6 +245,38 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 
 	default:
 		panic("Unimplemented type " + t.Name())
+	}
+}
+
+// NonConstantExpr is like Expr(), except it either returns a non
+// constant expression (and true), or signals failure to do so by
+// returning false as the second value.
+func (eb *ExprBuilder) NonConstantExpr(t Type) (ast.Expr, bool) {
+	eb.depth++
+	defer func() { eb.depth-- }()
+
+	switch t := t.(type) {
+	case BasicType:
+		v, ok := eb.S.RandVar(t)
+		if !ok {
+			return eb.Expr(t), false
+		}
+		op := RandItem(eb.R, BinOps(t))
+		// Reject shifts to avoid "negative shift count" errors. In
+		// other places we handle the issue by forcing the RHS to be
+		// an uint, but here we don't want to change the operand's
+		// types. Also reject divisions to avoid "division by zero"
+		// errors.
+		if op == token.SHL || op == token.SHR || op == token.REM || op == token.QUO {
+			op = token.ADD
+		}
+		return &ast.BinaryExpr{
+			X:  v.Name,
+			Op: op,
+			Y:  eb.Expr(t),
+		}, true
+	default:
+		return eb.Expr(t), true
 	}
 }
 
@@ -398,7 +434,7 @@ func (eb *ExprBuilder) MethodExpr(e ast.Expr, t InterfaceType, target Type) ast.
 func (eb *ExprBuilder) IndexExpr(e ast.Expr) *ast.IndexExpr {
 	var i ast.Expr
 	if eb.R.Intn(2) == 0 && eb.Deepen() {
-		i = eb.BinaryExpr(BT{"int"})
+		i, _ = eb.NonConstantExpr(BT{"int"})
 	} else {
 		i = eb.VarOrLit(BT{"int"})
 	}
@@ -448,23 +484,18 @@ func (eb *ExprBuilder) SliceExpr(v Variable) *ast.SliceExpr {
 	}
 
 	var low, high ast.Expr
-	indV, ok := eb.S.RandVar(BT{"int"})
-	if !ok { // there's always an int in scope
-		panic("unreachable")
-	}
+	var ok bool
 	if eb.Deepen() {
 		if eb.R.Intn(8) > 0 {
-			low = &ast.BinaryExpr{
-				X:  indV.Name,
-				Op: token.ADD,
-				Y:  eb.Expr(BT{"int"}),
+			low, ok = eb.NonConstantExpr(BT{"int"})
+			if !ok {
+				panic("NonConstantExpr of int failed")
 			}
 		}
 		if eb.R.Intn(8) > 0 {
-			high = &ast.BinaryExpr{
-				X:  eb.Expr(BT{"int"}),
-				Op: token.ADD,
-				Y:  indV.Name,
+			high, ok = eb.NonConstantExpr(BT{"int"})
+			if !ok {
+				panic("NonConstantExpr of int failed")
 			}
 		}
 	} else {

@@ -254,7 +254,7 @@ func (sb *StmtBuilder) BlockStmt() *ast.BlockStmt {
 		// so we don't generate almost-empty blocks.
 		nStmts = 8
 	} else {
-		nStmts = 6 + sb.R.Intn(5)
+		nStmts = 4 + sb.R.Intn(5)
 	}
 
 	// Fill the block's body.
@@ -599,29 +599,41 @@ func (sb *StmtBuilder) SwitchStmt() *ast.SwitchStmt {
 	}
 
 	ss := &ast.SwitchStmt{
-		Tag: sb.E.Expr(t),
-		Body: &ast.BlockStmt{
-			List: []ast.Stmt{
-				// Only generate one normal and one default case to
-				// avoid 'duplicate case' compilation errors.
-				sb.CaseClause(t, false),
-				sb.CaseClause(t, true),
-			},
-		},
+		Tag:  sb.E.Expr(t),
+		Body: &ast.BlockStmt{List: []ast.Stmt{}},
 	}
 
+	// add a few cases
+	for i := 0; i < sb.R.Intn(4); i++ {
+		cc, ok := sb.CaseClause(t, false)
+		ss.Body.List = append(ss.Body.List, cc)
+		if !ok {
+			break
+		}
+	}
+
+	// optionally add a default case
+	if sb.R.Intn(3) != 0 {
+		cc, _ := sb.CaseClause(t, true)
+		ss.Body.List = append(ss.Body.List, cc)
+	}
 	return ss
 }
 
 // builds and returns a single CaseClause switching on type kind. If
 // def is true, returns a 'default' switch case.
-func (sb *StmtBuilder) CaseClause(t Type, def bool) *ast.CaseClause {
+func (sb *StmtBuilder) CaseClause(t Type, def bool) (*ast.CaseClause, bool) {
 	cc := new(ast.CaseClause)
+	ret := true
 	if !def {
-		cc.List = []ast.Expr{sb.E.Expr(t)}
+		e, ok := sb.E.NonConstantExpr(t)
+		if !ok {
+			ret = false
+		}
+		cc.List = []ast.Expr{e}
 	}
 	cc.Body = sb.BlockStmt().List
-	return cc
+	return cc, ret
 }
 
 func (sb *StmtBuilder) IncDecStmt(t Type) *ast.IncDecStmt {
@@ -631,9 +643,6 @@ func (sb *StmtBuilder) IncDecStmt(t Type) *ast.IncDecStmt {
 func (sb *StmtBuilder) SendStmt() *ast.SendStmt {
 	st := new(ast.SendStmt)
 	if ch, ok := sb.S.RandChan(); !ok {
-		// no channels in scope, but we can send to a brand new one,
-		// i.e. generate
-		//   make(chan int) <- 1
 		t := sb.pb.RandType()
 		st.Chan = sb.E.VarOrLit(ChanType{T: t})
 		st.Value = sb.E.Expr(t)
@@ -649,13 +658,19 @@ func (sb *StmtBuilder) SelectStmt() *ast.SelectStmt {
 	sb.depth++
 	defer func() { sb.depth-- }()
 
-	return &ast.SelectStmt{
-		Body: &ast.BlockStmt{List: []ast.Stmt{
-			sb.CommClause(false),
-			sb.CommClause(false),
-			sb.CommClause(true),
-		}},
+	ss := &ast.SelectStmt{
+		Body: &ast.BlockStmt{List: []ast.Stmt{}},
 	}
+
+	for i := 0; i < sb.R.Intn(4); i++ {
+		ss.Body.List = append(ss.Body.List, sb.CommClause(false))
+	}
+
+	if sb.R.Intn(4) == 0 {
+		ss.Body.List = append(ss.Body.List, sb.CommClause(true))
+	}
+
+	return ss
 }
 
 // CommClause is the Select clause. This function returns:
