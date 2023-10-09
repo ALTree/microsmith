@@ -70,6 +70,7 @@ used to stress-test Go compilers.
 - [#62515 internal compiler error: unused auto: .autotmp_4](https://github.com/golang/go/issues/62515)
 - [#62698 internal compiler error: Invalid PPC64 rotate mask](https://github.com/golang/go/issues/62698)
 - [#63378 internal compiler error on range over negative integer](https://github.com/golang/go/issues/63378)
+- [#63462 internal compiler error: panic during expand calls on ARM](https://github.com/golang/go/issues/63462)
 
 
 ##### gccgo
