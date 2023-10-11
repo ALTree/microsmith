@@ -79,6 +79,7 @@ used to stress-test Go compilers.
 - [#47130 internal compiler error: in write_equal_function](https://github.com/golang/go/issues/47130)
 - [#56109 gccgo rejects valid program](https://github.com/golang/go/issues/56109)
 - [#56113 internal compiler error: in gen_reg_rtx, at emit-rtl](https://github.com/golang/go/issues/56113)
+- [#63495 error: esc already decorated call](https://github.com/golang/go/issues/63495)
 
 
 ##### tinygo
