@@ -152,7 +152,6 @@ func (pb PackageBuilder) RandStructType() StructType {
 	for i := 0; i < pb.rs.Intn(6); i++ {
 		t := pb.RandType()
 		st.Ftypes = append(st.Ftypes, t)
-		// we want structs fields to be exported, capitalize the names
 		st.Fnames = append(st.Fnames, strings.Title(Ident(t))+strconv.Itoa(i))
 	}
 	return st
@@ -175,6 +174,24 @@ func (pb PackageBuilder) RandFuncType() FuncType {
 	ret := []Type{pb.RandType()}
 
 	return FuncType{"FU", args, ret, true}
+}
+
+func (pb PackageBuilder) RandRangeableFuncType() FuncType {
+	arg := FuncType{
+		N:     "FU",
+		Args:  []Type{},
+		Ret:   []Type{BT{"bool"}},
+		Local: true,
+	}
+
+	// One of
+	//   func(func()bool) bool
+	//   func(func(V)bool) bool
+	//   func(func(K, V)bool) bool
+	for i := 0; i < pb.rs.Intn(3); i++ {
+		arg.Args = append(arg.Args, pb.RandType())
+	}
+	return FuncType{"FU", []Type{arg}, []Type{BT{"bool"}}, true}
 }
 
 func (pb PackageBuilder) RandInterfaceType() InterfaceType {
