@@ -492,18 +492,13 @@ func (sb *StmtBuilder) RangeStmt() *ast.RangeStmt {
 	var v *ast.Ident
 	var e ast.Expr
 
-	// randomly choose a type for the expression we range on
-	l := 2
-	if sb.C.programConf.ExpRange {
-		l = 3
-	}
-
 	f := sb.E.Expr
 	if !sb.E.Deepen() {
 		f = sb.E.VarOrLit
 	}
 
-	switch sb.R.Intn(l) {
+	// randomly choose a type for the expression we range on
+	switch sb.R.Intn(3) {
 	case 0:
 		t := ArrayOf(sb.pb.RandType())
 		e = f(t)
