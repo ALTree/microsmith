@@ -188,6 +188,7 @@ func debugRun() {
 	conf := microsmith.ProgramConf{
 		MultiPkg:   !*singlePkgF,
 		TypeParams: !*notpF,
+		RangeFunc:  *expF == "rangefunc",
 	}
 	gp := microsmith.NewProgram(conf)
 	err := gp.Check()
