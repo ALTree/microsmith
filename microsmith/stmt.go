@@ -517,6 +517,7 @@ func (sb *StmtBuilder) RangeStmt() *ast.RangeStmt {
 		v = sb.S.NewIdent(BT{"rune"})
 	case 2: // int
 		e = f(BT{"int"})
+		k = sb.S.NewIdent(BT{"int"})
 	case 3: // func
 		ft := sb.pb.RandRangeableFuncType()
 		p, r := ft.MakeFieldLists(true, sb.funcp)
@@ -528,10 +529,7 @@ func (sb *StmtBuilder) RangeStmt() *ast.RangeStmt {
 		// generate a body for the func
 		e = &ast.FuncLit{
 			Type: &ast.FuncType{Params: p, Results: r},
-			Body: &ast.BlockStmt{List: []ast.Stmt{
-				sb.AssignStmt(),
-				&ast.ReturnStmt{},
-			}},
+			Body: &ast.BlockStmt{List: []ast.Stmt{sb.AssignStmt()}},
 		}
 
 		// remove the yield param from the scope
@@ -539,14 +537,13 @@ func (sb *StmtBuilder) RangeStmt() *ast.RangeStmt {
 		sb.funcp--
 
 		// declare the iteration variables if needed
-		switch len(ft.Args[0].(FuncType).Args) {
+		switch args := ft.Args[0].(FuncType).Args; len(args) {
 		case 1:
-			k = sb.S.NewIdent(ft.Args[0].(FuncType).Args[0])
+			k = sb.S.NewIdent(args[0])
 		case 2:
-			k = sb.S.NewIdent(ft.Args[0].(FuncType).Args[0])
-			v = sb.S.NewIdent(ft.Args[0].(FuncType).Args[1])
+			k = sb.S.NewIdent(args[0])
+			v = sb.S.NewIdent(args[1])
 		}
-
 	default:
 		panic("unreachable")
 	}
