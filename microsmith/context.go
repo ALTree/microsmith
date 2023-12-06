@@ -42,6 +42,7 @@ func NewContext(pc ProgramConf) *Context {
 type ProgramConf struct {
 	MultiPkg   bool // for -multipkg
 	TypeParams bool // for -tp
+	RangeFunc  bool // for -exp=rangefunc
 }
 
 // --------------------------------
@@ -190,7 +191,7 @@ func (pb PackageBuilder) RandRangeableFuncType() FuncType {
 	for i := 0; i < pb.rs.Intn(3); i++ {
 		arg.Args = append(arg.Args, pb.RandType())
 	}
-	return FuncType{"FU", []Type{arg}, []Type{BT{"bool"}}, true}
+	return FuncType{"FU", []Type{arg}, []Type{}, true}
 }
 
 func (pb PackageBuilder) RandInterfaceType() InterfaceType {

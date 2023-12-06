@@ -706,7 +706,9 @@ func MapOf(kt, vt Type) MapType {
 }
 
 // --------------------------------
-//   InterfaceType
+//
+//	InterfaceType
+//
 // --------------------------------
 type InterfaceType struct {
 	Methods []Method
@@ -778,8 +780,9 @@ func (t InterfaceType) Contains(t2 Type) bool {
 // --------------------------------
 
 // type I0 {        <---- N
-//   int | string   <-- Types
-// }
+//
+//	  int | string   <-- Types
+//	}
 type Constraint struct {
 	N     *ast.Ident
 	Types []Type

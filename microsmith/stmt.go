@@ -348,7 +348,7 @@ func (sb *StmtBuilder) DeclStmt(nVars int, t Type) (*ast.DeclStmt, []*ast.Ident)
 			}
 
 			// add the parameters to the scope
-			for i, param := range fl.Type.Params.List {
+			for i, param := range p.List {
 				if ep, ok := t2.Args[i].(EllipsisType); ok {
 					sb.S.AddVariable(param.Names[0], ArrayOf(ep.Base))
 				} else {
@@ -485,11 +485,13 @@ func (sb *StmtBuilder) RangeStmt() *ast.RangeStmt {
 	defer func() { sb.depth--; sb.C.inLoop = old }()
 
 	// it's either
-	//   i := range [int]
+	//   k := range [int]
 	// or
-	//   i, v := range [string or slice]
+	//   k, v := range [string or slice]
+	// or
+	//  [k, v] := range [function]
 
-	var v *ast.Ident
+	var k, v *ast.Ident
 	var e ast.Expr
 
 	f := sb.E.Expr
@@ -497,26 +499,65 @@ func (sb *StmtBuilder) RangeStmt() *ast.RangeStmt {
 		f = sb.E.VarOrLit
 	}
 
+	rl := 3
+	if sb.pb.pb.conf.RangeFunc {
+		rl = 4
+	}
+
 	// randomly choose a type for the expression we range on
-	switch sb.R.Intn(3) {
-	case 0:
+	switch sb.R.Intn(rl) {
+	case 0: // slice
 		t := ArrayOf(sb.pb.RandType())
 		e = f(t)
+		k = sb.S.NewIdent(BT{"int"})
 		v = sb.S.NewIdent(t.Base())
-	case 1:
+	case 1: // string
 		e = f(BT{"string"})
+		k = sb.S.NewIdent(BT{"int"})
 		v = sb.S.NewIdent(BT{"rune"})
-	case 2:
+	case 2: // int
 		e = f(BT{"int"})
+	case 3: // func
+		ft := sb.pb.RandRangeableFuncType()
+		p, r := ft.MakeFieldLists(true, sb.funcp)
+
+		// add yield param to the scope
+		sb.S.AddVariable(p.List[0].Names[0], ft.Args[0])
+		sb.funcp++
+
+		// generate a body for the func
+		e = &ast.FuncLit{
+			Type: &ast.FuncType{Params: p, Results: r},
+			Body: &ast.BlockStmt{List: []ast.Stmt{
+				sb.AssignStmt(),
+				&ast.ReturnStmt{},
+			}},
+		}
+
+		// remove the yield param from the scope
+		sb.S.DeleteIdentByName(p.List[0].Names[0])
+		sb.funcp--
+
+		// declare the iteration variables if needed
+		switch len(ft.Args[0].(FuncType).Args) {
+		case 1:
+			k = sb.S.NewIdent(ft.Args[0].(FuncType).Args[0])
+		case 2:
+			k = sb.S.NewIdent(ft.Args[0].(FuncType).Args[0])
+			v = sb.S.NewIdent(ft.Args[0].(FuncType).Args[1])
+		}
+
 	default:
 		panic("unreachable")
 	}
 
-	i := sb.S.NewIdent(BT{"int"})
-	rs := &ast.RangeStmt{Key: i, Tok: token.DEFINE, X: e, Body: sb.BlockStmt()}
+	rs := &ast.RangeStmt{Tok: token.DEFINE, X: e, Body: sb.BlockStmt()}
 
-	rs.Body.List = append(rs.Body.List, sb.UseVars([]*ast.Ident{i}))
-	sb.S.DeleteIdentByName(i)
+	if k != nil {
+		rs.Key = k
+		rs.Body.List = append(rs.Body.List, sb.UseVars([]*ast.Ident{k}))
+		sb.S.DeleteIdentByName(k)
+	}
 
 	if v != nil {
 		rs.Value = v
