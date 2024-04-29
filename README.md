@@ -88,3 +88,4 @@ used to stress-test Go compilers.
 - [#2749 panic: integer divide by zero on array of zero-sized elems](https://github.com/tinygo-org/tinygo/issues/2749)
 - [#2777 panic: compiler SIGSEGVs in transform.OptimizeAllocs call tree](https://github.com/tinygo-org/tinygo/issues/2777)
 - [#3083 panic: unknown type: chan int](https://github.com/tinygo-org/tinygo/issues/3083)
+- [#4214 panic: interp: load out of bounds](https://github.com/tinygo-org/tinygo/issues/4214)
