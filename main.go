@@ -129,7 +129,6 @@ func Fuzz(bo microsmith.BuildOptions) {
 	conf := microsmith.ProgramConf{
 		MultiPkg:   !*singlePkgF,
 		TypeParams: !*notpF,
-		RangeFunc:  *expF == "rangefunc",
 	}
 
 	for {
@@ -188,7 +187,6 @@ func debugRun() {
 	conf := microsmith.ProgramConf{
 		MultiPkg:   !*singlePkgF,
 		TypeParams: !*notpF,
-		RangeFunc:  *expF == "rangefunc",
 	}
 	gp := microsmith.NewProgram(conf)
 	err := gp.Check()

@@ -499,13 +499,8 @@ func (sb *StmtBuilder) RangeStmt() *ast.RangeStmt {
 		f = sb.E.VarOrLit
 	}
 
-	rl := 3
-	if sb.pb.pb.conf.RangeFunc {
-		rl = 4
-	}
-
 	// randomly choose a type for the expression we range on
-	switch sb.R.Intn(rl) {
+	switch sb.R.Intn(4) {
 	case 0: // slice
 		t := ArrayOf(sb.pb.RandType())
 		e = f(t)
@@ -527,9 +522,21 @@ func (sb *StmtBuilder) RangeStmt() *ast.RangeStmt {
 		sb.funcp++
 
 		// generate a body for the func
+		sb.depth++
+		var body *ast.BlockStmt
+		if sb.CanNest() {
+			old := sb.C.inLoop
+			sb.C.inLoop = false
+			body = sb.BlockStmt()
+			sb.C.inLoop = old
+		} else {
+			body = &ast.BlockStmt{List: []ast.Stmt{sb.AssignStmt()}}
+		}
+		sb.depth--
+
 		e = &ast.FuncLit{
 			Type: &ast.FuncType{Params: p, Results: r},
-			Body: &ast.BlockStmt{List: []ast.Stmt{sb.AssignStmt()}},
+			Body: body,
 		}
 
 		// remove the yield param from the scope

@@ -75,9 +75,6 @@ func compile(t *testing.T, conf microsmith.ProgramConf) {
 	// build toolchain
 	cmd := exec.Command(GetToolchain(), "install", "std")
 	env := append(os.Environ(), "GODEBUG=installgoroot=all")
-	if conf.RangeFunc {
-		env = append(env, "GOEXPERIMENT=rangefunc")
-	}
 	cmd.Env = env
 
 	out, err := cmd.CombinedOutput()
@@ -98,9 +95,6 @@ func compile(t *testing.T, conf microsmith.ProgramConf) {
 			Race:       false,
 			Ssacheck:   false,
 			Experiment: "",
-		}
-		if conf.RangeFunc {
-			bo.Experiment = "rangefunc"
 		}
 		out, err := gp.Compile("amd64", bo)
 		if err != nil && !strings.Contains(out, "internal compiler error") {
@@ -143,15 +137,6 @@ func TestCompileMultiPkgTypeParams(t *testing.T) {
 		microsmith.ProgramConf{
 			MultiPkg:   true,
 			TypeParams: true,
-		})
-}
-
-func TestCompileRangeFunc(t *testing.T) {
-	compile(t,
-		microsmith.ProgramConf{
-			MultiPkg:   true,
-			TypeParams: true,
-			RangeFunc:  true,
 		})
 }
 
