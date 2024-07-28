@@ -196,7 +196,7 @@ func (pb *PackageBuilder) File() *ast.File {
 		}
 	}
 
-	pkgs := []string{"sync/atomic", "math", "reflect", "strings", "unsafe"}
+	pkgs := []string{"sync/atomic", "math", "reflect", "strings", "unsafe", "slices"}
 	for _, p := range pkgs {
 		af.Decls = append(af.Decls, MakeImport(p))
 	}
@@ -308,44 +308,26 @@ func MakeImport(p string) *ast.GenDecl {
 }
 
 func MakeUsePakage(p string) *ast.GenDecl {
-	se := &ast.SelectorExpr{}
-	switch p {
-	case "unsafe":
-		// var _ = unsafe.Sizeof is not allowed, we need to call it.
-		return &ast.GenDecl{
-			Tok: token.VAR,
-			Specs: []ast.Spec{
-				&ast.ValueSpec{
-					Names: []*ast.Ident{&ast.Ident{Name: "_"}},
-					Values: []ast.Expr{&ast.CallExpr{
-						Fun: &ast.SelectorExpr{
-							X:   &ast.Ident{Name: "unsafe"},
-							Sel: &ast.Ident{Name: "Sizeof"},
-						},
-						Args: []ast.Expr{&ast.Ident{Name: "0"}},
-					}},
-				},
-			},
-		}
-	case "sync/atomic":
-		se.X = &ast.Ident{Name: "atomic"}
-		se.Sel = &ast.Ident{Name: "LoadInt32"}
-	default:
-		fs := map[string]string{
-			"math":    "Sqrt",
-			"strings": "Title",
-			"reflect": "DeepEqual",
-		}
-		se.X = &ast.Ident{Name: p}
-		se.Sel = &ast.Ident{Name: fs[p]}
+	m := map[string]struct{ p, f, v string }{
+		"unsafe":      {"unsafe", "Sizeof", "0"},
+		"sync/atomic": {"atomic", "LoadInt32", "nil"},
+		"slices":      {"slices", "All", "[]int{}"},
+		"math":        {"math", "Sqrt", "0"},
+		"strings":     {"strings", "Title", `""`},
+		"reflect":     {"reflect", "DeepEqual", "1,1"},
 	}
-
 	return &ast.GenDecl{
 		Tok: token.VAR,
 		Specs: []ast.Spec{
 			&ast.ValueSpec{
-				Names:  []*ast.Ident{&ast.Ident{Name: "_"}},
-				Values: []ast.Expr{se},
+				Names: []*ast.Ident{&ast.Ident{Name: "_"}},
+				Values: []ast.Expr{&ast.CallExpr{
+					Fun: &ast.SelectorExpr{
+						X:   &ast.Ident{Name: m[p].p},
+						Sel: &ast.Ident{Name: m[p].f},
+					},
+					Args: []ast.Expr{&ast.Ident{Name: m[p].v}},
+				}},
 			},
 		},
 	}

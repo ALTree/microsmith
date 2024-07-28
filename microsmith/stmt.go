@@ -514,42 +514,54 @@ func (sb *StmtBuilder) RangeStmt() *ast.RangeStmt {
 		e = f(BT{"int"})
 		k = sb.S.NewIdent(BT{"int"})
 	case 3: // func
-		ft := sb.pb.RandRangeableFuncType()
-		p, r := ft.MakeFieldLists(true, sb.funcp)
 
-		// add yield param to the scope
-		sb.S.AddVariable(p.List[0].Names[0], ft.Args[0])
-		sb.funcp++
-
-		// generate a body for the func
-		sb.depth++
-		var body *ast.BlockStmt
-		if sb.CanNest() {
-			old := sb.C.inLoop
-			sb.C.inLoop = false
-			body = sb.BlockStmt()
-			sb.C.inLoop = old
+		// 50/50 between generating a new Rangeable func type or a
+		// call to a function from the slices package.
+		if sb.R.Intn(2) == 0 {
+			t := sb.pb.RandType()
+			f := FuncType{N: "slices.All"}
+			e = sb.E.CallFunction(Variable{f, &ast.Ident{Name: f.N}}, t)
+			k = sb.S.NewIdent(BT{"int"})
+			v = sb.S.NewIdent(t)
 		} else {
-			body = &ast.BlockStmt{List: []ast.Stmt{sb.AssignStmt()}}
-		}
-		sb.depth--
 
-		e = &ast.FuncLit{
-			Type: &ast.FuncType{Params: p, Results: r},
-			Body: body,
-		}
+			ft := sb.pb.RandRangeableFuncType()
+			p, r := ft.MakeFieldLists(true, sb.funcp)
 
-		// remove the yield param from the scope
-		sb.S.DeleteIdentByName(p.List[0].Names[0])
-		sb.funcp--
+			// add yield param to the scope
+			sb.S.AddVariable(p.List[0].Names[0], ft.Args[0])
+			sb.funcp++
 
-		// declare the iteration variables if needed
-		switch args := ft.Args[0].(FuncType).Args; len(args) {
-		case 1:
-			k = sb.S.NewIdent(args[0])
-		case 2:
-			k = sb.S.NewIdent(args[0])
-			v = sb.S.NewIdent(args[1])
+			// generate a body for the func
+			sb.depth++
+			var body *ast.BlockStmt
+			if sb.CanNest() {
+				old := sb.C.inLoop
+				sb.C.inLoop = false
+				body = sb.BlockStmt()
+				sb.C.inLoop = old
+			} else {
+				body = &ast.BlockStmt{List: []ast.Stmt{sb.AssignStmt()}}
+			}
+			sb.depth--
+
+			e = &ast.FuncLit{
+				Type: &ast.FuncType{Params: p, Results: r},
+				Body: body,
+			}
+
+			// remove the yield param from the scope
+			sb.S.DeleteIdentByName(p.List[0].Names[0])
+			sb.funcp--
+
+			// declare the iteration variables if needed
+			switch args := ft.Args[0].(FuncType).Args; len(args) {
+			case 1:
+				k = sb.S.NewIdent(args[0])
+			case 2:
+				k = sb.S.NewIdent(args[0])
+				v = sb.S.NewIdent(args[1])
+			}
 		}
 	default:
 		panic("unreachable")

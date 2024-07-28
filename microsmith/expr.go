@@ -794,6 +794,17 @@ func (eb *ExprBuilder) CallFunction(v Variable, ct ...Type) *ast.CallExpr {
 			ce.Args = []ast.Expr{eb.VarOrLit(t1), eb.VarOrLit(t2)}
 		}
 
+	case "slices.All":
+		if len(ct) == 0 {
+			panic("slices.All needs additional type arg")
+		}
+		t := ArrayOf(ct[0])
+		if eb.Deepen() {
+			ce.Args = []ast.Expr{eb.Expr(t)}
+		} else {
+			ce.Args = []ast.Expr{eb.VarOrLit(t)}
+		}
+
 	default:
 		if f.Args == nil || f.Ret == nil {
 			panic("CallFunction: missing special handling for " + name)
