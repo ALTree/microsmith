@@ -89,3 +89,4 @@ used to stress-test Go compilers.
 - [#2777 panic: compiler SIGSEGVs in transform.OptimizeAllocs call tree](https://github.com/tinygo-org/tinygo/issues/2777)
 - [#3083 panic: unknown type: chan int](https://github.com/tinygo-org/tinygo/issues/3083)
 - [#4214 panic: interp: load out of bounds](https://github.com/tinygo-org/tinygo/issues/4214)
+- [#4441 panic: *ssa.opaqueType: deferStack](https://github.com/tinygo-org/tinygo/issues/4441)
