@@ -178,7 +178,7 @@ func Fuzz(bo microsmith.BuildOptions) {
 			}
 		}
 
-		atomic.AddInt64(&BuildCount, 1)
+		atomic.AddInt64(&BuildCount, int64(len(archs)))
 		gp.DeleteSource()
 	}
 }
