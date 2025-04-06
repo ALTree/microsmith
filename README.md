@@ -72,6 +72,7 @@ used to stress-test Go compilers.
 - [#63378 internal compiler error on range over negative integer](https://github.com/golang/go/issues/63378)
 - [#63462 internal compiler error: panic during expand calls on ARM](https://github.com/golang/go/issues/63462)
 - [#68816 internal compiler error: panic during prove](https://github.com/golang/go/issues/68816)
+- [#73180 illegal combination ADD $8, ZR, R2 on arm64](https://github.com/golang/go/issues/73180)
 
 ##### gccgo
 
