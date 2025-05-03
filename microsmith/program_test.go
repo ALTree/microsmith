@@ -3,6 +3,7 @@ package microsmith_test
 import (
 	"go/ast"
 	"io/ioutil"
+	"math/rand"
 	"os"
 	"os/exec"
 	"strings"
@@ -144,21 +145,17 @@ var sink *ast.File
 
 func benchHelper(b *testing.B, conf microsmith.ProgramConf) {
 	b.ReportAllocs()
-	pb := microsmith.NewProgramBuilder(conf, 1)
-	for i := 0; i < b.N; i++ {
-		db := microsmith.NewPackageBuilder(conf, "main", pb)
-		sink = db.File()
+	rand.Seed(1)
+	prog := microsmith.NewProgramBuilder(conf)
+	pb := microsmith.NewPackageBuilder(conf, "main", prog)
+	b.ResetTimer()
+	for b.Loop() {
+		sink = pb.File()
 	}
+
 }
 
 func BenchmarkSinglePkg(b *testing.B) {
-	benchHelper(b, microsmith.ProgramConf{
-		MultiPkg:   false,
-		TypeParams: false,
-	})
-}
-
-func BenchmarkSinglePkgTP(b *testing.B) {
 	benchHelper(b, microsmith.ProgramConf{
 		MultiPkg:   false,
 		TypeParams: true,

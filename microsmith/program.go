@@ -23,15 +23,11 @@ import (
 
 type ProgramBuilder struct {
 	conf ProgramConf
-	id   uint64
 	pkgs []*PackageBuilder
 }
 
-func NewProgramBuilder(conf ProgramConf, id uint64) *ProgramBuilder {
-	return &ProgramBuilder{
-		conf: conf,
-		id:   id,
-	}
+func NewProgramBuilder(conf ProgramConf) *ProgramBuilder {
+	return &ProgramBuilder{conf: conf}
 }
 
 func (pb *ProgramBuilder) NewPackage(pkg string) *Package {
@@ -50,7 +46,7 @@ func (pb *ProgramBuilder) NewPackage(pkg string) *Package {
 type Program struct {
 	workdir string     // directory where the Program files are written
 	pkgs    []*Package // the program's packages
-	id      uint64     // random id used in the names of the Program files
+	id      uint64     // random id used in the Program's filenames
 }
 
 type Package struct {
@@ -73,15 +69,14 @@ func init() {
 }
 
 func NewProgram(conf ProgramConf) *Program {
-	id := rand.Uint64()
-	pb := NewProgramBuilder(conf, id)
+	pb := NewProgramBuilder(conf)
 	pg := &Program{
-		id:   id,
+		id:   rand.Uint64(),
 		pkgs: make([]*Package, 0),
 	}
 
 	if conf.MultiPkg {
-		pg.pkgs = append(pg.pkgs, pb.NewPackage(fmt.Sprintf("a_%d", id)))
+		pg.pkgs = append(pg.pkgs, pb.NewPackage(fmt.Sprintf("a_%d", pg.id)))
 	}
 
 	// main has to be last because it calls functions from the other
