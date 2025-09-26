@@ -73,6 +73,7 @@ used to stress-test Go compilers.
 - [#63462 internal compiler error: panic during expand calls on ARM](https://github.com/golang/go/issues/63462)
 - [#68816 internal compiler error: panic during prove](https://github.com/golang/go/issues/68816)
 - [#73180 illegal combination ADD $8, ZR, R2 on arm64](https://github.com/golang/go/issues/73180)
+- [#75617 internal compiler error: bad conversion to untyped](https://github.com/golang/go/issues/75617)
 
 ##### gccgo
 
