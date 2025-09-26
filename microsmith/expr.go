@@ -196,51 +196,31 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 		return eb.VarOrLit(t)
 
 	case InterfaceType:
-		return &ast.Ident{Name: "nil"}
+		return CastToType(t, &ast.Ident{Name: "nil"})
 
 	case PointerType:
-		// Either return a literal of the requested pointer type, &x
-		// with x of type t.Base(), or nil.
+		// 50/50 between:
+		//  - a new() call
+		//  - a variable of type t, an unary &t.Base(), or a typed nil
+		if eb.R.Intn(2) == 0 {
+			ce := &ast.CallExpr{Fun: &ast.Ident{Name: "new"}}
+			if eb.Deepen() {
+				ce.Args = []ast.Expr{eb.Expr(t.Base())}
+			} else {
+				ce.Args = []ast.Expr{eb.VarOrLit(t.Base())}
+			}
+			return ce
+		}
+
 		vt, typeInScope := eb.S.RandVar(t)
 		vst, baseInScope := eb.S.RandVar(t.Base())
-		if typeInScope && baseInScope {
-			if eb.R.Intn(2) == 0 {
-				return vt.Name
-			} else {
-				return &ast.UnaryExpr{
-					Op: token.AND,
-					X:  vst.Name,
-				}
-			}
-		} else if typeInScope {
+		switch n := eb.R.Intn(3); {
+		case n == 0 && typeInScope:
 			return vt.Name
-		} else if baseInScope {
-			return &ast.UnaryExpr{
-				Op: token.AND,
-				X:  vst.Name,
-			}
-		} else {
-			// TODO(alb): this is not correct because Expr's contract
-			// says it returns an ast.Expr of type t, but here we may
-			// return a non-typed nil. This nil is fine in
-			//
-			//   var p *int
-			//   p = nil
-			//
-			// but it cannot be used as a general type t expr, for
-			// example this doesn't compile:
-			//
-			//   var i int
-			//   i = *nil
-			//
-			// That nil was returned by Expr() when requested an *int
-			// expr, but it's actually untyped.
-			//
-			// For now this works because we only dereference a
-			// pointer returned by Expr() in UnaryExpr(), and there we
-			// only do that when there's a pointer of that type in
-			// scope, so above we'll always enter the if typeInScope.
-			return &ast.Ident{Name: "nil"}
+		case n == 1 && baseInScope:
+			return &ast.UnaryExpr{Op: token.AND, X: vst.Name}
+		default:
+			return CastToType(t, &ast.Ident{Name: "nil"})
 		}
 
 	default:
@@ -281,7 +261,6 @@ func (eb *ExprBuilder) NonConstantExpr(t Type) (ast.Expr, bool) {
 }
 
 func (eb *ExprBuilder) VarOrLit(t Type) ast.Expr {
-
 	// If t is a type parameter, 50/50 between returning a variable
 	// and building a literal; except for type parameters that don't
 	// allow literals (like interface { int | []int }); for those it's
@@ -298,13 +277,12 @@ func (eb *ExprBuilder) VarOrLit(t Type) ast.Expr {
 	}
 
 	vst, typeCanDerive := eb.S.RandVarSubType(t)
-
 	if !typeCanDerive || !eb.Deepen() {
 		switch t := t.(type) {
 		case BasicType:
 			bl := eb.BasicLit(t)
 			if t.NeedsCast() {
-				bl = &ast.CallExpr{Fun: t.Ast(), Args: []ast.Expr{bl}}
+				bl = CastToType(t, bl)
 			}
 			return bl
 		case ArrayType, MapType:
@@ -324,10 +302,9 @@ func (eb *ExprBuilder) VarOrLit(t Type) ast.Expr {
 				},
 			}
 		case PointerType, FuncType, InterfaceType:
-			return &ast.Ident{Name: "nil"}
+			return CastToType(t, &ast.Ident{Name: "nil"})
 		case TypeParam:
 			return eb.TypeParamLit(t)
-
 		default:
 			panic("unhandled type " + t.Name())
 		}
@@ -598,14 +575,8 @@ func (eb *ExprBuilder) BinaryExpr(t Type) ast.Expr {
 			ue.Y = eb.SubTypeExpr(vi.Name, vi.Type, t2)
 		} else {
 			// Otherwise, cast from an int.
-			vi, ok := eb.S.RandVar(BT{"int"})
-			if !ok {
-				panic("BinaryExpr: no int in scope")
-			}
-			ue.Y = &ast.CallExpr{
-				Fun:  TypeIdent(t2.Name()),
-				Args: []ast.Expr{vi.Name},
-			}
+			vi, _ := eb.S.RandVar(BT{"int"})
+			ue.Y = CastToType(t2, vi.Name)
 		}
 
 		return ue

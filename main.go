@@ -122,7 +122,7 @@ func main() {
 }
 
 var crashWhitelist = []*regexp.Regexp{
-	//regexp.MustCompile("found illegal assignment"),
+	regexp.MustCompile("untyped bool"),
 }
 
 func Fuzz(bo microsmith.BuildOptions) {

@@ -456,8 +456,6 @@ type BT = BasicType
 // call.
 
 var BuiltinsFuncs = []FuncType{
-
-	// builtins ----------------
 	{
 		N:    "append",
 		Args: nil,
@@ -486,11 +484,6 @@ var BuiltinsFuncs = []FuncType{
 }
 
 var StdlibFuncs = []FuncType{
-
-	// atomic
-	//
-	// builds below, see MakeAtomicFuncs
-
 	// math
 	{
 		N:    "math.Max",
@@ -608,7 +601,7 @@ func MakeAtomicFuncs() []Variable {
 }
 
 // --------------------------------
-//   Chan
+// Chan
 // --------------------------------
 
 type ChanType struct {
@@ -659,7 +652,7 @@ func ChanOf(t Type) ChanType {
 }
 
 // --------------------------------
-//   Map
+// Map
 // --------------------------------
 
 type MapType struct {
@@ -706,9 +699,7 @@ func MapOf(kt, vt Type) MapType {
 }
 
 // --------------------------------
-//
-//	InterfaceType
-//
+// InterfaceType
 // --------------------------------
 type InterfaceType struct {
 	Methods []Method
@@ -798,7 +789,7 @@ func (c Constraint) Comparable() bool {
 }
 
 func (c Constraint) Ast() ast.Expr {
-	return c.N // TODO(alb): right?
+	return c.N
 }
 
 func (c Constraint) Equal(t Type) bool {
@@ -1039,4 +1030,12 @@ func (t TypeParam) CommonOps(fn func(t Type) []token.Token) []token.Token {
 		}
 	}
 	return res
+}
+
+// returns a (T)(arg) cast
+func CastToType(t Type, arg ast.Expr) *ast.CallExpr {
+	return &ast.CallExpr{
+		Fun:  &ast.ParenExpr{X: t.Ast()},
+		Args: []ast.Expr{arg},
+	}
 }
