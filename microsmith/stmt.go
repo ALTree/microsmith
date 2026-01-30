@@ -51,7 +51,7 @@ func (sb *StmtBuilder) Stmt() ast.Stmt {
 		return sb.AssignStmt()
 	}
 
-	switch sb.R.Intn(12) {
+	switch sb.R.Intn(11) {
 	case 0:
 		return sb.AssignStmt()
 	case 1:
@@ -90,8 +90,6 @@ func (sb *StmtBuilder) Stmt() ast.Stmt {
 		return sb.GoStmt()
 	case 10:
 		return sb.ExprStmt()
-	case 11:
-		return sb.ClearStmt()
 	default:
 		panic("unreachable")
 	}
@@ -775,31 +773,49 @@ func (sb *StmtBuilder) CommClause(def bool) *ast.CommClause {
 
 func (sb *StmtBuilder) ExprStmt() *ast.ExprStmt {
 
-	// Close(ch) or <-ch.
-	if ch, ok := sb.S.RandChan(); ok && sb.R.Intn(4) == 0 {
-		if sb.R.Intn(2) == 0 {
-			return &ast.ExprStmt{
-				X: sb.E.ChanReceiveExpr(ch.Name),
-			}
-		} else {
-			return &ast.ExprStmt{
-				X: &ast.CallExpr{
-					Fun:  CloseIdent,
-					Args: []ast.Expr{ch.Name},
-				},
+	// randomly choose between a few things we are able to generate
+	// and are ExprStmt, namely:
+	//  1.  close(channel)
+	//  2.  <-channel
+	//  3.  clear(array or map)
+	//  4.  a function call
+
+	switch sb.R.Intn(4) {
+	case 0:
+		// see if there's a channel in scope
+		if ch, ok := sb.S.RandChan(); ok {
+			// 50/50 between close and receive
+			if sb.R.Intn(2) == 0 {
+				return &ast.ExprStmt{
+					X: sb.E.ChanReceiveExpr(ch.Name),
+				}
+			} else {
+				return &ast.ExprStmt{
+					X: &ast.CallExpr{
+						Fun:  CloseIdent,
+						Args: []ast.Expr{ch.Name},
+					},
+				}
 			}
 		}
+		fallthrough
+	case 1:
+		return sb.ClearStmt()
+	case 2:
+		f := FuncType{N: "fmt.Print"}
+		e := sb.E.CallFunction(Variable{f, &ast.Ident{Name: f.N}})
+		return &ast.ExprStmt{e}
+	default:
+		// Call a random function. We don't use RandCallExpr() because
+		// that could choose a built-in (like len), which is not allowed
+		// as an ExprStmt. Conjuring a new function and calling it will
+		// always work.
+		return &ast.ExprStmt{sb.E.ConjureAndCallFunc(sb.pb.RandType())}
 	}
 
-	// Call a random function. We don't use RandCallExpr() because
-	// that could choose a built-in (like len), which is not allowed
-	// as an ExprStmt. Conjuring a new function and calling it will
-	// always work.
-	return &ast.ExprStmt{sb.E.ConjureAndCallFunc(sb.pb.RandType())}
 }
 
 func (sb *StmtBuilder) ClearStmt() *ast.ExprStmt {
-
 	var arg ast.Expr
 	if rn, ok := sb.S.RandClearable(); ok && sb.R.Intn(3) < 2 {
 		arg = rn.Name

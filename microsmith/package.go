@@ -196,7 +196,7 @@ func (pb *PackageBuilder) File() *ast.File {
 		}
 	}
 
-	pkgs := []string{"sync/atomic", "math", "reflect", "strings", "unsafe", "slices"}
+	pkgs := []string{"fmt", "math", "reflect", "slices", "strings", "sync/atomic", "unsafe"}
 	for _, p := range pkgs {
 		af.Decls = append(af.Decls, MakeImport(p))
 	}
@@ -309,12 +309,13 @@ func MakeImport(p string) *ast.GenDecl {
 
 func MakeUsePakage(p string) *ast.GenDecl {
 	m := map[string]struct{ p, f, v string }{
-		"unsafe":      {"unsafe", "Sizeof", "0"},
-		"sync/atomic": {"atomic", "LoadInt32", "nil"},
-		"slices":      {"slices", "All", "[]int{}"},
+		"fmt":         {"fmt", "Append", "nil"},
 		"math":        {"math", "Sqrt", "0"},
-		"strings":     {"strings", "Title", `""`},
 		"reflect":     {"reflect", "DeepEqual", "1,1"},
+		"slices":      {"slices", "All", "[]int{}"},
+		"strings":     {"strings", "Title", `""`},
+		"sync/atomic": {"atomic", "LoadInt32", "nil"},
+		"unsafe":      {"unsafe", "Sizeof", "0"},
 	}
 	return &ast.GenDecl{
 		Tok: token.VAR,

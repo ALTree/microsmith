@@ -484,6 +484,13 @@ var BuiltinsFuncs = []FuncType{
 }
 
 var StdlibFuncs = []FuncType{
+	// fmt
+	{
+		N:    "fmt.Print",
+		Args: nil,
+		Ret:  nil,
+	},
+
 	// math
 	{
 		N:    "math.Max",

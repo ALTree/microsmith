@@ -776,6 +776,19 @@ func (eb *ExprBuilder) CallFunction(v Variable, ct ...Type) *ast.CallExpr {
 			ce.Args = []ast.Expr{eb.VarOrLit(t)}
 		}
 
+	case "fmt.Print":
+		for range 1 + eb.R.Intn(4) {
+			t := eb.pb.RandType()
+			if eb.R.Intn(3) < 2 {
+				if v, ok := eb.S.RandAssignable(); ok {
+					ce.Args = append(ce.Args, v.Name)
+				} else {
+					ce.Args = append(ce.Args, eb.VarOrLit(t))
+				}
+			} else {
+				ce.Args = append(ce.Args, eb.VarOrLit(t))
+			}
+		}
 	default:
 		if f.Args == nil || f.Ret == nil {
 			panic("CallFunction: missing special handling for " + name)
