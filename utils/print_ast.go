@@ -10,9 +10,7 @@ var src string = `
 package p
 
 func f() {
-  for i := range 10 {
-    println(i)
-  }
+  var x [8]int
 }
 `
 

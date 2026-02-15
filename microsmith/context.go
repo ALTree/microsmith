@@ -7,9 +7,9 @@ import (
 	"strings"
 )
 
-// Context holds all the contextual information needed while
-// generating a random package.
-type Context struct { // TODO(alb): rename to PackageContext
+// Context holds all the contextual information needed when generating
+// a package.
+type Context struct {
 
 	// program-wide settings for the fuzzer
 	programConf ProgramConf
@@ -75,27 +75,26 @@ func (pb PackageBuilder) RandType() Type {
 	pb.typedepth++
 	defer func() { pb.typedepth-- }()
 
-	if pb.typedepth >= 5 {
+	if pb.typedepth > 4 {
 		return pb.RandBaseType()
 	}
 
-	switch pb.rs.Intn(15) {
-	case 0, 1:
+	switch pb.rs.Intn(12) {
+	case 0:
 		return SliceOf(pb.RandType())
+	case 1:
+		return ArrayOf(pb.RandType(), pb.rs.Intn(16))
 	case 2:
-		return ChanOf(pb.RandType())
-	case 3, 4:
-		return MapOf(
-			pb.RandComparableType(),
-			pb.RandType(),
-		)
-	case 5, 6:
+		return ChanOf(pb.RandBaseType())
+	case 3:
+		return MapOf(pb.RandComparableType(), pb.RandType())
+	case 4:
 		return PointerOf(pb.RandType())
-	case 7, 8:
+	case 5:
 		return pb.RandStructType()
-	case 9:
+	case 6:
 		return pb.RandFuncType()
-	case 10:
+	case 7:
 		return pb.RandInterfaceType()
 	default:
 		return pb.RandBaseType()

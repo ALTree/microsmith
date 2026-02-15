@@ -302,7 +302,7 @@ func (sb *StmtBuilder) DeclStmt(nVars int, t Type) (*ast.DeclStmt, []*ast.Ident)
 	var rhs []ast.Expr
 
 	switch t2 := t.(type) {
-	case BasicType, SliceType, PointerType, StructType, ChanType, MapType, InterfaceType:
+	case BasicType, ArrayType, SliceType, PointerType, StructType, ChanType, MapType, InterfaceType:
 		typ = t2.Ast()
 
 	case FuncType:

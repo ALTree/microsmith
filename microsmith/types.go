@@ -6,6 +6,7 @@ import (
 	"go/ast"
 	"go/format"
 	"go/token"
+	"strconv"
 	"strings"
 )
 
@@ -60,6 +61,8 @@ func Ident(t Type) string {
 		default:
 			panic("unhandled type " + t.N)
 		}
+	case ArrayType:
+		return "a" + Ident(t.Etype)
 	case SliceType:
 		return "a" + Ident(t.Etype)
 	case FuncType:
@@ -255,6 +258,57 @@ func (at SliceType) Sliceable() bool {
 
 func SliceOf(t Type) SliceType {
 	return SliceType{t}
+}
+
+// --------------------------------
+//   Array
+// --------------------------------
+
+type ArrayType struct {
+	Len   int
+	Etype Type
+}
+
+func (t ArrayType) Comparable() bool {
+	return t.Etype.Comparable()
+}
+
+func (t ArrayType) Ast() ast.Expr {
+	return &ast.ArrayType{
+		Len: &ast.BasicLit{Kind: token.INT, Value: strconv.Itoa(t.Len)},
+		Elt: t.Base().Ast()}
+}
+
+func (at ArrayType) Base() Type {
+	return at.Etype
+}
+
+func (t ArrayType) Contains(t2 Type) bool {
+	if t.Equal(t2) {
+		return true
+	} else {
+		return t.Base().Contains(t2)
+	}
+}
+
+func (at ArrayType) Equal(t Type) bool {
+	if t2, ok := t.(ArrayType); !ok {
+		return false
+	} else {
+		return at.Base().Equal(t2.Base()) && at.Len == t2.Len
+	}
+}
+
+func (at ArrayType) Name() string {
+	return fmt.Sprintf("[%v]%v", at.Len, at.Etype.Name())
+}
+
+func (at ArrayType) Sliceable() bool {
+	return true
+}
+
+func ArrayOf(t Type, len int) ArrayType {
+	return ArrayType{Len: len, Etype: t}
 }
 
 // --------------------------------

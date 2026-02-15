@@ -76,6 +76,18 @@ func (eb *ExprBuilder) CompositeLit(t Type) *ast.CompositeLit {
 	switch t := t.(type) {
 	case BasicType:
 		panic("No CompositeLit of type " + t.Name())
+	case ArrayType:
+		cl := &ast.CompositeLit{Type: t.Ast()}
+		elems := []ast.Expr{}
+		for i := 0; i < min(t.Len, 3); i++ {
+			if eb.Deepen() {
+				elems = append(elems, eb.Expr(t.Base()))
+			} else {
+				elems = append(elems, eb.VarOrLit(t.Base()))
+			}
+		}
+		cl.Elts = elems
+		return cl
 	case SliceType:
 		cl := &ast.CompositeLit{Type: t.Ast()}
 		elems := []ast.Expr{}
@@ -192,7 +204,7 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 		}
 		return eb.VarOrLit(t)
 
-	case ChanType, FuncType, MapType, StructType:
+	case ArrayType, ChanType, FuncType, MapType, StructType:
 		return eb.VarOrLit(t)
 
 	case InterfaceType:
@@ -291,7 +303,7 @@ func (eb *ExprBuilder) VarOrLit(t Type) ast.Expr {
 			} else {
 				return eb.CompositeLit(t)
 			}
-		case StructType:
+		case ArrayType, StructType:
 			return eb.CompositeLit(t)
 		case ChanType:
 			// No literal of type Chan, but we can return make(chan t)
@@ -337,6 +349,8 @@ func (eb *ExprBuilder) SubTypeExpr(e ast.Expr, t, target Type) ast.Expr {
 	defer func() { eb.depth-- }()
 
 	switch t := t.(type) {
+	case ArrayType:
+		return eb.SubTypeExpr(eb.IndexExpr(e, true), t.Base(), target)
 	case SliceType:
 		return eb.SubTypeExpr(eb.IndexExpr(e), t.Base(), target)
 	case BasicType:
@@ -408,9 +422,10 @@ func (eb *ExprBuilder) MethodExpr(e ast.Expr, t InterfaceType, target Type) ast.
 }
 
 // Returns e[...]
-func (eb *ExprBuilder) IndexExpr(e ast.Expr) *ast.IndexExpr {
+func (eb *ExprBuilder) IndexExpr(e ast.Expr, nonconst ...bool) *ast.IndexExpr {
 	var i ast.Expr
-	if eb.R.Intn(2) == 0 && eb.Deepen() {
+	if (eb.R.Intn(2) == 0 && eb.Deepen()) ||
+		(len(nonconst) > 0 && nonconst[0] == true) {
 		i, _ = eb.NonConstantExpr(BT{"int"})
 	} else {
 		i = eb.VarOrLit(BT{"int"})
