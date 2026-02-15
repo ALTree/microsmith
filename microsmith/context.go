@@ -81,7 +81,7 @@ func (pb PackageBuilder) RandType() Type {
 
 	switch pb.rs.Intn(15) {
 	case 0, 1:
-		return ArrayOf(pb.RandType())
+		return SliceOf(pb.RandType())
 	case 2:
 		return ChanOf(pb.RandType())
 	case 3, 4:

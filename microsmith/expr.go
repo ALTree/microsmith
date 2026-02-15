@@ -76,7 +76,7 @@ func (eb *ExprBuilder) CompositeLit(t Type) *ast.CompositeLit {
 	switch t := t.(type) {
 	case BasicType:
 		panic("No CompositeLit of type " + t.Name())
-	case ArrayType:
+	case SliceType:
 		cl := &ast.CompositeLit{Type: t.Ast()}
 		elems := []ast.Expr{}
 		if eb.R.Intn(4) > 0 { // plain array literal
@@ -173,7 +173,7 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 			panic("unreachable")
 		}
 
-	case ArrayType:
+	case SliceType:
 		if t.Etype.Name() == "byte" && eb.R.Intn(3) == 0 {
 			var arg ast.Expr
 			if eb.Deepen() {
@@ -285,7 +285,7 @@ func (eb *ExprBuilder) VarOrLit(t Type) ast.Expr {
 				bl = CastToType(t, bl)
 			}
 			return bl
-		case ArrayType, MapType:
+		case SliceType, MapType:
 			if eb.R.Intn(3) == 0 {
 				return eb.MakeMakeCall(t)
 			} else {
@@ -311,7 +311,7 @@ func (eb *ExprBuilder) VarOrLit(t Type) ast.Expr {
 	}
 
 	// Slice, once in a while.
-	if _, ok := vst.Type.(ArrayType); ok {
+	if _, ok := vst.Type.(SliceType); ok {
 		if t.Equal(vst.Type) && eb.R.Intn(4) == 0 {
 			return eb.SliceExpr(vst)
 		}
@@ -337,7 +337,7 @@ func (eb *ExprBuilder) SubTypeExpr(e ast.Expr, t, target Type) ast.Expr {
 	defer func() { eb.depth-- }()
 
 	switch t := t.(type) {
-	case ArrayType:
+	case SliceType:
 		return eb.SubTypeExpr(eb.IndexExpr(e), t.Base(), target)
 	case BasicType:
 		panic("basic types should not get here")
@@ -605,9 +605,9 @@ func (eb *ExprBuilder) Cast(t BasicType) *ast.CallExpr {
 	if t.Equal(BT{"string"}) {
 		var arg ast.Expr
 		if eb.Deepen() {
-			arg = eb.Expr(ArrayOf(BT{"byte"}))
+			arg = eb.Expr(SliceOf(BT{"byte"}))
 		} else {
-			arg = eb.VarOrLit(ArrayOf(BT{"byte"}))
+			arg = eb.VarOrLit(SliceOf(BT{"byte"}))
 		}
 		return &ast.CallExpr{
 			Fun:  &ast.Ident{Name: t.N},
@@ -667,9 +667,9 @@ func (eb *ExprBuilder) CallFunction(v Variable, ct ...Type) *ast.CallExpr {
 	case "copy":
 		var t1, t2 Type
 		if eb.R.Intn(3) == 0 {
-			t1, t2 = ArrayOf(BT{N: "byte"}), BT{N: "string"}
+			t1, t2 = SliceOf(BT{N: "byte"}), BT{N: "string"}
 		} else {
-			t1 = ArrayOf(eb.pb.RandType())
+			t1 = SliceOf(eb.pb.RandType())
 			t2 = t1
 		}
 		if eb.Deepen() {
@@ -681,7 +681,7 @@ func (eb *ExprBuilder) CallFunction(v Variable, ct ...Type) *ast.CallExpr {
 	case "len":
 		var t Type
 		if eb.R.Intn(3) < 2 {
-			t = ArrayOf(eb.pb.RandType())
+			t = SliceOf(eb.pb.RandType())
 		} else {
 			t = BT{"string"}
 		}
@@ -750,7 +750,7 @@ func (eb *ExprBuilder) CallFunction(v Variable, ct ...Type) *ast.CallExpr {
 		if len(ct) == 0 {
 			panic("unsafe.SliceData needs additional type arg")
 		}
-		t := ArrayOf(ct[0].(PointerType).Base())
+		t := SliceOf(ct[0].(PointerType).Base())
 		if eb.Deepen() {
 			ce.Args = []ast.Expr{eb.Expr(t)}
 		} else {
@@ -769,7 +769,7 @@ func (eb *ExprBuilder) CallFunction(v Variable, ct ...Type) *ast.CallExpr {
 		if len(ct) == 0 {
 			panic("slices.All needs additional type arg")
 		}
-		t := ArrayOf(ct[0])
+		t := SliceOf(ct[0])
 		if eb.Deepen() {
 			ce.Args = []ast.Expr{eb.Expr(t)}
 		} else {
@@ -815,7 +815,7 @@ func (eb *ExprBuilder) CallFunction(v Variable, ct ...Type) *ast.CallExpr {
 
 }
 
-func (eb *ExprBuilder) MakeAppendCall(t ArrayType) *ast.CallExpr {
+func (eb *ExprBuilder) MakeAppendCall(t SliceType) *ast.CallExpr {
 	ce := &ast.CallExpr{Fun: AppendIdent}
 
 	t2 := t.Base()
@@ -840,7 +840,7 @@ func (eb *ExprBuilder) MakeMakeCall(t Type) *ast.CallExpr {
 	ce := &ast.CallExpr{Fun: MakeIdent}
 
 	switch t := t.(type) {
-	case ArrayType:
+	case SliceType:
 		tn := t.Base().Ast()
 		if eb.Deepen() {
 			ce.Args = []ast.Expr{&ast.ArrayType{Elt: tn}, eb.BinaryExpr(BT{"int"})}

@@ -158,7 +158,7 @@ func (sb *StmtBuilder) AssignStmt() *ast.AssignStmt {
 			}
 		}
 
-	case ArrayType:
+	case SliceType:
 		// For arrays, 50/50 between
 		//   A[<expr>] = <expr>
 		//   A = { <expr>, <expr>, ... }
@@ -302,7 +302,7 @@ func (sb *StmtBuilder) DeclStmt(nVars int, t Type) (*ast.DeclStmt, []*ast.Ident)
 	var rhs []ast.Expr
 
 	switch t2 := t.(type) {
-	case BasicType, ArrayType, PointerType, StructType, ChanType, MapType, InterfaceType:
+	case BasicType, SliceType, PointerType, StructType, ChanType, MapType, InterfaceType:
 		typ = t2.Ast()
 
 	case FuncType:
@@ -348,7 +348,7 @@ func (sb *StmtBuilder) DeclStmt(nVars int, t Type) (*ast.DeclStmt, []*ast.Ident)
 			// add the parameters to the scope
 			for i, param := range p.List {
 				if ep, ok := t2.Args[i].(EllipsisType); ok {
-					sb.S.AddVariable(param.Names[0], ArrayOf(ep.Base))
+					sb.S.AddVariable(param.Names[0], SliceOf(ep.Base))
 				} else {
 					sb.S.AddVariable(param.Names[0], t2.Args[i])
 				}
@@ -500,7 +500,7 @@ func (sb *StmtBuilder) RangeStmt() *ast.RangeStmt {
 	// randomly choose a type for the expression we range on
 	switch sb.R.Intn(4) {
 	case 0: // slice
-		t := ArrayOf(sb.pb.RandType())
+		t := SliceOf(sb.pb.RandType())
 		e = f(t)
 		k = sb.S.NewIdent(BT{"int"})
 		v = sb.S.NewIdent(t.Base())
@@ -821,7 +821,7 @@ func (sb *StmtBuilder) ClearStmt() *ast.ExprStmt {
 		arg = rn.Name
 	} else {
 		if sb.R.Intn(2) == 0 {
-			arg = sb.E.MakeMakeCall(ArrayOf(sb.pb.RandType()))
+			arg = sb.E.MakeMakeCall(SliceOf(sb.pb.RandType()))
 		} else {
 			arg = sb.E.MakeMakeCall(MapOf(sb.pb.RandComparableType(), sb.pb.RandType()))
 		}

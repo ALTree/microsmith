@@ -60,7 +60,7 @@ func Ident(t Type) string {
 		default:
 			panic("unhandled type " + t.N)
 		}
-	case ArrayType:
+	case SliceType:
 		return "a" + Ident(t.Etype)
 	case FuncType:
 		if t.N != "FU" {
@@ -210,26 +210,26 @@ func PointerOf(t Type) PointerType {
 }
 
 // --------------------------------
-//   array
+//   Slice
 // --------------------------------
 
-type ArrayType struct {
+type SliceType struct {
 	Etype Type
 }
 
-func (t ArrayType) Comparable() bool {
+func (t SliceType) Comparable() bool {
 	return false
 }
 
-func (t ArrayType) Ast() ast.Expr {
+func (t SliceType) Ast() ast.Expr {
 	return &ast.ArrayType{Elt: t.Base().Ast()}
 }
 
-func (at ArrayType) Base() Type {
+func (at SliceType) Base() Type {
 	return at.Etype
 }
 
-func (t ArrayType) Contains(t2 Type) bool {
+func (t SliceType) Contains(t2 Type) bool {
 	if t.Equal(t2) {
 		return true
 	} else {
@@ -237,24 +237,24 @@ func (t ArrayType) Contains(t2 Type) bool {
 	}
 }
 
-func (at ArrayType) Equal(t Type) bool {
-	if t2, ok := t.(ArrayType); !ok {
+func (at SliceType) Equal(t Type) bool {
+	if t2, ok := t.(SliceType); !ok {
 		return false
 	} else {
 		return at.Base().Equal(t2.Base())
 	}
 }
 
-func (at ArrayType) Name() string {
+func (at SliceType) Name() string {
 	return "[]" + at.Etype.Name()
 }
 
-func (at ArrayType) Sliceable() bool {
+func (at SliceType) Sliceable() bool {
 	return true
 }
 
-func ArrayOf(t Type) ArrayType {
-	return ArrayType{t}
+func SliceOf(t Type) SliceType {
+	return SliceType{t}
 }
 
 // --------------------------------
@@ -521,7 +521,7 @@ var StdlibFuncs = []FuncType{
 	},
 	{
 		N:    "strings.Join",
-		Args: []Type{ArrayType{BT{"string"}}, BT{"string"}},
+		Args: []Type{SliceType{BT{"string"}}, BT{"string"}},
 		Ret:  []Type{BT{"string"}},
 	},
 	{

@@ -153,7 +153,7 @@ func (s Scope) RandVarSubType(t Type) (Variable, bool) {
 func (s Scope) RandClearable() (Variable, bool) {
 	return s.RandPred(func(v Variable, _ ...Type) bool {
 		switch v.Type.(type) {
-		case ArrayType, MapType:
+		case SliceType, MapType:
 			return true
 		default:
 			return false
