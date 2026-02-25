@@ -164,7 +164,7 @@ func (pb *PackageBuilder) File() *ast.File {
 
 	pkgs := []string{
 		"fmt", "math", "math/big", "reflect", "slices", "strings",
-		"sync/atomic", "unsafe"}
+		"sync/atomic", "unsafe", "simd/archsimd"}
 	for _, p := range pkgs {
 		af.Decls = append(af.Decls, MakeImport(p))
 	}
@@ -255,10 +255,7 @@ func (p *PackageBuilder) MakeFuncCalls() []ast.Stmt {
 	return calls
 }
 
-// Builds this:
-//
-//	import "p"
-//
+// Builds an import "p" statement.
 // p must already include the surrounding "s.
 func MakeImport(p string) *ast.GenDecl {
 	return &ast.GenDecl{
@@ -273,30 +270,40 @@ func MakeImport(p string) *ast.GenDecl {
 
 func MakeUsePakage(p string) *ast.GenDecl {
 	m := map[string]struct{ p, f, v string }{
-		"fmt":         {"fmt", "Append", "nil"},
-		"math":        {"math", "Sqrt", "0"},
-		"math/big":    {"big", "NewInt", "0"},
-		"reflect":     {"reflect", "DeepEqual", "1,1"},
-		"slices":      {"slices", "All", "[]int{}"},
-		"strings":     {"strings", "Title", `""`},
-		"sync/atomic": {"atomic", "LoadInt32", "nil"},
-		"unsafe":      {"unsafe", "Sizeof", "0"},
+		"fmt":           {"fmt", "Append", "nil"},
+		"math":          {"math", "Sqrt", "0"},
+		"math/big":      {"big", "NewInt", "0"},
+		"reflect":       {"reflect", "DeepEqual", "1,1"},
+		"simd/archsimd": {"archsimd", "ClearAVXUpperBits", "$"},
+		"slices":        {"slices", "All", "[]int{}"},
+		"strings":       {"strings", "Title", `""`},
+		"sync/atomic":   {"atomic", "LoadInt32", "nil"},
+		"unsafe":        {"unsafe", "Sizeof", "0"},
 	}
+
+	var val ast.Expr = &ast.SelectorExpr{
+		X:   &ast.Ident{Name: m[p].p},
+		Sel: &ast.Ident{Name: m[p].f},
+	}
+
+	// If needed, wrap in a CallExpr
+	if m[p].v != "$" {
+		val = &ast.CallExpr{
+			Fun:  val,
+			Args: []ast.Expr{&ast.Ident{Name: m[p].v}},
+		}
+	}
+
 	return &ast.GenDecl{
 		Tok: token.VAR,
 		Specs: []ast.Spec{
 			&ast.ValueSpec{
-				Names: []*ast.Ident{&ast.Ident{Name: "_"}},
-				Values: []ast.Expr{&ast.CallExpr{
-					Fun: &ast.SelectorExpr{
-						X:   &ast.Ident{Name: m[p].p},
-						Sel: &ast.Ident{Name: m[p].f},
-					},
-					Args: []ast.Expr{&ast.Ident{Name: m[p].v}},
-				}},
+				Names:  []*ast.Ident{&ast.Ident{Name: "_"}},
+				Values: []ast.Expr{val},
 			},
 		},
 	}
+
 }
 
 func MakeInt() *ast.GenDecl {

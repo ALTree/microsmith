@@ -3,16 +3,19 @@ package microsmith
 import (
 	"go/ast"
 	"go/token"
+	"reflect"
+	"simd/archsimd"
+	"slices"
 	"strings"
 )
 
 // ---- { Types } ----------------------------------------
 
 var BaseTypes = []Type{
-	BT{"bool"}, BT{"byte"}, BT{"int"}, BT{"int8"}, BT{"int16"},
-	BT{"int32"}, BT{"int64"}, BT{"uint32"}, BT{"uint64"},
-	BT{"uint"}, BT{"uintptr"}, BT{"float32"}, BT{"float64"},
-	BT{"complex128"}, BT{"rune"}, BT{"string"}, BT{"any"},
+	BT{"int"}, BT{"int8"}, BT{"int16"}, BT{"int32"}, BT{"int64"},
+	BT{"uint"}, BT{"uint8"}, BT{"uint16"}, BT{"uint32"}, BT{"uint64"}, BT{"uintptr"},
+	BT{"float32"}, BT{"float64"}, BT{"complex128"},
+	BT{"bool"}, BT{"rune"}, BT{"string"}, BT{"any"},
 }
 
 var BigInt = ExternalType{
@@ -34,31 +37,109 @@ var BigInt = ExternalType{
 	},
 }
 
+var SimdInt32x8 = ExternalType{
+	Pkg:     "archsimd",
+	N:       "Int32x8",
+	Builder: nil,
+}
+
+var SimdMask32x8 = ExternalType{
+	Pkg:     "archsimd",
+	N:       "Mask32x8",
+	Builder: nil,
+}
+
+var SimdFloat32x8 = ExternalType{
+	Pkg:     "archsimd",
+	N:       "Float32x8",
+	Builder: nil,
+}
+
+func MakeMethod(name string, args, ret []Type) Method {
+	return Method{
+		Name: &ast.Ident{Name: name},
+		Func: FuncType{Args: args, Ret: ret},
+	}
+}
+
+func NameToType(name string) (Type, bool) {
+	i := slices.IndexFunc(BaseTypes, func(t Type) bool {
+		bt, ok := t.(BT)
+		return ok && bt.N == name
+	})
+	if i >= 0 {
+		return BaseTypes[i], true
+	}
+
+	switch name {
+	case "Int32x8":
+		return SimdInt32x8, true
+	case "Mask32x8":
+		return SimdMask32x8, true
+	case "Float32x8":
+		return SimdFloat32x8, true
+	default:
+		return BT{}, false
+	}
+}
+
+func MakeMethods[T any]() []Method {
+	var v T
+	t := reflect.TypeOf(v)
+	var methods []Method
+
+outer:
+	for i := 0; i < t.NumMethod(); i++ {
+		m := t.Method(i)
+
+		var ins []Type
+		for i := 1; i < m.Type.NumIn(); i++ { // first one is the receiver
+			p := m.Type.In(i)
+			in, ok := NameToType(p.Name())
+			if !ok {
+				//	fmt.Printf("Ignoring method %v for ins is %v\n", m, p.Kind())
+				continue outer
+			}
+			ins = append(ins, in)
+		}
+
+		p := m.Type.Out(0)
+		out, ok := NameToType(p.Name())
+		if !ok {
+			//			fmt.Println("Ignoring method for out is " + p.Name())
+			continue outer
+		}
+
+		methods = append(methods, MakeMethod(m.Name, ins, []Type{out}))
+	}
+
+	return methods
+}
+
 func init() {
+	// --- Big.Int -----------------------------------------
 	BigInt.Methods = []Method{
-		{
-			Name: &ast.Ident{Name: "Add"},
-			Func: FuncType{
-				Args: []Type{PointerType{BigInt}, PointerType{BigInt}},
-				Ret:  []Type{PointerType{BigInt}},
-			},
-		},
-		{
-			Name: &ast.Ident{Name: "Abs"},
-			Func: FuncType{
-				Args: []Type{PointerType{BigInt}},
-				Ret:  []Type{PointerType{BigInt}},
-			},
-		},
-		{
-			Name: &ast.Ident{Name: "Cmp"},
-			Func: FuncType{
-				Args: []Type{PointerType{BigInt}},
-				Ret:  []Type{BT{"int"}},
-			},
-		},
+		MakeMethod("Add",
+			[]Type{PointerType{BigInt}, PointerType{BigInt}},
+			[]Type{PointerType{BigInt}}),
+		MakeMethod("Abs",
+			[]Type{PointerType{BigInt}},
+			[]Type{PointerType{BigInt}}),
+		MakeMethod("Cmp",
+			[]Type{PointerType{BigInt}},
+			[]Type{BT{"int"}}),
 	}
 	StdTypes = append(StdTypes, BigInt)
+
+	SimdInt32x8.Methods = MakeMethods[archsimd.Int32x8]()
+	StdTypes = append(StdTypes, SimdInt32x8)
+
+	SimdMask32x8.Methods = MakeMethods[archsimd.Mask32x8]()
+	StdTypes = append(StdTypes, SimdMask32x8)
+
+	SimdFloat32x8.Methods = MakeMethods[archsimd.Float32x8]()
+	StdTypes = append(StdTypes, SimdFloat32x8)
+
 }
 
 var StdTypes = []Type{}
@@ -179,6 +260,26 @@ var StdFunctions = []FuncType{
 		N:    "StringData",
 		Args: []Type{BT{"string"}},
 		Ret:  []Type{PointerType{BT{"byte"}}},
+	},
+
+	// archsimd
+	{
+		Pkg:  "archsimd",
+		N:    "BroadcastInt32x8",
+		Args: []Type{BT{"int32"}},
+		Ret:  []Type{SimdInt32x8},
+	},
+	{
+		Pkg:  "archsimd",
+		N:    "LoadInt32x8",
+		Args: []Type{PointerType{ArrayType{Len: 8, Etype: BT{"int32"}}}},
+		Ret:  []Type{SimdInt32x8},
+	},
+	{
+		Pkg:  "archsimd",
+		N:    "LoadInt32x8Slice",
+		Args: []Type{SliceType{BT{"int32"}}},
+		Ret:  []Type{SimdInt32x8},
 	},
 }
 

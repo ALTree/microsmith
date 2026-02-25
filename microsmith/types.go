@@ -38,6 +38,10 @@ func Ident(t Type) string {
 			return "i64_"
 		case "int":
 			return "i"
+		case "uint8":
+			return "u8_"
+		case "uint16":
+			return "u16_"
 		case "uint32":
 			return "u32_"
 		case "uint64":
@@ -160,7 +164,7 @@ func IsOrdered(t Type) bool {
 
 func (t BasicType) NeedsCast() bool {
 	switch t.N {
-	case "byte", "int8", "int16", "int32", "int64", "uint", "uint32", "uint64", "uintptr", "float32", "any":
+	case "byte", "int8", "int16", "int32", "int64", "uint", "uint8", "uint16", "uint32", "uint64", "uintptr", "float32", "any":
 		return true
 	default:
 		return false
@@ -720,8 +724,13 @@ func (t ExternalType) Contains(t2 Type) bool {
 }
 
 func (t ExternalType) Build() ast.Expr {
-	return t.Builder()
-
+	if t.Builder != nil {
+		return t.Builder()
+	} else {
+		return &ast.ParenExpr{
+			X: &ast.CompositeLit{Type: t.Ast()},
+		}
+	}
 }
 
 // --------------------------------
@@ -885,7 +894,7 @@ func UnaryOps(t Type) []token.Token {
 	switch t2 := t.(type) {
 	case BasicType:
 		switch t.Name() {
-		case "byte", "uint32", "uint64", "uint", "uintptr":
+		case "byte", "uint8", "uint16", "uint32", "uint64", "uint", "uintptr":
 			return []token.Token{token.ADD}
 		case "int", "rune", "int8", "int16", "int32", "int64":
 			return []token.Token{token.ADD, token.SUB, token.XOR}
@@ -910,7 +919,7 @@ func BinOps(t Type) []token.Token {
 
 	case BasicType:
 		switch t.Name() {
-		case "byte", "uint32", "uint64", "uint", "int8", "int16", "int32", "int64":
+		case "byte", "uint8", "uint16", "uint32", "uint64", "uint", "int8", "int16", "int32", "int64":
 			return []token.Token{
 				token.ADD, token.AND, token.AND_NOT, token.MUL,
 				token.OR, token.QUO, token.REM, token.SHL, token.SHR,
