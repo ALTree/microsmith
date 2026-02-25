@@ -204,7 +204,7 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 		}
 		return eb.VarOrLit(t)
 
-	case ArrayType, ChanType, FuncType, MapType, StructType:
+	case ArrayType, ChanType, FuncType, MapType, StructType, ExternalType:
 		return eb.VarOrLit(t)
 
 	case InterfaceType:
@@ -286,6 +286,10 @@ func (eb *ExprBuilder) VarOrLit(t Type) ast.Expr {
 		} else {
 			return v.Name
 		}
+	}
+
+	if et, ok := t.(ExternalType); ok {
+		return et.Build()
 	}
 
 	vst, typeCanDerive := eb.S.RandVarSubType(t)
@@ -374,22 +378,6 @@ func (eb *ExprBuilder) SubTypeExpr(e ast.Expr, t, target Type) ast.Expr {
 
 // Returns e(...)
 func (eb *ExprBuilder) CallExpr(e ast.Expr, at []Type) *ast.CallExpr {
-	// Sometimes e is not a normal function, but one needing special
-	// handling of its arguments (builtins like len, or func from the
-	// unsafe package). If that's the case, delegate to CallFunction.
-	if ident, ok := e.(*ast.Ident); ok && !(strings.HasPrefix(ident.Name, "fnc") || strings.HasPrefix(ident.Name, "p")) {
-		// Must be a builtin or stdlib func. Find corresponding
-		// Variable in Scope, and build a call.
-		if v, ok := eb.S.FindVarByName(ident.Name); ok {
-			_, ok := v.Type.(FuncType)
-			if ok {
-				return eb.CallFunction(v)
-			}
-		} else {
-			panic("unreachable")
-		}
-	}
-
 	var args []ast.Expr
 	for _, a := range at {
 		t := a
@@ -650,34 +638,59 @@ func (eb *ExprBuilder) Cast(t BasicType) *ast.CallExpr {
 // function variable, or a function literal that is immediately
 // called.
 func (eb *ExprBuilder) RandCallExpr(t Type) *ast.CallExpr {
-	if v, ok := eb.S.RandFuncRet(t); ok && !eb.C.inDefer && eb.R.Intn(4) > 0 {
-		return eb.CallFunction(v, t)
-	} else {
-		return eb.ConjureAndCallFunc(t)
-	}
-}
 
-// MakeCall builds an ast.CallExpr calling the function in variable v,
-// taking care of setting up its arguments, including for functions
-// like copy() or unsafe.Alignof that require custom handling.
-func (eb *ExprBuilder) CallFunction(v Variable, ct ...Type) *ast.CallExpr {
-	f, ok := v.Type.(FuncType)
-	if !ok {
-		panic("CallFunction: not a function: " + v.Name.Name)
-	}
-
-	name := v.Name.Name
-	ce := &ast.CallExpr{}
-	if i := strings.Index(name, "."); i >= 0 {
-		ce.Fun = &ast.SelectorExpr{
-			X:   &ast.Ident{Name: name[:i]},
-			Sel: &ast.Ident{Name: name[i+1:]},
+	if eb.R.Intn(2) == 0 {
+		if f, ok := eb.S.RandFuncRet(t); ok && !eb.C.inDefer {
+			return eb.CallFunction(f, t)
 		}
 	} else {
-		ce.Fun = v.Name
+		if v, m, ok := eb.S.RandMethod(t); ok {
+			return eb.CallMethod(v, m, t)
+		}
 	}
 
-	switch name {
+	return eb.ConjureAndCallFunc(t)
+}
+
+func (eb *ExprBuilder) CallMethod(v Variable, m Method, ct ...Type) *ast.CallExpr {
+	ce := &ast.CallExpr{}
+	ce.Fun = &ast.SelectorExpr{
+		X:   v.Name,
+		Sel: m.Name,
+	}
+
+	for _, arg := range m.Func.Args {
+		if eb.Deepen() {
+			ce.Args = append(ce.Args, eb.Expr(arg))
+		} else {
+			ce.Args = append(ce.Args, eb.VarOrLit(arg))
+		}
+	}
+
+	return ce
+}
+
+// CallFunction builds an ast.CallExpr calling the given function,
+// taking care of setting up its arguments, including for special
+// builtins like copy() or functions that require custom handling.
+func (eb *ExprBuilder) CallFunction(f FuncType, ct ...Type) *ast.CallExpr {
+
+	if f.N == "" {
+		panic("CallFunction on unnamed FunctType")
+	}
+
+	ce := &ast.CallExpr{}
+
+	if f.Pkg != "" {
+		ce.Fun = &ast.SelectorExpr{
+			X:   &ast.Ident{Name: f.Pkg},
+			Sel: &ast.Ident{Name: f.N},
+		}
+	} else {
+		ce.Fun = &ast.Ident{Name: f.N}
+	}
+
+	switch f.N {
 
 	case "copy":
 		var t1, t2 Type
@@ -720,7 +733,7 @@ func (eb *ExprBuilder) CallFunction(v Variable, ct ...Type) *ast.CallExpr {
 			}
 		}
 
-	case "unsafe.Offsetof":
+	case "Offsetof":
 		var sl *ast.SelectorExpr
 
 		// If we can get a variable, use that (as long it has at least
@@ -744,7 +757,7 @@ func (eb *ExprBuilder) CallFunction(v Variable, ct ...Type) *ast.CallExpr {
 		}
 		ce.Args = []ast.Expr{sl}
 
-	case "unsafe.Sizeof", "unsafe.Alignof":
+	case "Sizeof", "Alignof":
 		t := eb.pb.RandType()
 		_, isPtr := t.(PointerType)
 		_, isFnc := t.(FuncType)
@@ -761,7 +774,7 @@ func (eb *ExprBuilder) CallFunction(v Variable, ct ...Type) *ast.CallExpr {
 			ce.Args = []ast.Expr{eb.VarOrLit(t)}
 		}
 
-	case "unsafe.SliceData":
+	case "SliceData":
 		if len(ct) == 0 {
 			panic("unsafe.SliceData needs additional type arg")
 		}
@@ -772,7 +785,7 @@ func (eb *ExprBuilder) CallFunction(v Variable, ct ...Type) *ast.CallExpr {
 			ce.Args = []ast.Expr{eb.VarOrLit(t)}
 		}
 
-	case "reflect.DeepEqual":
+	case "DeepEqual":
 		t1, t2 := eb.pb.RandType(), eb.pb.RandType()
 		if eb.Deepen() {
 			ce.Args = []ast.Expr{eb.Expr(t1), eb.Expr(t2)}
@@ -780,7 +793,7 @@ func (eb *ExprBuilder) CallFunction(v Variable, ct ...Type) *ast.CallExpr {
 			ce.Args = []ast.Expr{eb.VarOrLit(t1), eb.VarOrLit(t2)}
 		}
 
-	case "slices.All":
+	case "All":
 		if len(ct) == 0 {
 			panic("slices.All needs additional type arg")
 		}
@@ -791,7 +804,7 @@ func (eb *ExprBuilder) CallFunction(v Variable, ct ...Type) *ast.CallExpr {
 			ce.Args = []ast.Expr{eb.VarOrLit(t)}
 		}
 
-	case "fmt.Print":
+	case "Print":
 		for range 1 + eb.R.Intn(4) {
 			t := eb.pb.RandType()
 			if eb.R.Intn(3) < 2 {
@@ -806,12 +819,10 @@ func (eb *ExprBuilder) CallFunction(v Variable, ct ...Type) *ast.CallExpr {
 		}
 	default:
 		if f.Args == nil || f.Ret == nil {
-			panic("CallFunction: missing special handling for " + name)
+			panic("CallFunction: missing special handling for " + f.N)
 		}
-
 		args := make([]ast.Expr, 0, len(f.Args))
 		for _, arg := range f.Args {
-			arg := arg
 			if ep, ok := arg.(EllipsisType); ok {
 				arg = ep.Base
 			}
@@ -825,6 +836,39 @@ func (eb *ExprBuilder) CallFunction(v Variable, ct ...Type) *ast.CallExpr {
 		}
 		ce.Args = args
 	}
+
+	return ce
+}
+
+// CallFunctionVar builds an ast.CallExpr calling the local function
+// in variable v
+func (eb *ExprBuilder) CallFunctionVar(v Variable, ct ...Type) *ast.CallExpr {
+	f, ok := v.Type.(FuncType)
+	if !ok {
+		panic("CallFunctionVar: not a function: " + v.Name.Name)
+	}
+
+	if f.Pkg != "" {
+		panic("CallFunctionVar: called with non-local function " + v.Name.Name)
+	}
+
+	ce := &ast.CallExpr{}
+	ce.Fun = v.Name
+
+	args := make([]ast.Expr, 0, len(f.Args))
+	for _, arg := range f.Args {
+		if ep, ok := arg.(EllipsisType); ok {
+			arg = ep.Base
+		}
+		if eb.Deepen() && f.Local {
+			// Cannot call Expr with casts, because UnaryExpr
+			// could return e.g. -11 which cannot be cast to uint.
+			args = append(args, eb.Expr(arg))
+		} else {
+			args = append(args, eb.VarOrLit(arg))
+		}
+	}
+	ce.Args = args
 
 	return ce
 
@@ -878,7 +922,7 @@ func (eb *ExprBuilder) MakeMakeCall(t Type) *ast.CallExpr {
 
 func (eb *ExprBuilder) ConjureAndCallFunc(t Type) *ast.CallExpr {
 
-	ft := &FuncType{"FU", []Type{}, []Type{t}, true}
+	ft := &FuncType{Args: []Type{}, Ret: []Type{t}, Local: true}
 	for i := 0; i < eb.R.Intn(5); i++ {
 		ft.Args = append(ft.Args, eb.pb.RandType())
 	}

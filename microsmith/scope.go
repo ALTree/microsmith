@@ -106,25 +106,76 @@ func (s Scope) RandPred(pred func(v Variable, t ...Type) bool, t ...Type) (Varia
 // an assignment.
 func (s Scope) RandAssignable() (Variable, bool) {
 	return s.RandPred(func(v Variable, _ ...Type) bool {
+		if _, ok := v.Type.(ExternalType); ok {
+			return false
+		}
 		f, fnc := v.Type.(FuncType)
 		return (fnc && f.Local) || !fnc
 	})
 }
 
-// Returns a random function with return type t
-func (s Scope) RandFuncRet(t Type) (Variable, bool) {
-	return s.RandPred(func(v Variable, t ...Type) bool {
-		f, fnc := v.Type.(FuncType)
+// Returns a random (named) function with return type t
+func (s Scope) RandFuncRet(t Type) (FuncType, bool) {
+	fs := make([]FuncType, 0, 256)
+	for _, f := range s.pb.functions {
 		switch f.N {
 		case "unsafe.SliceData":
-			// custom handling for func with generic return type
-			_, isPointer := t[0].(PointerType)
-			return isPointer
+			_, isPointer := t.(PointerType)
+			if isPointer {
+				fs = append(fs, f)
+			}
 		case "min", "max":
-			return IsNumeric(t[0]) || t[0].Equal(BT{"string"})
+			if IsNumeric(t) || t.Equal(BT{"string"}) {
+				fs = append(fs, f)
+			}
+		default:
+			if len(f.Ret) > 0 && f.Ret[0].Equal(t) {
+				fs = append(fs, f)
+			}
 		}
-		return (fnc && len(f.Ret) > 0 && f.Ret[0].Equal(t[0]))
-	}, t)
+	}
+
+	for _, v := range s.vars {
+		if f, ok := v.Type.(FuncType); ok {
+			if f.N != "" && len(f.Ret) > 0 && f.Ret[0].Equal(t) {
+				fs = append(fs, f)
+			}
+		}
+	}
+
+	if len(fs) == 0 {
+		return FuncType{}, false
+	}
+
+	return RandItem(s.pb.rs, fs), true
+}
+
+// Returns a random (v, Method) pair, with v.Method() having return
+// type t
+func (s Scope) RandMethod(t Type) (Variable, Method, bool) {
+	type S struct {
+		v Variable
+		m Method
+	}
+	fs := make([]S, 0, 256)
+	for _, v := range s.vars {
+		if et, ok := v.Type.(ExternalType); ok {
+			for _, met := range et.Methods {
+				if len(met.Func.Ret) > 0 {
+					if met.Func.Ret[0].Equal(t) {
+						fs = append(fs, S{v, met})
+					}
+				}
+			}
+		}
+	}
+
+	if len(fs) == 0 {
+		return Variable{}, Method{}, false
+	}
+
+	m := RandItem(s.pb.rs, fs)
+	return m.v, m.m, true
 }
 
 // Returns a random function in scope; but not a predefined one.

@@ -16,7 +16,8 @@ type PackageBuilder struct {
 	rs        *rand.Rand
 	sb        *StmtBuilder
 	eb        *ExprBuilder
-	baseTypes []Type
+	types     []Type
+	functions []FuncType
 	typedepth int
 	funcs     []*ast.FuncDecl // top level funcs declared in the package
 }
@@ -29,52 +30,23 @@ func NewPackageBuilder(conf ProgramConf, pkg string, progb *ProgramBuilder) *Pac
 		pb:  progb,
 	}
 
-	// Initialize Context.Scope with predeclared and a few stdlib
-	// functions
-	scope := Scope{pb: &pb, vars: make([]Variable, 0, 64)}
-	for _, f := range BuiltinsFuncs {
-		scope.vars = append(scope.vars, Variable{f, &ast.Ident{Name: f.N}})
-	}
-	for _, f := range StdlibFuncs {
-		scope.vars = append(scope.vars, Variable{f, &ast.Ident{Name: f.N}})
-	}
-	scope.vars = append(scope.vars, MakeAtomicFuncs()...)
+	pb.types = append(pb.types, BaseTypes...)
+	pb.types = append(pb.types, StdTypes...)
 
-	pb.ctx.scope = &scope
+	pb.functions = append(pb.functions, Builtins...)
+	pb.functions = append(pb.functions, StdFunctions...)
+	pb.functions = append(pb.functions, MakeAtomicFuncs()...)
 
-	// Create the Stmt and Expr builders
+	pb.ctx.scope = &Scope{pb: &pb}
+
 	pb.sb = NewStmtBuilder(&pb)
 	pb.eb = NewExprBuilder(&pb)
 	pb.sb.E = pb.eb // breaks circular dependency in sb and eb inits
-
-	// Add predeclared base types
-	pb.baseTypes = []Type{
-		BT{"bool"},
-		BT{"byte"},
-		BT{"int"},
-		BT{"int8"},
-		BT{"int16"},
-		BT{"int32"},
-		BT{"int64"},
-		BT{"uint32"},
-		BT{"uint64"},
-		BT{"uint"},
-		BT{"uintptr"},
-		BT{"float32"},
-		BT{"float64"},
-		BT{"complex128"},
-		BT{"rune"},
-		BT{"string"},
-	}
-	if conf.TypeParams {
-		pb.baseTypes = append(pb.baseTypes, BT{"any"})
-	}
 
 	return &pb
 }
 
 func (pb *PackageBuilder) FuncDecl() *ast.FuncDecl {
-
 	fd := &ast.FuncDecl{
 		Name: pb.FuncIdent(len(pb.funcs)),
 		Type: &ast.FuncType{
@@ -88,18 +60,12 @@ func (pb *PackageBuilder) FuncDecl() *ast.FuncDecl {
 	// choose function return types, at random
 	returnTypes := []Type{}
 	for i := 0; i < pb.rs.Intn(6); i++ {
-		typ := RandItem(pb.rs, pb.baseTypes)
+		typ := RandItem(pb.rs, pb.types)
 		fd.Type.Results.List = append(
 			fd.Type.Results.List,
 			&ast.Field{Type: &ast.Ident{Name: typ.Name()}},
 		)
 		returnTypes = append(returnTypes, typ)
-	}
-
-	// if we're not using type parameters, generate a body and return
-	if !pb.Conf().TypeParams {
-		fd.Body = pb.sb.FuncBody(returnTypes)
-		return fd
 	}
 
 	// If we're using type parameters, use a few of the available ones
@@ -196,7 +162,9 @@ func (pb *PackageBuilder) File() *ast.File {
 		}
 	}
 
-	pkgs := []string{"fmt", "math", "reflect", "slices", "strings", "sync/atomic", "unsafe"}
+	pkgs := []string{
+		"fmt", "math", "math/big", "reflect", "slices", "strings",
+		"sync/atomic", "unsafe"}
 	for _, p := range pkgs {
 		af.Decls = append(af.Decls, MakeImport(p))
 	}
@@ -204,12 +172,10 @@ func (pb *PackageBuilder) File() *ast.File {
 		af.Decls = append(af.Decls, MakeUsePakage(p))
 	}
 
-	if pb.Conf().TypeParams {
-		for i := 0; i < 1+pb.rs.Intn(6); i++ {
-			c, tp := pb.MakeRandConstraint(fmt.Sprintf("I%v", i))
-			af.Decls = append(af.Decls, c)
-			pb.ctx.constraints = append(pb.ctx.constraints, tp)
-		}
+	for i := 0; i < 1+pb.rs.Intn(6); i++ {
+		c, tp := pb.MakeRandConstraint(fmt.Sprintf("I%v", i))
+		af.Decls = append(af.Decls, c)
+		pb.ctx.constraints = append(pb.ctx.constraints, tp)
 	}
 
 	// Outside any func:
@@ -277,14 +243,12 @@ func (p *PackageBuilder) MakeFuncCalls() []ast.Stmt {
 		}
 
 		// instantiate type parameters
-		if p.Conf().TypeParams {
-			var indices []ast.Expr
-			for _, typ := range f.Type.TypeParams.List {
-				types := FindByName(p.ctx.constraints, typ.Type.(*ast.Ident).Name).Types
-				indices = append(indices, RandItem(p.rs, types).Ast())
-			}
-			ce.Fun = &ast.IndexListExpr{X: ce.Fun, Indices: indices}
+		var indices []ast.Expr
+		for _, typ := range f.Type.TypeParams.List {
+			types := FindByName(p.ctx.constraints, typ.Type.(*ast.Ident).Name).Types
+			indices = append(indices, RandItem(p.rs, types).Ast())
 		}
+		ce.Fun = &ast.IndexListExpr{X: ce.Fun, Indices: indices}
 
 		calls = append(calls, &ast.ExprStmt{&ce})
 	}
@@ -311,6 +275,7 @@ func MakeUsePakage(p string) *ast.GenDecl {
 	m := map[string]struct{ p, f, v string }{
 		"fmt":         {"fmt", "Append", "nil"},
 		"math":        {"math", "Sqrt", "0"},
+		"math/big":    {"big", "NewInt", "0"},
 		"reflect":     {"reflect", "DeepEqual", "1,1"},
 		"slices":      {"slices", "All", "[]int{}"},
 		"strings":     {"strings", "Title", `""`},
@@ -352,6 +317,9 @@ func (pb *PackageBuilder) MakeRandConstraint(name string) (*ast.GenDecl, Constra
 	var types []Type
 	for len(types) < 1+pb.rs.Intn(8) {
 		t := pb.RandType()
+		if _, ok := t.(ExternalType); ok {
+			continue
+		}
 		name := t.Name()
 		if strings.Contains(name, "int32") { // conflicts with rune
 			// t.Contains() doesn't work with map[int32] because

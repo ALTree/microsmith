@@ -40,8 +40,7 @@ func NewContext(pc ProgramConf) *Context {
 // ProgramConf holds program-wide configuration settings that change
 // the kind of programs that are generated.
 type ProgramConf struct {
-	MultiPkg   bool // for -multipkg
-	TypeParams bool // for -tp
+	MultiPkg bool // for -multipkg
 }
 
 // --------------------------------
@@ -105,7 +104,7 @@ func (pb PackageBuilder) RandComparableType() Type {
 	types := make([]Type, 0, 32)
 
 	// from Base Types
-	for _, t := range pb.baseTypes {
+	for _, t := range pb.types {
 		if t.Comparable() {
 			types = append(types, t)
 		}
@@ -126,21 +125,21 @@ func (pb PackageBuilder) RandComparableType() Type {
 // Returns a single BaseType (primitives, or a type parameter).
 func (pb PackageBuilder) RandBaseType() Type {
 	if tp := pb.ctx.typeparams; tp != nil {
-		i := pb.rs.Intn(len(pb.baseTypes) + len(tp.vars))
-		if i < len(pb.baseTypes) {
-			return pb.baseTypes[i]
+		i := pb.rs.Intn(len(pb.types) + len(tp.vars))
+		if i < len(pb.types) {
+			return pb.types[i]
 		} else {
-			return MakeTypeParam((tp.vars)[i-len(pb.baseTypes)])
+			return MakeTypeParam((tp.vars)[i-len(pb.types)])
 		}
 	} else {
-		return RandItem(pb.rs, pb.baseTypes)
+		return RandItem(pb.rs, pb.types)
 	}
 }
 
 func (pb PackageBuilder) RandNumericType() BasicType {
-	t := RandItem(pb.rs, pb.baseTypes)
+	t := RandItem(pb.rs, pb.types)
 	for !IsNumeric(t) {
-		t = RandItem(pb.rs, pb.baseTypes)
+		t = RandItem(pb.rs, pb.types)
 	}
 	return t.(BasicType)
 }
@@ -171,12 +170,11 @@ func (pb PackageBuilder) RandFuncType() FuncType {
 	// return type
 	ret := []Type{pb.RandType()}
 
-	return FuncType{"FU", args, ret, true}
+	return FuncType{Args: args, Ret: ret, Local: true}
 }
 
 func (pb PackageBuilder) RandRangeableFuncType() FuncType {
 	arg := FuncType{
-		N:     "FU",
 		Args:  []Type{},
 		Ret:   []Type{BT{"bool"}},
 		Local: true,
@@ -189,14 +187,17 @@ func (pb PackageBuilder) RandRangeableFuncType() FuncType {
 	for i := 0; i < pb.rs.Intn(3); i++ {
 		arg.Args = append(arg.Args, pb.RandType())
 	}
-	return FuncType{"FU", []Type{arg}, []Type{}, true}
+	return FuncType{Args: []Type{arg}, Ret: []Type{}, Local: true}
 }
 
 func (pb PackageBuilder) RandInterfaceType() InterfaceType {
 	var in InterfaceType
 	for i := 0; i < pb.rs.Intn(4); i++ {
 		t := pb.RandFuncType()
-		in.Methods = append(in.Methods, Method{&ast.Ident{Name: "M" + strconv.Itoa(i)}, t})
+		in.Methods = append(in.Methods, Method{
+			Name: &ast.Ident{Name: "M" + strconv.Itoa(i)},
+			Func: t,
+		})
 	}
 	return in
 }

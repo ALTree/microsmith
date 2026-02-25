@@ -66,9 +66,8 @@ func Ident(t Type) string {
 	case SliceType:
 		return "a" + Ident(t.Etype)
 	case FuncType:
-		if t.N != "FU" {
-			// buildin and stdlib functions don't need identifiers
-			return ""
+		if !t.Local {
+			panic("Ident on builtin or stdlib function")
 		} else {
 			return "fnc"
 		}
@@ -84,6 +83,8 @@ func Ident(t Type) string {
 		return strings.ToLower(t.N.Name) + "_"
 	case InterfaceType:
 		return "in"
+	case ExternalType:
+		return "z"
 	default:
 		panic("Ident: unknown type " + t.Name())
 	}
@@ -92,6 +93,8 @@ func Ident(t Type) string {
 // --------------------------------
 //   basic
 // --------------------------------
+
+type BT = BasicType
 
 type BasicType struct {
 	N string
@@ -388,6 +391,7 @@ func (st StructType) Sliceable() bool {
 // --------------------------------
 
 type FuncType struct {
+	Pkg   string
 	N     string
 	Args  []Type
 	Ret   []Type
@@ -503,163 +507,9 @@ func (ft FuncType) MakeFieldLists(named bool, s int) (*ast.FieldList, *ast.Field
 	return params, results
 }
 
-type BT = BasicType
-
 // builtins and a few standard library functions to generate calls to.
 // Any null Args or Ret is custom-handled when building the function
 // call.
-
-var BuiltinsFuncs = []FuncType{
-	{
-		N:    "append",
-		Args: nil,
-		Ret:  nil,
-	},
-	{
-		N:    "copy",
-		Args: nil,
-		Ret:  []Type{BT{"int"}},
-	},
-	{
-		N:    "len",
-		Args: nil,
-		Ret:  []Type{BT{"int"}},
-	},
-	{
-		N:    "min",
-		Args: nil,
-		Ret:  nil,
-	},
-	{
-		N:    "max",
-		Args: nil,
-		Ret:  nil,
-	},
-}
-
-var StdlibFuncs = []FuncType{
-	// fmt
-	{
-		N:    "fmt.Print",
-		Args: nil,
-		Ret:  nil,
-	},
-
-	// math
-	{
-		N:    "math.Max",
-		Args: []Type{BT{"float64"}, BT{"float64"}},
-		Ret:  []Type{BT{"float64"}},
-	},
-	{
-		N:    "math.NaN",
-		Args: []Type{},
-		Ret:  []Type{BT{"float64"}},
-	},
-	{
-		N:    "math.Ldexp",
-		Args: []Type{BT{"float64"}, BT{"int"}},
-		Ret:  []Type{BT{"float64"}},
-	},
-	{
-		N:    "math.Sqrt",
-		Args: []Type{BT{"float64"}},
-		Ret:  []Type{BT{"float64"}},
-	},
-
-	// strings
-	{
-		N:    "strings.Contains",
-		Args: []Type{BT{"string"}, BT{"string"}},
-		Ret:  []Type{BT{"bool"}},
-	},
-	{
-		N:    "strings.Join",
-		Args: []Type{SliceType{BT{"string"}}, BT{"string"}},
-		Ret:  []Type{BT{"string"}},
-	},
-	{
-		N: "strings.TrimFunc",
-		Args: []Type{
-			BT{"string"},
-			FuncType{
-				Args:  []Type{BT{"rune"}},
-				Ret:   []Type{BT{"bool"}},
-				Local: true,
-			},
-		},
-		Ret: []Type{BT{"string"}},
-	},
-
-	// reflect
-	{
-		N:    "reflect.DeepEqual",
-		Args: nil,
-		Ret:  []Type{BT{"bool"}},
-	},
-
-	// unsafe
-	{
-		N:    "unsafe.Sizeof",
-		Args: nil,
-		Ret:  []Type{BT{"uintptr"}},
-	},
-	{
-		N:    "unsafe.Alignof",
-		Args: nil,
-		Ret:  []Type{BT{"uintptr"}},
-	},
-	{
-		N:    "unsafe.Offsetof",
-		Args: nil,
-		Ret:  []Type{BT{"uintptr"}},
-	},
-	{
-		N:    "unsafe.SliceData",
-		Args: nil,
-		Ret:  nil,
-	},
-	{
-		N:    "unsafe.String",
-		Args: []Type{PointerType{BT{"byte"}}, BT{"int"}},
-		Ret:  []Type{BT{"string"}},
-	},
-	{
-		N:    "unsafe.StringData",
-		Args: []Type{BT{"string"}},
-		Ret:  []Type{PointerType{BT{"byte"}}},
-	},
-}
-
-func MakeAtomicFuncs() []Variable {
-
-	types := []string{"uint32", "uint64", "uintptr"}
-	vs := []Variable{}
-
-	for _, t := range types {
-		for _, fun := range []string{"atomic.Add", "atomic.Swap"} {
-			f := FuncType{
-				N:    fun + strings.Title(t),
-				Args: []Type{PointerOf(BT{t}), BT{t}},
-				Ret:  []Type{BT{t}},
-			}
-
-			vs = append(vs, Variable{f, &ast.Ident{Name: f.N}})
-		}
-	}
-
-	for _, t := range types {
-		f := FuncType{
-			N:    "atomic.Load" + strings.Title(t),
-			Args: []Type{PointerOf(BT{t})},
-			Ret:  []Type{BT{t}},
-		}
-
-		vs = append(vs, Variable{f, &ast.Ident{Name: f.N}})
-	}
-
-	return vs
-}
 
 // --------------------------------
 // Chan
@@ -825,6 +675,53 @@ func (t InterfaceType) Contains(t2 Type) bool {
 		}
 	}
 	return false
+}
+
+// --------------------------------
+// ExternalType
+// --------------------------------
+
+type ExternalType struct {
+	Pkg     string
+	N       string
+	Methods []Method
+	Builder func() ast.Expr
+}
+
+func (t ExternalType) Comparable() bool {
+	return false
+}
+
+func (t ExternalType) Ast() ast.Expr {
+	return &ast.SelectorExpr{
+		X:   &ast.Ident{Name: t.Pkg},
+		Sel: &ast.Ident{Name: t.N},
+	}
+}
+
+func (t ExternalType) Equal(t2 Type) bool {
+	if t2, ok := t2.(ExternalType); !ok {
+		return false
+	} else {
+		return t.Pkg == t2.Pkg && t.N == t2.N
+	}
+}
+
+func (t ExternalType) Name() string {
+	return t.Pkg + "." + t.N
+}
+
+func (t ExternalType) Sliceable() bool {
+	return false
+}
+
+func (t ExternalType) Contains(t2 Type) bool {
+	return t.Equal(t2)
+}
+
+func (t ExternalType) Build() ast.Expr {
+	return t.Builder()
+
 }
 
 // --------------------------------

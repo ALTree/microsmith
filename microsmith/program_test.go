@@ -30,25 +30,11 @@ func testProgramGoTypes(t *testing.T, n int, conf microsmith.ProgramConf) {
 }
 
 func TestNewProgram(t *testing.T) {
-	n := 50
+	n := 100
 	if testing.Short() {
-		n = 10
+		n = 20
 	}
 	testProgramGoTypes(t, n, microsmith.ProgramConf{})
-}
-
-func TestNewProgramTP(t *testing.T) {
-	n := 50
-	if testing.Short() {
-		n = 10
-	}
-
-	testProgramGoTypes(
-		t, n,
-		microsmith.ProgramConf{
-			MultiPkg:   false,
-			TypeParams: true,
-		})
 }
 
 func GetToolchain() string {
@@ -61,9 +47,9 @@ func GetToolchain() string {
 
 // Check generated programs with gc (from file).
 func compile(t *testing.T, conf microsmith.ProgramConf) {
-	lim := 10
+	lim := 20
 	if testing.Short() {
-		lim = 2
+		lim = 5
 	}
 
 	if _, err := os.Stat(WorkDir); os.IsNotExist(err) {
@@ -110,35 +96,11 @@ func compile(t *testing.T, conf microsmith.ProgramConf) {
 }
 
 func TestCompile(t *testing.T) {
-	compile(t,
-		microsmith.ProgramConf{
-			MultiPkg:   false,
-			TypeParams: false,
-		})
+	compile(t, microsmith.ProgramConf{MultiPkg: false})
 }
 
 func TestCompileMultiPkg(t *testing.T) {
-	compile(t,
-		microsmith.ProgramConf{
-			MultiPkg:   true,
-			TypeParams: false,
-		})
-}
-
-func TestCompileTypeParams(t *testing.T) {
-	compile(t,
-		microsmith.ProgramConf{
-			MultiPkg:   false,
-			TypeParams: true,
-		})
-}
-
-func TestCompileMultiPkgTypeParams(t *testing.T) {
-	compile(t,
-		microsmith.ProgramConf{
-			MultiPkg:   true,
-			TypeParams: true,
-		})
+	compile(t, microsmith.ProgramConf{MultiPkg: true})
 }
 
 var sink *ast.File
@@ -156,8 +118,5 @@ func benchHelper(b *testing.B, conf microsmith.ProgramConf) {
 }
 
 func BenchmarkSinglePkg(b *testing.B) {
-	benchHelper(b, microsmith.ProgramConf{
-		MultiPkg:   false,
-		TypeParams: true,
-	})
+	benchHelper(b, microsmith.ProgramConf{MultiPkg: false})
 }

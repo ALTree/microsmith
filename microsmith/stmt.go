@@ -302,7 +302,7 @@ func (sb *StmtBuilder) DeclStmt(nVars int, t Type) (*ast.DeclStmt, []*ast.Ident)
 	var rhs []ast.Expr
 
 	switch t2 := t.(type) {
-	case BasicType, ArrayType, SliceType, PointerType, StructType, ChanType, MapType, InterfaceType:
+	case BasicType, ArrayType, SliceType, PointerType, StructType, ChanType, MapType, InterfaceType, ExternalType:
 		typ = t2.Ast()
 
 	case FuncType:
@@ -517,8 +517,8 @@ func (sb *StmtBuilder) RangeStmt() *ast.RangeStmt {
 		// call to a function from the slices package.
 		if sb.R.Intn(2) == 0 {
 			t := sb.pb.RandType()
-			f := FuncType{N: "slices.All"}
-			e = sb.E.CallFunction(Variable{f, &ast.Ident{Name: f.N}}, t)
+			f := FuncType{Pkg: "slices", N: "All"}
+			e = sb.E.CallFunction(f, t)
 			k = sb.S.NewIdent(BT{"int"})
 			v = sb.S.NewIdent(t)
 		} else {
@@ -584,7 +584,7 @@ func (sb *StmtBuilder) RangeStmt() *ast.RangeStmt {
 
 func (sb *StmtBuilder) DeferStmt() *ast.DeferStmt {
 	if v, ok := sb.S.RandFunc(); ok && sb.R.Intn(4) > 0 {
-		return &ast.DeferStmt{Call: sb.E.CallFunction(v)}
+		return &ast.DeferStmt{Call: sb.E.CallFunctionVar(v)}
 	} else {
 		old := sb.C.inDefer
 		sb.C.inDefer = true
@@ -595,7 +595,7 @@ func (sb *StmtBuilder) DeferStmt() *ast.DeferStmt {
 
 func (sb *StmtBuilder) GoStmt() *ast.GoStmt {
 	if v, ok := sb.S.RandFunc(); ok && sb.R.Intn(4) > 0 {
-		return &ast.GoStmt{Call: sb.E.CallFunction(v)}
+		return &ast.GoStmt{Call: sb.E.CallFunctionVar(v)}
 	} else {
 		old := sb.C.inDefer
 		sb.C.inDefer = true
@@ -802,8 +802,8 @@ func (sb *StmtBuilder) ExprStmt() *ast.ExprStmt {
 	case 1:
 		return sb.ClearStmt()
 	case 2:
-		f := FuncType{N: "fmt.Print"}
-		e := sb.E.CallFunction(Variable{f, &ast.Ident{Name: f.N}})
+		f := FuncType{Pkg: "fmt", N: "Print"}
+		e := sb.E.CallFunction(f)
 		return &ast.ExprStmt{e}
 	default:
 		// Call a random function. We don't use RandCallExpr() because

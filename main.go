@@ -29,7 +29,6 @@ var (
 	ssacheckF  = flag.Bool("ssacheck", false, "Compile with -d=ssa/check/on")
 	binF       = flag.String("bin", "", "Go toolchain to fuzz")
 	workdirF   = flag.String("work", "work", "Workdir for the fuzzing process")
-	notpF      = flag.Bool("notp", false, "Don't use type-parameters")
 	expF       = flag.String("exp", "", "GOEXPERIMENT")
 )
 
@@ -127,8 +126,7 @@ var crashWhitelist = []*regexp.Regexp{
 
 func Fuzz(bo microsmith.BuildOptions) {
 	conf := microsmith.ProgramConf{
-		MultiPkg:   !*singlePkgF,
-		TypeParams: !*notpF,
+		MultiPkg: !*singlePkgF,
 	}
 
 	for {
@@ -185,8 +183,7 @@ func Fuzz(bo microsmith.BuildOptions) {
 
 func debugRun() {
 	conf := microsmith.ProgramConf{
-		MultiPkg:   !*singlePkgF,
-		TypeParams: !*notpF,
+		MultiPkg: !*singlePkgF,
 	}
 	gp := microsmith.NewProgram(conf)
 	err := gp.Check()
