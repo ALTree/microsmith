@@ -74,6 +74,7 @@ used to stress-test Go compilers.
 - [#68816 internal compiler error: panic during prove](https://github.com/golang/go/issues/68816)
 - [#73180 illegal combination ADD $8, ZR, R2 on arm64](https://github.com/golang/go/issues/73180)
 - [#75617 internal compiler error: bad conversion to untyped](https://github.com/golang/go/issues/75617)
+- [#77635 internal compiler error: cannot represent parameters of type struct](https://github.com/golang/go/issues/77635)
 
 ##### gccgo
 
