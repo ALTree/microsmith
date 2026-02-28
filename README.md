@@ -75,6 +75,7 @@ used to stress-test Go compilers.
 - [#73180 illegal combination ADD $8, ZR, R2 on arm64](https://github.com/golang/go/issues/73180)
 - [#75617 internal compiler error: bad conversion to untyped](https://github.com/golang/go/issues/75617)
 - [#77635 internal compiler error: cannot represent parameters of type struct](https://github.com/golang/go/issues/77635)
+- [#77815 internal compiler error: bad write barrier type [4]struct {}](https://github.com/golang/go/issues/77815)
 
 ##### gccgo
 
