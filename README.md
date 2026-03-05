@@ -76,6 +76,7 @@ used to stress-test Go compilers.
 - [#75617 internal compiler error: bad conversion to untyped](https://github.com/golang/go/issues/75617)
 - [#77635 internal compiler error: cannot represent parameters of type struct](https://github.com/golang/go/issues/77635)
 - [#77815 internal compiler error: bad write barrier type [4]struct {}](https://github.com/golang/go/issues/77815)
+- [#77868 internal compiler error: zero for tpye [2]int not implemented](https://github.com/golang/go/issues/77868)
 
 ##### gccgo
 
