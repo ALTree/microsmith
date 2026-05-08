@@ -1,11 +1,10 @@
 package microsmith
 
 import (
+	"fmt"
 	"go/ast"
 	"go/token"
 	"reflect"
-	"simd/archsimd"
-	"slices"
 	"strings"
 )
 
@@ -37,49 +36,10 @@ var BigInt = ExternalType{
 	},
 }
 
-var SimdInt32x8 = ExternalType{
-	Pkg:     "archsimd",
-	N:       "Int32x8",
-	Builder: nil,
-}
-
-var SimdMask32x8 = ExternalType{
-	Pkg:     "archsimd",
-	N:       "Mask32x8",
-	Builder: nil,
-}
-
-var SimdFloat32x8 = ExternalType{
-	Pkg:     "archsimd",
-	N:       "Float32x8",
-	Builder: nil,
-}
-
 func MakeMethod(name string, args, ret []Type) Method {
 	return Method{
 		Name: &ast.Ident{Name: name},
 		Func: FuncType{Args: args, Ret: ret},
-	}
-}
-
-func NameToType(name string) (Type, bool) {
-	i := slices.IndexFunc(BaseTypes, func(t Type) bool {
-		bt, ok := t.(BT)
-		return ok && bt.N == name
-	})
-	if i >= 0 {
-		return BaseTypes[i], true
-	}
-
-	switch name {
-	case "Int32x8":
-		return SimdInt32x8, true
-	case "Mask32x8":
-		return SimdMask32x8, true
-	case "Float32x8":
-		return SimdFloat32x8, true
-	default:
-		return BT{}, false
 	}
 }
 
@@ -97,7 +57,7 @@ outer:
 			p := m.Type.In(i)
 			in, ok := NameToType(p.Name())
 			if !ok {
-				//	fmt.Printf("Ignoring method %v for ins is %v\n", m, p.Kind())
+				//fmt.Printf("Ignoring method %v for ins is %v\n", m, p.Kind())
 				continue outer
 			}
 			ins = append(ins, in)
@@ -112,7 +72,7 @@ outer:
 
 		methods = append(methods, MakeMethod(m.Name, ins, []Type{out}))
 	}
-
+	fmt.Println(methods)
 	return methods
 }
 
@@ -130,16 +90,6 @@ func init() {
 			[]Type{BT{"int"}}),
 	}
 	StdTypes = append(StdTypes, BigInt)
-
-	SimdInt32x8.Methods = MakeMethods[archsimd.Int32x8]()
-	StdTypes = append(StdTypes, SimdInt32x8)
-
-	SimdMask32x8.Methods = MakeMethods[archsimd.Mask32x8]()
-	StdTypes = append(StdTypes, SimdMask32x8)
-
-	SimdFloat32x8.Methods = MakeMethods[archsimd.Float32x8]()
-	StdTypes = append(StdTypes, SimdFloat32x8)
-
 }
 
 var StdTypes = []Type{}
@@ -260,26 +210,6 @@ var StdFunctions = []FuncType{
 		N:    "StringData",
 		Args: []Type{BT{"string"}},
 		Ret:  []Type{PointerType{BT{"byte"}}},
-	},
-
-	// archsimd
-	{
-		Pkg:  "archsimd",
-		N:    "BroadcastInt32x8",
-		Args: []Type{BT{"int32"}},
-		Ret:  []Type{SimdInt32x8},
-	},
-	{
-		Pkg:  "archsimd",
-		N:    "LoadInt32x8",
-		Args: []Type{PointerType{ArrayType{Len: 8, Etype: BT{"int32"}}}},
-		Ret:  []Type{SimdInt32x8},
-	},
-	{
-		Pkg:  "archsimd",
-		N:    "LoadInt32x8Slice",
-		Args: []Type{SliceType{BT{"int32"}}},
-		Ret:  []Type{SimdInt32x8},
 	},
 }
 

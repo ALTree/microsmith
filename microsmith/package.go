@@ -148,6 +148,11 @@ func (pb *PackageBuilder) Scope() *Scope {
 	return pb.ctx.scope
 }
 
+var ImportedPkgs = []string{
+	"fmt", "math", "math/big", "reflect", "slices",
+	"strings", "sync/atomic", "unsafe",
+}
+
 func (pb *PackageBuilder) File() *ast.File {
 	af := new(ast.File)
 	af.Name = &ast.Ident{0, pb.pkg, nil}
@@ -162,13 +167,10 @@ func (pb *PackageBuilder) File() *ast.File {
 		}
 	}
 
-	pkgs := []string{
-		"fmt", "math", "math/big", "reflect", "slices", "strings",
-		"sync/atomic", "unsafe", "simd/archsimd"}
-	for _, p := range pkgs {
+	for _, p := range ImportedPkgs {
 		af.Decls = append(af.Decls, MakeImport(p))
 	}
-	for _, p := range pkgs {
+	for _, p := range ImportedPkgs {
 		af.Decls = append(af.Decls, MakeUsePakage(p))
 	}
 
