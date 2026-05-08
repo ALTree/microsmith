@@ -37,7 +37,7 @@ func NewExprBuilder(pb *PackageBuilder) *ExprBuilder {
 // Returns true if the expression tree currently being built is
 // allowed to become deeper.
 func (eb *ExprBuilder) Deepen() bool {
-	return (eb.depth <= 6) && (eb.R.Float64() < 0.7)
+	return (eb.depth <= 6) && (eb.R.Float64() < 0.8)
 }
 
 func (eb *ExprBuilder) BasicLit(t BasicType) ast.Expr {
@@ -80,11 +80,7 @@ func (eb *ExprBuilder) CompositeLit(t Type) *ast.CompositeLit {
 		cl := &ast.CompositeLit{Type: t.Ast()}
 		elems := []ast.Expr{}
 		for i := 0; i < min(t.Len, 3); i++ {
-			if eb.Deepen() {
-				elems = append(elems, eb.Expr(t.Base()))
-			} else {
-				elems = append(elems, eb.VarOrLit(t.Base()))
-			}
+			elems = append(elems, eb.Expr(t.Base()))
 		}
 		cl.Elts = elems
 		return cl
@@ -93,24 +89,13 @@ func (eb *ExprBuilder) CompositeLit(t Type) *ast.CompositeLit {
 		elems := []ast.Expr{}
 		if eb.R.Intn(4) > 0 { // plain array literal
 			for i := 0; i < eb.R.Intn(5); i++ {
-				if eb.Deepen() {
-					elems = append(elems, eb.Expr(t.Base()))
-				} else {
-					elems = append(elems, eb.VarOrLit(t.Base()))
-				}
+				elems = append(elems, eb.Expr(t.Base()))
 			}
 		} else { // keyed literals
-			if eb.Deepen() {
-				elems = append(elems, &ast.KeyValueExpr{
-					Key:   eb.BasicLit(BT{N: "int"}),
-					Value: eb.Expr(t.Base()),
-				})
-			} else {
-				elems = append(elems, &ast.KeyValueExpr{
-					Key:   eb.BasicLit(BT{N: "int"}),
-					Value: eb.VarOrLit(t.Base()),
-				})
-			}
+			elems = append(elems, &ast.KeyValueExpr{
+				Key:   eb.BasicLit(BT{N: "int"}),
+				Value: eb.Expr(t.Base()),
+			})
 		}
 		cl.Elts = elems
 		return cl
@@ -139,11 +124,7 @@ func (eb *ExprBuilder) CompositeLit(t Type) *ast.CompositeLit {
 		cl := &ast.CompositeLit{Type: t.Ast()}
 		elems := []ast.Expr{}
 		for _, t := range t.Ftypes {
-			if eb.Deepen() {
-				elems = append(elems, eb.Expr(t))
-			} else {
-				elems = append(elems, eb.VarOrLit(t))
-			}
+			elems = append(elems, eb.Expr(t))
 		}
 		cl.Elts = elems
 		return cl
@@ -163,6 +144,10 @@ func (eb *ExprBuilder) TypeParamLit(t TypeParam) ast.Expr {
 func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 	eb.depth++
 	defer func() { eb.depth-- }()
+
+	if !eb.Deepen() {
+		return eb.VarOrLit(t)
+	}
 
 	if eb.R.Intn(8) == 0 {
 		return eb.RandCallExpr(t)
@@ -188,11 +173,7 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 	case SliceType:
 		if t.Etype.Name() == "byte" && eb.R.Intn(3) == 0 {
 			var arg ast.Expr
-			if eb.Deepen() {
-				arg = eb.Expr(BT{"string"})
-			} else {
-				arg = eb.VarOrLit(BT{"string"})
-			}
+			arg = eb.Expr(BT{"string"})
 			return &ast.CallExpr{
 				Fun:  &ast.Ident{Name: t.Name()},
 				Args: []ast.Expr{arg},
@@ -216,11 +197,7 @@ func (eb *ExprBuilder) Expr(t Type) ast.Expr {
 		//  - a variable of type t, an unary &t.Base(), or a typed nil
 		if eb.R.Intn(2) == 0 {
 			ce := &ast.CallExpr{Fun: &ast.Ident{Name: "new"}}
-			if eb.Deepen() {
-				ce.Args = []ast.Expr{eb.Expr(t.Base())}
-			} else {
-				ce.Args = []ast.Expr{eb.VarOrLit(t.Base())}
-			}
+			ce.Args = []ast.Expr{eb.Expr(t.Base())}
 			return ce
 		}
 
@@ -384,11 +361,7 @@ func (eb *ExprBuilder) CallExpr(e ast.Expr, at []Type) *ast.CallExpr {
 		if arg, ok := (a).(EllipsisType); ok {
 			t = arg.Base
 		}
-		if eb.R.Intn(2) == 0 && eb.Deepen() {
-			args = append(args, eb.Expr(t))
-		} else {
-			args = append(args, eb.VarOrLit(t))
-		}
+		args = append(args, eb.Expr(t))
 	}
 	return &ast.CallExpr{Fun: e, Args: args}
 }
@@ -429,14 +402,7 @@ func (eb *ExprBuilder) StarExpr(e ast.Expr) *ast.UnaryExpr {
 
 // Returns e[k] with e map and k of type t
 func (eb *ExprBuilder) MapIndexExpr(e ast.Expr, t Type) *ast.IndexExpr {
-	var i ast.Expr
-	if eb.Deepen() {
-		i = eb.Expr(t)
-	} else {
-		i = eb.VarOrLit(t)
-	}
-
-	return &ast.IndexExpr{X: e, Index: i}
+	return &ast.IndexExpr{X: e, Index: eb.Expr(t)}
 }
 
 // Returns e.<...> where the whole expression has type target.
@@ -509,8 +475,6 @@ func (eb *ExprBuilder) UnaryExpr(t Type) ast.Expr {
 	// dereferencing it with chance 0.5
 	if eb.R.Intn(2) == 0 && eb.S.Has(PointerOf(t)) {
 		ue.Op = token.MUL
-		// See comment in Expr() for PointerType on why we must call
-		// Expr() here.
 		ue.X = eb.Expr(PointerOf(t))
 		return ue
 	}
@@ -521,12 +485,7 @@ func (eb *ExprBuilder) UnaryExpr(t Type) ast.Expr {
 		return eb.VarOrLit(t)
 	}
 
-	if eb.Deepen() {
-		ue.X = eb.Expr(t)
-	} else {
-		ue.X = eb.VarOrLit(t)
-	}
-
+	ue.X = eb.Expr(t)
 	return ue
 }
 
@@ -564,11 +523,7 @@ func (eb *ExprBuilder) BinaryExpr(t Type) ast.Expr {
 	if _, isTP := t.(TypeParam); IsNumeric(t) || isTP {
 
 		// LHS can be whatever
-		if eb.Deepen() {
-			ue.X = eb.Expr(t)
-		} else {
-			ue.X = eb.VarOrLit(t)
-		}
+		ue.X = eb.Expr(t)
 
 		// Make sure the RHS is not a constant expression. The result
 		// of len, min, and max are const when their args are consts,
@@ -606,12 +561,7 @@ func (eb *ExprBuilder) Cast(t BasicType) *ast.CallExpr {
 
 	// handle string([]byte) cast
 	if t.Equal(BT{"string"}) {
-		var arg ast.Expr
-		if eb.Deepen() {
-			arg = eb.Expr(SliceOf(BT{"byte"}))
-		} else {
-			arg = eb.VarOrLit(SliceOf(BT{"byte"}))
-		}
+		arg := eb.Expr(SliceOf(BT{"byte"}))
 		return &ast.CallExpr{
 			Fun:  &ast.Ident{Name: t.N},
 			Args: []ast.Expr{arg},
@@ -660,11 +610,7 @@ func (eb *ExprBuilder) CallMethod(v Variable, m Method, ct ...Type) *ast.CallExp
 	}
 
 	for _, arg := range m.Func.Args {
-		if eb.Deepen() {
-			ce.Args = append(ce.Args, eb.Expr(arg))
-		} else {
-			ce.Args = append(ce.Args, eb.VarOrLit(arg))
-		}
+		ce.Args = append(ce.Args, eb.Expr(arg))
 	}
 
 	return ce
@@ -700,11 +646,7 @@ func (eb *ExprBuilder) CallFunction(f FuncType, ct ...Type) *ast.CallExpr {
 			t1 = SliceOf(eb.pb.RandType())
 			t2 = t1
 		}
-		if eb.Deepen() {
-			ce.Args = []ast.Expr{eb.Expr(t1), eb.Expr(t2)}
-		} else {
-			ce.Args = []ast.Expr{eb.VarOrLit(t1), eb.VarOrLit(t2)}
-		}
+		ce.Args = []ast.Expr{eb.Expr(t1), eb.Expr(t2)}
 
 	case "len":
 		var t Type
@@ -713,11 +655,7 @@ func (eb *ExprBuilder) CallFunction(f FuncType, ct ...Type) *ast.CallExpr {
 		} else {
 			t = BT{"string"}
 		}
-		if eb.Deepen() {
-			ce.Args = []ast.Expr{eb.Expr(t)}
-		} else {
-			ce.Args = []ast.Expr{eb.VarOrLit(t)}
-		}
+		ce.Args = []ast.Expr{eb.Expr(t)}
 
 	case "min", "max":
 		if len(ct) == 0 {
@@ -726,11 +664,7 @@ func (eb *ExprBuilder) CallFunction(f FuncType, ct ...Type) *ast.CallExpr {
 		t := ct[0]
 
 		for i := 0; i < 1+eb.R.Intn(5); i++ {
-			if eb.Deepen() {
-				ce.Args = append(ce.Args, eb.Expr(t))
-			} else {
-				ce.Args = append(ce.Args, eb.VarOrLit(t))
-			}
+			ce.Args = append(ce.Args, eb.Expr(t))
 		}
 
 	case "Offsetof":
@@ -768,41 +702,25 @@ func (eb *ExprBuilder) CallFunction(f FuncType, ct ...Type) *ast.CallExpr {
 			_, isFnc = t.(FuncType)
 			_, isInt = t.(InterfaceType)
 		}
-		if eb.Deepen() {
-			ce.Args = []ast.Expr{eb.Expr(t)}
-		} else {
-			ce.Args = []ast.Expr{eb.VarOrLit(t)}
-		}
+		ce.Args = []ast.Expr{eb.Expr(t)}
 
 	case "SliceData":
 		if len(ct) == 0 {
 			panic("unsafe.SliceData needs additional type arg")
 		}
 		t := SliceOf(ct[0].(PointerType).Base())
-		if eb.Deepen() {
-			ce.Args = []ast.Expr{eb.Expr(t)}
-		} else {
-			ce.Args = []ast.Expr{eb.VarOrLit(t)}
-		}
+		ce.Args = []ast.Expr{eb.Expr(t)}
 
 	case "DeepEqual":
 		t1, t2 := eb.pb.RandType(), eb.pb.RandType()
-		if eb.Deepen() {
-			ce.Args = []ast.Expr{eb.Expr(t1), eb.Expr(t2)}
-		} else {
-			ce.Args = []ast.Expr{eb.VarOrLit(t1), eb.VarOrLit(t2)}
-		}
+		ce.Args = []ast.Expr{eb.Expr(t1), eb.Expr(t2)}
 
 	case "All":
 		if len(ct) == 0 {
 			panic("slices.All needs additional type arg")
 		}
 		t := SliceOf(ct[0])
-		if eb.Deepen() {
-			ce.Args = []ast.Expr{eb.Expr(t)}
-		} else {
-			ce.Args = []ast.Expr{eb.VarOrLit(t)}
-		}
+		ce.Args = []ast.Expr{eb.Expr(t)}
 
 	case "Print":
 		for range 1 + eb.R.Intn(4) {
@@ -826,7 +744,7 @@ func (eb *ExprBuilder) CallFunction(f FuncType, ct ...Type) *ast.CallExpr {
 			if ep, ok := arg.(EllipsisType); ok {
 				arg = ep.Base
 			}
-			if eb.Deepen() && f.Local {
+			if f.Local {
 				// Cannot call Expr with casts, because UnaryExpr
 				// could return e.g. -11 which cannot be cast to uint.
 				args = append(args, eb.Expr(arg))
@@ -860,7 +778,7 @@ func (eb *ExprBuilder) CallFunctionVar(v Variable, ct ...Type) *ast.CallExpr {
 		if ep, ok := arg.(EllipsisType); ok {
 			arg = ep.Base
 		}
-		if eb.Deepen() && f.Local {
+		if f.Local {
 			// Cannot call Expr with casts, because UnaryExpr
 			// could return e.g. -11 which cannot be cast to uint.
 			args = append(args, eb.Expr(arg))
@@ -884,11 +802,7 @@ func (eb *ExprBuilder) MakeAppendCall(t SliceType) *ast.CallExpr {
 		ellips = token.Pos(1)
 	}
 
-	if eb.Deepen() {
-		ce.Args = []ast.Expr{eb.Expr(t), eb.Expr(t2)}
-	} else {
-		ce.Args = []ast.Expr{eb.VarOrLit(t), eb.VarOrLit(t2)}
-	}
+	ce.Args = []ast.Expr{eb.Expr(t), eb.Expr(t2)}
 	ce.Ellipsis = ellips
 
 	return ce
@@ -927,13 +841,7 @@ func (eb *ExprBuilder) ConjureAndCallFunc(t Type) *ast.CallExpr {
 		ft.Args = append(ft.Args, eb.pb.RandType())
 	}
 
-	var retExpr ast.Expr
-	if eb.Deepen() {
-		retExpr = eb.Expr(t)
-	} else {
-		retExpr = eb.VarOrLit(t)
-	}
-
+	retExpr := eb.Expr(t)
 	p, r := ft.MakeFieldLists(false, 0)
 	fl := &ast.FuncLit{
 		Type: &ast.FuncType{Params: p, Results: r},
