@@ -85,9 +85,15 @@ func init() {
 		MakeMethod("Abs",
 			[]Type{PointerType{BigInt}},
 			[]Type{PointerType{BigInt}}),
+		MakeMethod("Bytes",
+			[]Type{},
+			[]Type{SliceOf(BT{"byte"})}),
 		MakeMethod("Cmp",
 			[]Type{PointerType{BigInt}},
 			[]Type{BT{"int"}}),
+		MakeMethod("SetBit",
+			[]Type{PointerType{BigInt}, BT{"int"}, BT{"uint"}},
+			[]Type{PointerType{BigInt}}),
 	}
 	StdTypes = append(StdTypes, BigInt)
 }
