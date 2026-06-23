@@ -78,6 +78,7 @@ used to stress-test Go compilers.
 - [#77815 internal compiler error: bad write barrier type [4]struct {}](https://github.com/golang/go/issues/77815)
 - [#77868 internal compiler error: zero for tpye [2]int not implemented](https://github.com/golang/go/issues/77868)
 - [#79274 internal compiler error: panic: invalid memory address](https://github.com/golang/go/issues/79274)
+- [#80096 internal compiler error: missing typecheck](https://github.com/golang/go/issues/80096)
 
 ##### gccgo
 
