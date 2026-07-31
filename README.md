@@ -79,6 +79,7 @@ used to stress-test Go compilers.
 - [#77868 internal compiler error: zero for tpye [2]int not implemented](https://github.com/golang/go/issues/77868)
 - [#79274 internal compiler error: panic: invalid memory address](https://github.com/golang/go/issues/79274)
 - [#80096 internal compiler error: missing typecheck](https://github.com/golang/go/issues/80096)
+- [#80543 internal compiler error: zero-sized Make; use Empty instead](https://github.com/golang/go/issues/80543)
 
 ##### gccgo
 
