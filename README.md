@@ -80,6 +80,7 @@ used to stress-test Go compilers.
 - [#79274 internal compiler error: panic: invalid memory address](https://github.com/golang/go/issues/79274)
 - [#80096 internal compiler error: missing typecheck](https://github.com/golang/go/issues/80096)
 - [#80543 internal compiler error: zero-sized Make; use Empty instead](https://github.com/golang/go/issues/80543)
+- [#81771 internal compiler error: live values in unreachable block](https://github.com/golang/go/issues/81771)
 
 ##### gccgo
 
