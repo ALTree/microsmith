@@ -81,6 +81,7 @@ used to stress-test Go compilers.
 - [#80096 internal compiler error: missing typecheck](https://github.com/golang/go/issues/80096)
 - [#80543 internal compiler error: zero-sized Make; use Empty instead](https://github.com/golang/go/issues/80543)
 - [#81771 internal compiler error: live values in unreachable block](https://github.com/golang/go/issues/81771)
+- [#81976 internal compiler error: panic: bad move](https://github.com/golang/go/issues/81976)
 
 ##### gccgo
 
