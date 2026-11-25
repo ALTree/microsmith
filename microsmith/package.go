@@ -6,6 +6,7 @@ import (
 	"go/parser"
 	"go/token"
 	"math/rand"
+	"slices"
 	"strings"
 )
 
@@ -155,7 +156,7 @@ var ImportedPkgs = []string{
 
 func (pb *PackageBuilder) File() *ast.File {
 	af := new(ast.File)
-	af.Name = &ast.Ident{0, pb.pkg, nil}
+	af.Name = &ast.Ident{NamePos: 0, Name: pb.pkg, Obj: nil}
 	af.Decls = []ast.Decl{}
 
 	if pb.pkg == "main" && pb.Conf().MultiPkg {
@@ -252,7 +253,7 @@ func (p *PackageBuilder) MakeFuncCalls() []ast.Stmt {
 		}
 		ce.Fun = &ast.IndexListExpr{X: ce.Fun, Indices: indices}
 
-		calls = append(calls, &ast.ExprStmt{&ce})
+		calls = append(calls, &ast.ExprStmt{X: &ce})
 	}
 	return calls
 }
@@ -300,7 +301,7 @@ func MakeUsePakage(p string) *ast.GenDecl {
 		Tok: token.VAR,
 		Specs: []ast.Spec{
 			&ast.ValueSpec{
-				Names:  []*ast.Ident{&ast.Ident{Name: "_"}},
+				Names:  []*ast.Ident{{Name: "_"}},
 				Values: []ast.Expr{val},
 			},
 		},
@@ -313,10 +314,8 @@ func MakeInt() *ast.GenDecl {
 		Tok: token.VAR,
 		Specs: []ast.Spec{
 			&ast.ValueSpec{
-				Names: []*ast.Ident{
-					&ast.Ident{Name: "i"},
-				},
-				Type: &ast.Ident{Name: "int"},
+				Names: []*ast.Ident{{Name: "i"}},
+				Type:  &ast.Ident{Name: "int"},
 			},
 		},
 	}
@@ -338,14 +337,7 @@ func (pb *PackageBuilder) MakeRandConstraint(name string) (*ast.GenDecl, Constra
 		if strings.Contains(name, "interface") {
 			continue
 		}
-		same := false
-		for _, t2 := range types {
-			if t.Equal(t2) {
-				same = true
-				break
-			}
-		}
-		if !same {
+		if !slices.ContainsFunc(types, t.Equal) {
 			types = append(types, t)
 		}
 	}
@@ -376,7 +368,7 @@ func (pb *PackageBuilder) MakeVar(t Type, i int) *ast.GenDecl {
 		Specs: []ast.Spec{
 			&ast.ValueSpec{
 				Names: []*ast.Ident{
-					&ast.Ident{Name: fmt.Sprintf("V%v", i)},
+					{Name: fmt.Sprintf("V%v", i)},
 				},
 				Type: t.Ast(),
 				Values: []ast.Expr{

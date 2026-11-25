@@ -62,7 +62,7 @@ func RandItem[T any](r *rand.Rand, a []T) T {
 // (structs, array, maps, chans).
 func (pb PackageBuilder) RandTypes(n int) []Type {
 	types := make([]Type, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		types[i] = pb.RandType()
 	}
 	return types

@@ -1,6 +1,7 @@
 package microsmith
 
 import (
+	"fmt"
 	"go/ast"
 	"go/token"
 	"reflect"
@@ -42,9 +43,7 @@ func MakeMethod(name string, args, ret []Type) Method {
 	}
 }
 
-func MakeMethods[T any]() []Method {
-	var v T
-	t := reflect.TypeOf(v)
+func MakeMethods(t reflect.Type) []Method {
 	var methods []Method
 
 outer:
@@ -54,28 +53,31 @@ outer:
 		var ins []Type
 		for i := 1; i < m.Type.NumIn(); i++ { // first one is the receiver
 			p := m.Type.In(i)
-			in, ok := NameToType(p.Name())
+			in, ok := NameToType(p)
 			if !ok {
-				//fmt.Printf("Ignoring method %v for ins is %v\n", m, p.Kind())
+				fmt.Println("Ignoring method: parameter is " + p.String())
 				continue outer
 			}
 			ins = append(ins, in)
 		}
 
-		p := m.Type.Out(0)
-		out, ok := NameToType(p.Name())
-		if !ok {
-			//			fmt.Println("Ignoring method for out is " + p.Name())
-			continue outer
+		outs := []Type{}
+		if m.Type.NumOut() > 0 {
+			p := m.Type.Out(0)
+			out, ok := NameToType(p)
+			if !ok {
+				fmt.Println("Ignoring method: out is " + p.String())
+				continue outer
+			}
+			outs = append(outs, out)
 		}
 
-		methods = append(methods, MakeMethod(m.Name, ins, []Type{out}))
+		methods = append(methods, MakeMethod(m.Name, ins, outs))
 	}
 	return methods
 }
 
 func init() {
-	// --- Big.Int -----------------------------------------
 	BigInt.Methods = []Method{
 		MakeMethod("Add",
 			[]Type{PointerType{BigInt}, PointerType{BigInt}},
@@ -93,7 +95,7 @@ func init() {
 			[]Type{PointerType{BigInt}, BT{"int"}, BT{"uint"}},
 			[]Type{PointerType{BigInt}}),
 	}
-	StdTypes = append(StdTypes, BigInt)
+	//StdTypes = append(StdTypes, BigInt)
 }
 
 var StdTypes = []Type{}
