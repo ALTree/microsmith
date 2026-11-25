@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"math/rand"
 	"os"
 	"os/exec"
 	"regexp"
@@ -37,16 +36,19 @@ var archs []string
 func main() {
 
 	flag.Parse()
-	rand.Seed(int64(time.Now().UnixNano()))
-
-	if *debugF {
-		debugRun()
-		os.Exit(0)
-	}
 
 	if *binF == "" {
 		fmt.Println("-bin must be set")
 		os.Exit(2)
+	}
+
+	if *debugF {
+		installDeps("amd64", microsmith.BuildOptions{
+			Toolchain:  *binF,
+			Experiment: *expF,
+		})
+		debugRun()
+		os.Exit(0)
 	}
 
 	if *raceF && runtime.GOOS == "windows" {
@@ -69,7 +71,7 @@ func main() {
 		os.Exit(2)
 	}
 
-	fz := microsmith.BuildOptions{
+	buildOpts := microsmith.BuildOptions{
 		Toolchain:  *binF,
 		Noopt:      *nooptF,
 		Race:       *raceF,
@@ -81,7 +83,7 @@ func main() {
 
 	if tc == "gc" {
 		for _, a := range archs {
-			installDeps(a, fz)
+			installDeps(a, buildOpts)
 		}
 	}
 	if *ssacheckF {
@@ -100,7 +102,7 @@ func main() {
 	startTime := time.Now()
 
 	for i := 1; i <= *pF; i++ {
-		go Fuzz(fz)
+		go Fuzz(buildOpts)
 	}
 
 	ticker := time.Tick(30 * time.Second)

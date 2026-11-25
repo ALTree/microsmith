@@ -1,7 +1,6 @@
 package microsmith
 
 import (
-	"fmt"
 	"go/ast"
 	"go/token"
 	"reflect"
@@ -72,7 +71,6 @@ outer:
 
 		methods = append(methods, MakeMethod(m.Name, ins, []Type{out}))
 	}
-	fmt.Println(methods)
 	return methods
 }
 

@@ -199,11 +199,12 @@ func (prog *Program) Compile(arch string, bo BuildOptions) (string, error) {
 			env = append(env, "GOOS=linux")
 		}
 
-		if arch == "386sf" {
+		switch arch {
+		case "386sf":
 			env = append(env, "GOARCH=386", "GO386=softfloat")
-		} else if arch == "amd64_v3" {
+		case "amd64_v3":
 			env = append(env, "GOARCH=amd64", "GOAMD64=v3")
-		} else {
+		default:
 			env = append(env, "GOARCH="+arch)
 		}
 
