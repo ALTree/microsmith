@@ -82,6 +82,7 @@ used to stress-test Go compilers.
 - [#80543 internal compiler error: zero-sized Make; use Empty instead](https://github.com/golang/go/issues/80543)
 - [#81771 internal compiler error: live values in unreachable block](https://github.com/golang/go/issues/81771)
 - [#81976 internal compiler error: panic: bad move](https://github.com/golang/go/issues/81976)
+- [#83386 internal compiler error: load from an auto variable before any store](https://github.com/golang/go/issues/83386)
 
 ##### gccgo
 
